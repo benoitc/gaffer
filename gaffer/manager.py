@@ -198,14 +198,27 @@ class Manager(object):
 
         with self._lock:
             if name not in self.processes:
-                return
+                raise KeyError("%r not found" % name)
 
             self._stop_byname_unlocked(name)
             del self.processes[name]
 
+    def get_process_info(self, name):
+        """ get process info """
+        with self._lock:
+            if name not in self.processes:
+                raise KeyError("%r not found" % name)
+
+            state = self.processes[name]
+            info = {"name": state.name, "cmd": state.cmd}
+            info.update(state.settings)
+            return info
+
     def manage_process(self, name):
         with self._lock:
-            self._manage_processes(self.get_process_state(name))
+            state = self.get_process_state(name)
+            state.stopped = False
+            self._manage_processes(state)
 
     start_process = manage_process
 
@@ -449,6 +462,9 @@ class Manager(object):
                 del self.running[process.id]
 
             state = self.get_process_state(process.name)
+            if not state:
+                return
+
             state.remove(process)
             if not state.stopped:
                 self._manage_processes(state)

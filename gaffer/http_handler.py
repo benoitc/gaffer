@@ -17,16 +17,117 @@ from tornado.httpserver import HTTPServer
 from .util import parse_address, is_ipv6
 from . import __version__
 
+
 class WelcomeHandler(RequestHandler):
 
     def get(self):
         self.write({"welcome": "gaffer", "version": __version__})
 
+class ProcessesHandler(RequestHandler):
+
+    def get(self, *args, **kwargs):
+        m = self.settings.get('manager')
+        names = [name for name in m.processes]
+        self.set_header('Content-Type', 'application/json')
+        self.write(json.dumps(names))
+
+    def post(self, *args, **kwargs):
+        try:
+            obj = json.loads(self.request.body.decode('utf-8'))
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "invalid_json"})
+            return
+
+        if not "name" or not "cmd" in obj:
+            self.set_status(400)
+            self.write({"error": "invalid_process_info"})
+            return
+
+        name = obj.pop("name")
+        cmd = obj.pop("cmd")
+
+        m = self.settings.get('manager')
+        try:
+            m.add_process(name, cmd, **obj)
+        except KeyError:
+            self.set_status(409)
+            self.write({"error": "conflict"})
+            return
+
+        self.write({"ok": True})
+
+class ProcessHandler(RequestHandler):
+
+    def get(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+
+        try:
+            info = m.get_process_info(name)
+        except KeyError:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+
+        self.write(info)
+
+    def delete(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+
+        try:
+            m.remove_process(name)
+        except KeyError:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+
+        self.write({"ok": True})
+
+
+class ProcessManagerHandler(RequestHandler):
+
+    def post(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+
+        if name not in m.processes:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+
+        action = args[1]
+        if action == "_start":
+            m.start_process(name)
+        elif action == "_stop":
+            m.stop_process(name)
+        elif action == "_ttin":
+            if len(args) > 2:
+                i = int(args[2])
+            else:
+                i = 1
+            m.ttin(name, i)
+        elif action == "_ttou":
+            if len(args) > 2:
+                i = int(args[2])
+            else:
+                i = 2
+            m.ttou(name, i)
+        elif action == "_restart":
+            m.restart_process(name)
+
+        self.write({"ok": True})
+
 
 class HttpHandler(object):
 
     DEFAULT_HANDLERS = [
-            (r'/', WelcomeHandler)
+            (r'/', WelcomeHandler),
+            (r'/processes', ProcessesHandler),
+            (r'/processes/([^/]+)', ProcessHandler),
+            (r'/processes/([^/]+)/(_[^/]+)$', ProcessManagerHandler),
+            (r'/processes/([^/]+)/(_[^/]+)/(.*)$', ProcessManagerHandler)
     ]
 
     def __init__(self, uri='127.0.0.1:5000', backlog=128,
