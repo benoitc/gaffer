@@ -2,7 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-from collections import deque
+from datetime import timedelta
 import json
 import os
 import signal
@@ -10,10 +10,11 @@ import shlex
 
 import pyuv
 import psutil
+from psutil.error import AccessDenied, NoSuchProcess
 import six
 
 from .util import bytestring, getcwd, check_uid, check_gid, bytes2human
-from .sync import atomic_read, increment, decrement
+from .sync import atomic_read, decrement
 
 def get_process_info(process=None, interval=0):
 
@@ -78,7 +79,7 @@ def get_process_info(process=None, interval=0):
 
     info['children'] = []
     for child in process.get_children():
-        info['children'].append(get_info(psutil.Process(child),
+        info['children'].append(get_process_info(psutil.Process(child),
             interval=interval))
 
     return info
@@ -132,13 +133,13 @@ class ProcessWatcher(object):
         self._timer.start(self._async_refresh, 0.1, 0.1)
 
     def _async_refresh(self, handle):
-        self._last_info = refresh()
+        self._last_info = self.refresh()
         if self.on_refresh_cb is not None:
             self.on_refresh_cb(self, self._last_info)
 
     def get_infos(self):
         if not self._last_info:
-            self._last_info = refresh(0.1)
+            self._last_info = self.refresh(0.1)
         return self._last_info
 
     def refresh(self, interval=0):
@@ -223,7 +224,7 @@ class Process(object):
             stdio.append(pyuv.StdIO(flags=pyuv.UV_IGNORE))
 
             # setup redirections
-            for stream in redirect_stream:
+            for stream in self.redirect_stream:
                 stdio.append(RedirectIO(self.loop, "stdout", stream))
                 stdio.append(RedirectIO(self.loop, "stderr", stream))
 
@@ -296,7 +297,7 @@ class Process(object):
         """ start to monitor the process """
         on_refresh_cb = monitor_cb or self.monitor_cb
         self._process_watcher = ProcessWatcher(self.loop, self.pid,
-                on_refresh_cb=monitor_cb)
+                on_refresh_cb=on_refresh_cb)
 
     def stop_monitor(self):
         """ stop to moonitor the process """

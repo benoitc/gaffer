@@ -2,6 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import grp
 import os
 import pwd
 
@@ -50,7 +51,7 @@ def check_uid(val):
     try:
         return pwd.getpwnam(val).pw_uid
     except KeyError:
-        raise ValueError("%r isn't a valid user val" % name)
+        raise ValueError("%r isn't a valid user val" % val)
 
 
 def check_gid(val):

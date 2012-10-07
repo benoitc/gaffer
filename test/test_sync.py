@@ -50,5 +50,5 @@ def test_compare_and_swap():
     assert a == b
 
     a, b = 1, 1
-    r = compare_and_swap(a, b)
+    a = compare_and_swap(a, b)
     assert a == 1

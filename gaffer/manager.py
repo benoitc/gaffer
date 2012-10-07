@@ -370,6 +370,8 @@ class Manager(object):
         if pid not in self.running:
             return
 
+        p = self.running[pid]
+
         # remove the process from the running processes
         state = self.processes[p.name]
         state.remove(p)
