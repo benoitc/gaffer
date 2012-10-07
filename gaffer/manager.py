@@ -14,7 +14,7 @@ import pyuv
 import six
 
 from .process import Process
-from .sync import increment, add, sub, atomic_read
+from .sync import increment, add, sub, atomic_read, compare_and_swap
 
 class bomb(object):
     def __init__(self, exp_type=None, exp_value=None, exp_traceback=None):
@@ -65,16 +65,20 @@ class ProcessState(object):
     def group(self):
         return self.settings.get('group')
 
-    @property
-    def numprocesses(self):
+    def __get_numprocesses(self):
         return atomic_read(self._numprocesses)
+    def __set_numprocesses(self, n):
+        self._numprocesses = compare_and_swap(self._numprocesses, n)
+    numprocesses = property(__get_numprocesses, __set_numprocesses,
+            doc="""return the max numbers of processes that we keep
+            alive for this command""")
 
     @property
     def hup(self):
         return self.settings.get('hup', False)
 
     def reset(self):
-        self._numprocesses = self.settings.get('numprocesses', 1)
+        self.numprocesses = self.settings.get('numprocesses', 1)
 
     def ttin(self, i=1):
         self._numprocesses = add(self._numprocesses, i)
@@ -194,7 +198,6 @@ class Manager(object):
             self._stop_byname_unlocked(name)
             del self.processes[name]
 
-
     def manage_process(self, name):
         with self._lock:
             self._manage_processes(self.get_process_state(name))
@@ -209,13 +212,25 @@ class Manager(object):
         """ restart a process """
         with self._lock:
             state = self.get_process_state(name)
-            state.reset()
+
+        # disable automatic process management while we are stopping
+        # the processes
+        state.numprocesses = 0
+
+        # stop the processes, we need to lock here
+        with self._lock:
             while True:
                 try:
                     p = state.dequeue()
                 except IndexError:
                     break
                 p.stop()
+
+        # reset the number of processes
+        state.reset()
+
+        # start the processes the nex time
+        self.update_state(name)
 
     def ttin(self, name, i=1):
         """ increase the number of system processes for a state. Change
@@ -340,7 +355,6 @@ class Manager(object):
                 p = state.dequeue()
             except IndexError:
                 break
-
             p.stop()
 
     def _stop_byid_unlocked(self, pid):
@@ -390,8 +404,6 @@ class Manager(object):
             res = func(*args, **kwargs)
         except:
             return
-            exc_info = sys.exc_info
-            res = bomb(exc_info[0], exc_info[1], exc_info[2])
 
         if c is not None:
             c.put(res)

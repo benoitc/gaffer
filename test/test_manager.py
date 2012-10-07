@@ -176,12 +176,26 @@ def test_ttou():
     assert len(state.running) == 1
     m.stop()
 
+def test_numprocesses():
+    m = get_manager(background=True)
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    state = m.get_process_state("dummy")
+
+    assert len(state.running) == 4
+    state.numprocesses = 0
+    assert state.numprocesses == 0
+
+    m.manage_process("dummy")
+    time.sleep(0.2)
+    assert len(state.running) == 0
+    m.stop()
+
 def test_process_id():
     m = get_manager(background=True)
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
-
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
     state = m.get_process_state("dummy")
 
@@ -189,11 +203,24 @@ def test_process_id():
     assert isinstance(processes, list)
 
     p = processes[0]
-
     assert isinstance(p, Process)
     assert p.id == 1
 
     p = processes[2]
     assert p.id == 3
+
+    m.stop()
+
+def test_restart():
+    m = get_manager(background=True)
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    state = m.get_process_state("dummy")
+
+    a = state.list_processes()
+    m.restart_process("dummy")
+    b = state.list_processes()
+    assert a != b
 
     m.stop()

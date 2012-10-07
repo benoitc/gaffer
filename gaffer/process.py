@@ -310,16 +310,18 @@ class Process(object):
 
     def kill(self, signum):
         """ send a signal to the process """
+        if not self.active:
+            return
+
         self._process.kill(signum)
 
     def _exit_cb(self, handle, exit_status, term_signal):
-
         # stop monitoring
         self.stop_monitor()
         self._process.close()
         self._running = False
 
+        # handle the exit callback
         if not self.on_exit_cb:
             return
-
         self.on_exit_cb(self, exit_status, term_signal)
