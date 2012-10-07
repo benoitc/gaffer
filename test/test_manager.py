@@ -212,6 +212,13 @@ def test_restart():
     b = state.list_processes()
     assert a != b
 
+    time.sleep(0.2)
+    m.restart()
+    time.sleep(0.2)
+    state = m.get_process_state("dummy")
+    c = state.list_processes()
+    assert b != c
+
     m.stop()
 
 def test_send_signal():

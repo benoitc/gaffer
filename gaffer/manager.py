@@ -50,7 +50,7 @@ class ProcessState(object):
         return len(self.running) > 0
 
     def __str__(self):
-        return "settings: %s" % self.name
+        return "state: %s" % self.name
 
     def make_process(self, loop, id, on_exit):
         params = {}
@@ -117,18 +117,19 @@ class Manager(object):
         self.running = {}
         self.channel = deque()
         self._updates = deque()
-        self._contollers  = []
+        self._controllers  = []
         self._lock = RLock()
 
     def start(self):
         """ start the manager. """
         self._stop_ev = pyuv.Async(self.loop, self._on_stop)
+        self._restart_ev = pyuv.Async(self.loop, self._on_restart)
         self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
         self._rpc_ev = pyuv.Async(self.loop, self._on_rpc)
 
         # start contollers
-        for contoller in self.controllers:
-            ctl = contoller(self.loop)
+        for ctl_class in self.controllers:
+            ctl = ctl_class(self.loop, self)
             ctl.start()
             self._controllers.append(ctl)
 
@@ -150,10 +151,9 @@ class Manager(object):
         self._stop_ev.send()
 
     def restart(self):
-        """ restart all processes in the manager"""
-        with self._lock:
-            for name, _ in self.processes.items():
-                self.restart(name)
+        """ restart all processes in the manager. This function is
+        threadsafe """
+        self._restart_ev.send()
 
     def stop_processes(self):
         """ stop all processes in the manager """
@@ -220,25 +220,7 @@ class Manager(object):
         """ restart a process """
         with self._lock:
             state = self.get_process_state(name)
-
-        # disable automatic process management while we are stopping
-        # the processes
-        state.numprocesses = 0
-
-        # stop the processes, we need to lock here
-        with self._lock:
-            while True:
-                try:
-                    p = state.dequeue()
-                except IndexError:
-                    break
-                p.stop()
-
-        # reset the number of processes
-        state.reset()
-
-        # start the processes the next time
-        self.update_state(name)
+        self._restart_processes(state)
 
     def ttin(self, name, i=1):
         """ increase the number of system processes for a state. Change
@@ -322,15 +304,18 @@ class Manager(object):
         # stop all processes
         self.stop_processes()
 
-        # stop rpc_event
         with self._lock:
+            # stop events
             self._rpc_ev.close()
             self._wakeup_ev.close()
-            self.started = False
+            self._restart_ev.close()
 
-    def _on_stop(self, handle):
-        handle.close()
-        self._stop()
+            # stop controllers
+            for ctl in self._controllers:
+                ctl.stop()
+
+            # we are now stopped
+            self.started = False
 
     def _spawn_process(self, state):
         """ spawn a new process and add it to the state """
@@ -399,8 +384,44 @@ class Manager(object):
         self._reap_processes(state)
 
 
+    def _restart_processes(self, state):
+        # disable automatic process management while we are stopping
+        # the processes
+        state.numprocesses = 0
+
+        # stop the processes, we need to lock here
+        with self._lock:
+            while True:
+                try:
+                    p = state.dequeue()
+                except IndexError:
+                    break
+                p.stop()
+
+        # reset the number of processes
+        state.reset()
+
+        # start the processes the next time
+        self.update_state(state.name)
+
 
     # ------------- events handler
+
+    def _on_stop(self, handle):
+        handle.close()
+        self._stop()
+
+    def _on_restart(self, handle):
+        with self._lock:
+            to_restart = [state for name, state in self.processes.items()]
+
+        for state in to_restart:
+            if state is not None:
+                self._restart_processes(state)
+
+        with self._lock:
+            for ctl in self._controllers:
+                ctl.restart()
 
     def _on_state_change(self, handle, name):
         handle.stop()
@@ -455,6 +476,9 @@ class ManagerThread(Thread):
     def stop(self):
         self.manager.stop()
         self.join()
+
+    def restart(self):
+        self.manager.restart()
 
     def __getattr__(self, name):
         if name in self.__dict__:
