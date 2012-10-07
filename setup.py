@@ -3,9 +3,11 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import os
+import sys
+
 from setuptools import setup, find_packages, Extension
 
-import sys
+from gaffer import __version__
 
 py_version = sys.version_info[:2]
 
@@ -44,7 +46,7 @@ DATA_FILES = [
 
 
 setup(name='gaffer',
-      version='0.1.0',
+      version=__version__,
       description = 'simple system process manager',
       long_description = long_description,
       classifiers = CLASSIFIERS,
@@ -56,5 +58,10 @@ setup(name='gaffer',
       ext_modules = [
             Extension("gaffer.sync", ["gaffer/sync.c"])
       ],
-      install_requires = ['pyuv', 'six', 'psutil'],
-      data_files = DATA_FILES)
+      install_requires = ['pyuv', 'six', 'psutil', 'tornado'],
+      data_files = DATA_FILES,
+      entry_points="""
+
+      [console_scripts]
+      gafferd=gaffer.server:run
+      """)

@@ -117,7 +117,6 @@ class Manager(object):
         self.running = {}
         self.channel = deque()
         self._updates = deque()
-        self._controllers  = []
         self._lock = RLock()
 
     def start(self):
@@ -128,10 +127,8 @@ class Manager(object):
         self._rpc_ev = pyuv.Async(self.loop, self._on_rpc)
 
         # start contollers
-        for ctl_class in self.controllers:
-            ctl = ctl_class(self.loop, self)
-            ctl.start()
-            self._controllers.append(ctl)
+        for ctl in self.controllers:
+            ctl.start(self.loop, self)
 
         self.started = True
 
@@ -297,7 +294,6 @@ class Manager(object):
         return self.max_process_id
 
 
-
     # ------------- private functions
 
     def _stop(self):
@@ -311,7 +307,7 @@ class Manager(object):
             self._restart_ev.close()
 
             # stop controllers
-            for ctl in self._controllers:
+            for ctl in self.controllers:
                 ctl.stop()
 
             # we are now stopped
@@ -420,7 +416,7 @@ class Manager(object):
                 self._restart_processes(state)
 
         with self._lock:
-            for ctl in self._controllers:
+            for ctl in self.controllers:
                 ctl.restart()
 
     def _on_state_change(self, handle, name):
