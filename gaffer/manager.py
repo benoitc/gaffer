@@ -81,7 +81,7 @@ class ProcessState(object):
         return self._numprocesses
 
     def ttou(self, i=1):
-        self._running = sub(self._numprocesses, i)
+        self._numprocesses = sub(self._numprocesses, i)
         return self._numprocesses
 
     def queue(self, process):
@@ -98,8 +98,8 @@ class ProcessState(object):
 
 class Manager(object):
 
-    def __init__(self, loop=None, controllers=[], on_error_cb=None):
-        self.loop = loop
+    def __init__(self, controllers=[], on_error_cb=None):
+        self.loop = pyuv.Loop.default_loop()
         self.controllers = controllers
         self.on_error_cb = on_error_cb
 
@@ -109,13 +109,14 @@ class Manager(object):
         self.processes = {}
         self.running = {}
         self.channel = deque()
+        self._updates = deque()
         self._contollers  = []
         self._lock = RLock()
 
     def start(self):
-        self.loop = self.loop or pyuv.Loop.default_loop()
         self._stop_ev = pyuv.Async(self.loop, self._on_stop)
         self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
+        self._rpc_ev = pyuv.Async(self.loop, self._on_rpc)
 
         # start contollers
         for contoller in self.controllers:
@@ -147,12 +148,15 @@ class Manager(object):
             c = Queue()
 
         self.channel.append((func_name, args, kwargs, c))
-        self._wakeup_ev.send()
+        self._rpc_ev.send()
         if c is not None:
             res = c.get()
             if isinstance(res, bomb):
                 res.raise_()
             return res
+
+    def wakeup(self):
+        self._wakeup_ev.send()
 
     def add_process(self, name, cmd, **kwargs):
         """ add a process to the manager. all process should be added
@@ -246,14 +250,12 @@ class Manager(object):
             self.update_state(name)
             return ret
 
-    def update_state(name):
+    def update_state(self, name):
         """ update the state. When the event loop is idle, the state is
         read and processes in the state managed """
 
-        def _cb(handle):
-            self._on_state_change(handle, name)
-        h = pyuv.Idle(self.loop)
-        h.start(_cb)
+        self._updates.append(name)
+        self.wakeup()
 
     def get_process_state(self, name):
         if name not in self.processes:
@@ -273,8 +275,9 @@ class Manager(object):
         # stop all processes
         self.stop_processes()
 
-        # stop wakeup_event
+        # stop rpc_event
         with self._lock:
+            self._rpc_ev.close()
             self._wakeup_ev.close()
             self.started = False
 
@@ -353,7 +356,7 @@ class Manager(object):
         handle.stop()
         self.manage_process(name)
 
-    def _on_wakeup(self, handle):
+    def _on_rpc(self, handle):
         func_name, args, kwargs, c = self.channel.popleft()
         func = getattr(self, func_name)
 
@@ -366,6 +369,13 @@ class Manager(object):
 
         if c is not None:
             c.put(res)
+
+    def _on_wakeup(self, handle):
+        if not len(self._updates):
+            pass
+
+        to_update = self._updates.popleft()
+        self.manage_process(to_update)
 
     def _on_exit(self, process, exit_status, term_signal):
         """ exit callback returned when a process exit """

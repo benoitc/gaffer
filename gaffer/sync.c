@@ -92,7 +92,7 @@ sync_methods[] = {
     {"increment", increment, METH_VARARGS, "Atomically increment an integer"},
     {"decrement", decrement, METH_VARARGS, "Atomically decrement an integer"},
     {"add", add, METH_VARARGS, "Atomically increment an integer with a value"},
-    {"sub", add, METH_VARARGS, "Atomically decrement an integer with a value"},
+    {"sub", sub, METH_VARARGS, "Atomically decrement an integer with a value"},
     {"atomic_read", atomic_read, METH_VARARGS, "Atomically read an integer"},
     {NULL, NULL, 0, NULL}
 };

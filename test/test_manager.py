@@ -117,7 +117,6 @@ def test_start_multiple():
     m.stop()
 
 def test_ttin():
-
     m = get_manager(background=True)
     m.start()
 
@@ -127,11 +126,47 @@ def test_ttin():
     state = m.get_process_state("dummy")
 
     assert len(state.running) == 1
-    #ret = m.ttin("dummy", 1)
-    #assert ret == 2
+    ret = m.ttin("dummy", 1)
+    assert ret == 2
 
     time.sleep(0.2)
-    #assert len(state.running) == 3
+    assert len(state.running) == 2
+
+    ret = m.ttin("dummy", 1)
+    assert ret == 3
+
+    time.sleep(0.2)
+    assert len(state.running) == 3
 
 
+    ret = m.ttin("dummy", 3)
+    assert ret == 6
+
+    time.sleep(0.2)
+    assert len(state.running) == 6
+
+    m.stop()
+
+
+def test_ttou():
+    m = get_manager(background=True)
+    m.start()
+
+    testfile, cmd, args, wdir = dummy_cmd()
+
+    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    state = m.get_process_state("dummy")
+
+    assert len(state.running) == 4
+    ret = m.ttou("dummy", 1)
+    assert ret == 3
+
+    time.sleep(0.2)
+    assert len(state.running) == 3
+
+    ret = m.ttou("dummy", 2)
+    assert ret == 1
+
+    time.sleep(0.2)
+    assert len(state.running) == 1
     m.stop()
