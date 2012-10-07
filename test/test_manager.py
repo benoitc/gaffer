@@ -9,6 +9,7 @@ import time
 from tempfile import mkstemp
 
 from gaffer.manager import get_manager
+from gaffer.process import Process
 
 class DummyProcess(object):
 
@@ -16,10 +17,11 @@ class DummyProcess(object):
         self.alive = True
         self.testfile = testfile
         import signal
+        signal.signal(signal.SIGHUP, self.handle_hup)
         signal.signal(signal.SIGQUIT, self.handle_quit)
         signal.signal(signal.SIGTERM, self.handle_quit)
-        signal.signal(signal.SIGINT, self.handle_quit)
         signal.signal(signal.SIGCHLD, self.handle_chld)
+
 
     def _write(self, msg):
         with open(self.testfile, 'a+') as f:
@@ -32,10 +34,13 @@ class DummyProcess(object):
     def handle_chld(self, *args):
         self._write('CHLD')
 
+    def handle_hup(self, *args):
+        self._write('HUP')
+
     def run(self):
         self._write('START')
         while self.alive:
-            time.sleep(0.1)
+            time.sleep(0.001)
         self._write('STOP')
 
 
@@ -184,6 +189,8 @@ def test_process_id():
     assert isinstance(processes, list)
 
     p = processes[0]
+
+    assert isinstance(p, Process)
     assert p.id == 1
 
     p = processes[2]

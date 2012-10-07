@@ -355,6 +355,10 @@ class Manager(object):
 
         self._reap_processes(state)
 
+
+
+    # ------------- events handler
+
     def _on_state_change(self, handle, name):
         handle.stop()
         self.manage_process(name)

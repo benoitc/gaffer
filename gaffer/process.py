@@ -257,6 +257,7 @@ class Process(object):
 
         # spawn the process
         self._process.spawn(**kwargs)
+        self._running = True
 
         # start redirection
         for stream in self.redirect_stream:
@@ -264,6 +265,10 @@ class Process(object):
 
         if self.monitor:
             self.start_monitor()
+
+    @property
+    def active(self):
+        return self._running
 
     @property
     def pid(self):
@@ -308,9 +313,11 @@ class Process(object):
         self._process.kill(signum)
 
     def _exit_cb(self, handle, exit_status, term_signal):
+
         # stop monitoring
         self.stop_monitor()
         self._process.close()
+        self._running = False
 
         if not self.on_exit_cb:
             return
