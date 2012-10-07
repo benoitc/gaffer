@@ -10,7 +10,11 @@ import datetime
 import errno
 import logging
 import time
-import thread
+
+try:
+    import _thread as thread
+except ImportError:
+    import thread
 
 from collections import deque
 from tornado import ioloop, stack_context
@@ -32,10 +36,10 @@ class IOLoop(object):
 
     _instance_lock = thread.allocate_lock()
 
-    def __init__(self, impl=None):
+    def __init__(self, impl=None, _loop=None):
         if impl is not None:
             raise RuntimeError('When using pyuv the poller implementation cannot be specifiedi')
-        self._loop = pyuv.Loop()
+        self._loop = _loop or pyuv.Loop()
         self._poll_handles = {}
         self._handlers = {}
         self._callbacks = deque()
@@ -184,7 +188,6 @@ class IOLoop(object):
     def _handle_poll_events(self, handle, poll_events, error):
         events = 0
         if error is not None:
-            print "fuuuuuuuuuuuuuu"
             # TODO: do I need to do anything else here?
             events |= IOLoop.ERROR
         if (poll_events & pyuv.UV_READABLE):
@@ -194,7 +197,7 @@ class IOLoop(object):
         fd = handle.fd
         try:
             self._handlers[fd][1](fd, events)
-        except (OSError, IOError), e:
+        except (OSError, IOError) as e:
             if e.args[0] == errno.EPIPE:
                 # Happens when the client closes the connection
                 pass
