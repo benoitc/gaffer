@@ -96,6 +96,9 @@ class ProcessState(object):
         except ValueError:
             pass
 
+    def list_processes(self):
+        return list(self.running)
+
 class Manager(object):
 
     def __init__(self, controllers=[], on_error_cb=None):
