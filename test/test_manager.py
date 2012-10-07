@@ -57,10 +57,8 @@ def tmpfile():
 def dummy_cmd():
     fd, testfile = mkstemp()
     os.close(fd)
-
     cmd = sys.executable
     args = ['generic.py', "test_manager.run_dummy", testfile]
-
     wdir = os.path.dirname(__file__)
     return (testfile, cmd, args, wdir)
 
@@ -74,9 +72,7 @@ def test_simple():
 def test_simple_process():
     m = get_manager(background=True)
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
-
     m.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
     state = m.get_process_state("dummy")
 
@@ -94,9 +90,7 @@ def test_simple_process():
 def test_start_stop_process():
     m = get_manager(background=True)
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
-
     m.add_process("dummy", cmd, args=args, cwd=wdir)
     state = m.get_process_state("dummy")
 
@@ -111,9 +105,7 @@ def test_start_stop_process():
 def test_start_multiple():
     m = get_manager(background=True)
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
-
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=2)
     state = m.get_process_state("dummy")
 
@@ -124,9 +116,7 @@ def test_start_multiple():
 def test_ttin():
     m = get_manager(background=True)
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
-
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
     state = m.get_process_state("dummy")
 
