@@ -121,6 +121,7 @@ class Manager(object):
         self._lock = RLock()
 
     def start(self):
+        """ start the manager. """
         self._stop_ev = pyuv.Async(self.loop, self._on_stop)
         self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
         self._rpc_ev = pyuv.Async(self.loop, self._on_rpc)
@@ -134,21 +135,28 @@ class Manager(object):
         self.started = True
 
     def run(self):
+        """ Start the manager if not started and wat for all loop
+        events.
+
+        Note: if you want to use separately the default loop for this
+        thread then just use the function and run the loop somewhere
+        else. """
         if not self.started:
             self.start()
         self.loop.run()
 
     def stop(self):
+        """ stop the manager. This function is threadsafe """
         self._stop_ev.send()
 
     def restart(self):
+        """ restart all processes in the manager"""
         with self._lock:
             for name, _ in self.processes.items():
-                self.stop_process(name)
-                self.start_process(name)
+                self.restart(name)
 
     def stop_processes(self):
-        """ stop all processes """
+        """ stop all processes in the manager """
         with self._lock:
             for name, _ in self.processes.items():
                 self.stop_process(name)
@@ -229,7 +237,7 @@ class Manager(object):
         # reset the number of processes
         state.reset()
 
-        # start the processes the nex time
+        # start the processes the next time
         self.update_state(name)
 
     def ttin(self, name, i=1):
@@ -262,7 +270,7 @@ class Manager(object):
                     p.kill(signum)
                 else:
                     state = self.processes[name_or_id]
-                    for p in state.processes:
+                    for p in state.running:
                         p.kill(signum)
 
             except KeyError:

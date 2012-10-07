@@ -224,3 +224,23 @@ def test_restart():
     assert a != b
 
     m.stop()
+
+def test_send_signal():
+    m = get_manager(background=True)
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir)
+    state = m.get_process_state("dummy")
+    processes = state.list_processes()
+
+    time.sleep(0.2)
+    m.send_signal("dummy", signal.SIGHUP)
+    time.sleep(0.2)
+    m.send_signal(processes[0].id, signal.SIGHUP)
+    m.stop_process("dummy")
+    time.sleep(0.2)
+    with open(testfile, 'r') as f:
+        res = f.read()
+        assert res == 'STARTHUPHUPQUITSTOP'
+
+    m.stop()

@@ -37,21 +37,17 @@ def test_simple():
 
     stop_later = pyuv.Timer(loop)
     stop_later.start(test_cb, 0.4, 0.4)
-
     loop.run()
     assert p.active == False
-
     with open(testfile, 'r') as f:
         res = f.read()
         assert res == 'STARTQUITSTOP'
 
 def test_signal():
-
     loop = pyuv.Loop.default_loop()
     testfile, cmd, args, cwd = dummy_cmd()
     p = Process(loop, "someid", "dummy", cmd, args=args,
         cwd=cwd)
-
     p.spawn()
 
     def test_cb(handle):
@@ -69,4 +65,3 @@ def test_signal():
     with open(testfile, 'r') as f:
         res = f.read()
         assert res == 'STARTHUPQUITSTOP'
-
