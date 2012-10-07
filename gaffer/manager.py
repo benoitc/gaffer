@@ -212,6 +212,10 @@ class Manager(object):
             state = self.processes[name]
             info = {"name": state.name, "cmd": state.cmd}
             info.update(state.settings)
+            info['active'] = state.active
+            info['running'] = len(state.running)
+            info['max_processes'] = state.numprocesses
+
             return info
 
     def manage_process(self, name):

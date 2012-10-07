@@ -119,6 +119,23 @@ class ProcessManagerHandler(RequestHandler):
 
         self.write({"ok": True})
 
+class StatusHandler(RequestHandler):
+
+    def get(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+
+        try:
+            info = m.get_process_info(name)
+        except KeyError:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+        ret = { "active": info['active'],
+                "running": info['running'],
+                "max_processes": info['max_processes'] }
+
+        self.write(ret)
 
 class HttpHandler(object):
 
@@ -127,7 +144,8 @@ class HttpHandler(object):
             (r'/processes', ProcessesHandler),
             (r'/processes/([^/]+)', ProcessHandler),
             (r'/processes/([^/]+)/(_[^/]+)$', ProcessManagerHandler),
-            (r'/processes/([^/]+)/(_[^/]+)/(.*)$', ProcessManagerHandler)
+            (r'/processes/([^/]+)/(_[^/]+)/(.*)$', ProcessManagerHandler),
+            (r'/status/([^/]+)', StatusHandler)
     ]
 
     def __init__(self, uri='127.0.0.1:5000', backlog=128,
