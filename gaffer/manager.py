@@ -143,23 +143,13 @@ class Manager(object):
                 self.stop_process(name)
                 self.start_process(name)
 
-    def send(self, cmd, *args, **kwargs):
-        cmd_type, func_name = cmd
+    def stop_processes(self):
+        """ stop all processes """
+        with self._lock:
+            for name, _ in self.processes.items():
+                self.stop_process(name)
 
-        c = None
-        if cmd_type == "call":
-            c = Queue()
-
-        self.channel.append((func_name, args, kwargs, c))
-        self._rpc_ev.send()
-        if c is not None:
-            res = c.get()
-            if isinstance(res, bomb):
-                res.raise_()
-            return res
-
-    def wakeup(self):
-        self._wakeup_ev.send()
+    # ------------- process functions
 
     def add_process(self, name, cmd, **kwargs):
         """ add a process to the manager. all process should be added
@@ -194,12 +184,6 @@ class Manager(object):
         with self._lock:
             stop_func(name_or_id)
 
-    def stop_processes(self):
-        with self._lock:
-            for name, _ in self.processes.items():
-                self.stop_process(name)
-
-
     def remove_process(self, name):
         """ remove the process and its config from the manager """
 
@@ -230,7 +214,7 @@ class Manager(object):
                 try:
                     p = state.dequeue()
                 except IndexError:
-                    brak
+                    break
                 p.stop()
 
     def ttin(self, name, i=1):
@@ -252,6 +236,43 @@ class Manager(object):
             ret = state.ttou(i)
             self.update_state(name)
             return ret
+
+    def send_signal(self, name_or_id, signum):
+        """ send a signal to a process or all processes contained in a
+        state """
+        with self._lock:
+            try:
+                if isinstance(name_or_id, int):
+                    p = self.running[name_or_id]
+                    p.kill(signum)
+                else:
+                    state = self.processes[name_or_id]
+                    for p in state.processes:
+                        p.kill(signum)
+
+            except KeyError:
+                pass
+
+
+    # ------------- general purpose utilities
+
+    def send(self, cmd, *args, **kwargs):
+        cmd_type, func_name = cmd
+
+        c = None
+        if cmd_type == "call":
+            c = Queue()
+
+        self.channel.append((func_name, args, kwargs, c))
+        self._rpc_ev.send()
+        if c is not None:
+            res = c.get()
+            if isinstance(res, bomb):
+                res.raise_()
+            return res
+
+    def wakeup(self):
+        self._wakeup_ev.send()
 
     def update_state(self, name):
         """ update the state. When the event loop is idle, the state is
@@ -350,9 +371,7 @@ class Manager(object):
 
     def _manage_processes(self, state):
         if len(state.running) < state.numprocesses:
-            print("spawn")
             self._spawn_processes(state)
-
         self._reap_processes(state)
 
 
