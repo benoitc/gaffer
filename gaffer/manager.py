@@ -236,11 +236,19 @@ class Manager(object):
             state = self.processes[name]
             info = {"name": state.name, "cmd": state.cmd}
             info.update(state.settings)
-            info['active'] = state.active
-            info['running'] = len(state.running)
-            info['max_processes'] = state.numprocesses
-
             return info
+
+    def get_process_status(self, name):
+        with self._lock:
+            if name not in self.processes:
+                raise KeyError("%r not found" % name)
+
+            state = self.processes[name]
+            status = { "active":  state.active,
+                       "running": len(state.running),
+                       "max_processes": state.numprocesses }
+            return status
+
 
     def manage_process(self, name):
         with self._lock:

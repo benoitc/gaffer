@@ -154,14 +154,11 @@ class StatusHandler(RequestHandler):
         name = args[0]
 
         try:
-            info = m.get_process_info(name)
+            ret = m.get_process_status(name)
         except KeyError:
             self.set_status(404)
             self.write({"error": "not_found"})
             return
-        ret = { "active": info['active'],
-                "running": info['running'],
-                "max_processes": info['max_processes'] }
 
         self.write(ret)
 
