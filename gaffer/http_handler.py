@@ -130,13 +130,13 @@ class ProcessManagerHandler(RequestHandler):
             m.start_process(name)
         elif action == "_stop":
             m.stop_process(name)
-        elif action == "_ttin":
+        elif action == "_add":
             if len(args) > 2:
                 i = int(args[2])
             else:
                 i = 1
             m.ttin(name, i)
-        elif action == "_ttou":
+        elif action == "_sub":
             if len(args) > 2:
                 i = int(args[2])
             else:
