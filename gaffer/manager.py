@@ -162,6 +162,10 @@ class Manager(object):
             for name, _ in self.processes.items():
                 self.stop_process(name)
 
+    def running_processes(self):
+        with self._lock:
+            return self.running
+
     # ------------- process functions
 
     def add_process(self, name, cmd, **kwargs):
@@ -385,9 +389,6 @@ class Manager(object):
         state = self.processes[name]
         state.stopped = True
 
-        if not state.active:
-            return
-
         while True:
             try:
                 p = state.dequeue()
@@ -441,6 +442,12 @@ class Manager(object):
                     p = state.dequeue()
                 except IndexError:
                     break
+
+                # race condition, we need to remove the process from the
+                # running pid now.
+                if p.id in self.running:
+                    self.running.pop(p.id)
+
                 p.stop()
 
         # reset the number of processes
@@ -494,14 +501,17 @@ class Manager(object):
     def _on_exit(self, process, exit_status, term_signal):
         """ exit callback returned when a process exit """
         with self._lock:
+            # remove the process from the running processes
             if process.id in self.running:
-                del self.running[process.id]
+                self.running.pop(process.id)
 
+            # remove the running process from the process state
             state = self.get_process_state(process.name)
             if not state:
                 return
-
             state.remove(process)
+
+            # if not stopped we may need to restart a new process
             if not state.stopped:
                 self._manage_processes(state)
 

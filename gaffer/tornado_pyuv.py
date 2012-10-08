@@ -17,6 +17,7 @@ except ImportError:
     import thread
 
 from collections import deque
+import six
 from tornado import ioloop, stack_context
 
 
@@ -222,7 +223,8 @@ class _Timeout(object):
     __slots__ = ['deadline', 'callback', 'io_loop', '_timer']
 
     def __init__(self, deadline, callback, io_loop=None):
-        if isinstance(deadline, (int, long, float)):
+        if (isinstance(deadline, six.integer_types)
+                or isinstance(deadline, float)):
             self.deadline = deadline
         elif isinstance(deadline, datetime.timedelta):
             self.deadline = time.time() + _Timeout.timedelta_to_seconds(deadline)

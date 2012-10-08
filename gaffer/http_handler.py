@@ -59,6 +59,14 @@ class ProcessesHandler(RequestHandler):
 
 class ProcessHandler(RequestHandler):
 
+    def head(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+        if name in m.processes:
+            self.set_status(200)
+        else:
+            self.set_status(404)
+
     def get(self, *args):
         m = self.settings.get('manager')
         name = args[0]
