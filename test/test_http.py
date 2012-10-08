@@ -89,6 +89,14 @@ def test_process_remove():
 
     m.stop()
 
+def test_notfound():
+    m, s = init()
+
+    with pytest.raises(GafferNotFound):
+        s.get_process("dummy")
+
+    m.stop()
+
 def test_process_start_stop():
     m, s = init()
 
