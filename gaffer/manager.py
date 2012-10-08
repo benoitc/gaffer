@@ -398,7 +398,6 @@ class Manager(object):
             return
 
         state = self.processes[name]
-
         state.stopped = True
 
         while True:
@@ -406,6 +405,12 @@ class Manager(object):
                 p = state.dequeue()
             except IndexError:
                 break
+
+            # race condition, we need to remove the process from the
+            # running pid now.
+            if p.id in self.running:
+                self.running.pop(p.id)
+
             p.stop()
 
     def _stop_byid_unlocked(self, pid):
@@ -413,7 +418,7 @@ class Manager(object):
         if pid not in self.running:
             return
 
-        p = self.running[pid]
+        p = self.running.drop(pid)
 
         # remove the process from the running processes
         state = self.processes[p.name]

@@ -17,7 +17,7 @@ from .test_manager import dummy_cmd
 TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
 
-TEST_PORT2 = (os.getpid() % 32000) + 1024
+TEST_PORT2 = (os.getpid() % 31000) + 1023
 
 
 def start_manager():
@@ -134,7 +134,7 @@ def test_process_start_stop():
 
     p.stop()
     time.sleep(0.2)
-    assert len(m.running_processes()) == 0
+    assert len(m.running) == 0
     assert p.active == False
 
     s.remove_process("dummy")
