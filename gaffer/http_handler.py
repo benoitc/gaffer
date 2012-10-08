@@ -144,6 +144,18 @@ class ProcessManagerHandler(RequestHandler):
             m.ttou(name, i)
         elif action == "_restart":
             m.restart_process(name)
+        elif action == "_signal":
+            if len(args) < 2:
+                self.set_status(400)
+                self.write({"error": "no_signal_number"})
+                return
+            else:
+                signum = int(args[2])
+            m.send_signal(name, signum)
+        else:
+            self.set_status(404)
+            self.write({"error": "resource_not_found"})
+            return
 
         self.write({"ok": True})
 
