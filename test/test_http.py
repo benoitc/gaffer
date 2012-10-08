@@ -17,6 +17,9 @@ from .test_manager import dummy_cmd
 TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
 
+TEST_PORT2 = (os.getpid() % 32000) + 1024
+
+
 def start_manager():
     http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
     http_handler = HttpHandler(endpoints=[http_endpoint])
@@ -38,6 +41,22 @@ def test_basic():
 
     s = get_server()
     assert s.version == __version__
+
+    m.stop()
+
+def test_multiple_handers():
+    http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
+    http_endpoint2 = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT2))
+    http_handler = HttpHandler(endpoints=[http_endpoint, http_endpoint2])
+    m = get_manager(controllers=[http_handler], background=True)
+    m.start()
+    time.sleep(0.2)
+
+    s = Server("http://%s:%s" % (TEST_HOST, TEST_PORT))
+    s2 = Server("http://%s:%s" % (TEST_HOST, TEST_PORT2))
+    assert TEST_PORT != TEST_PORT2
+    assert s.version == __version__
+    assert s2.version == __version__
 
     m.stop()
 
