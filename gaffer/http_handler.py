@@ -27,9 +27,16 @@ class ProcessesHandler(RequestHandler):
 
     def get(self, *args, **kwargs):
         m = self.settings.get('manager')
-        names = [name for name in m.processes]
+        running = self.get_argument('running', default="")
+
+        if running.lower() == "1" or running == "true":
+            processes = [pid for pid in m.running]
+        else:
+            processes = [name for name in m.processes]
+
+        # send response
         self.set_header('Content-Type', 'application/json')
-        self.write(json.dumps(names))
+        self.write(json.dumps(processes))
 
     def post(self, *args, **kwargs):
         try:

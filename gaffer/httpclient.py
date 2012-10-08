@@ -40,9 +40,7 @@ class Server(object):
     def request(self, method, path, headers=None, body=None, **params):
         headers = headers or {}
         headers.update({"Accept": "application/json"})
-
-        url = make_uri(self.uri, path, params)
-
+        url = make_uri(self.uri, path, **params)
         method = method.upper()
         if (body is None) and method in ("POST", "PATCH", "PUT"):
             body = ""
@@ -79,6 +77,10 @@ class Server(object):
 
     def processes(self):
         resp = self.request("get", "/processes")
+        return self.json_body(resp)
+
+    def running(self):
+        resp = self.request("get", "/processes", running="true")
         return self.json_body(resp)
 
     def get_process(self, name):
@@ -242,7 +244,7 @@ def url_encode(obj, charset="utf8", encode_keys=False):
         for v1 in v:
             if v1 is None:
                 v1 = ''
-            elif iscallable(v1):
+            elif six.callable(v1):
                 v1 = encode(v1(), charset)
             else:
                 v1 = encode(v1, charset)
@@ -250,7 +252,7 @@ def url_encode(obj, charset="utf8", encode_keys=False):
     return '&'.join(tmp)
 
 def encode(v, charset="utf8"):
-    if isinstance(v, text_type):
+    if isinstance(v, six.text_type):
         v = v.encode(charset)
     else:
         v = str(v)

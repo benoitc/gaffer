@@ -153,3 +153,18 @@ def test_process_add_sub():
     assert p.running == 1
 
     m.stop()
+
+def test_running():
+    m, s = init()
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
+
+    assert len(m.running) == 1
+    assert len(s.running()) == 1
+
+    assert 1 in m.running
+    assert s.running()[0] == 1
+
+    m.stop()
