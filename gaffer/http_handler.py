@@ -85,6 +85,34 @@ class ProcessHandler(RequestHandler):
 
         self.write({"ok": True})
 
+    def put(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+
+        try:
+            obj = json.loads(self.request.body.decode('utf-8'))
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "invalid_json"})
+            return
+
+        if not "cmd" in obj:
+            self.set_status(400)
+            self.write({"error": "invalid_process_info"})
+            return
+
+        if "name" in obj:
+            del obj['name']
+
+        cmd = obj.pop("cmd")
+        try:
+            m.update(name, cmd, **obj)
+        except KeyError:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+
+        self.write({"ok": True})
 
 class ProcessManagerHandler(RequestHandler):
 

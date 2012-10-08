@@ -38,11 +38,15 @@ class ProcessState(object):
             "detach": False}
 
     def __init__(self, name, cmd, **settings):
+        self.running = deque()
+        self.stopped = False
+        self.setup(name, cmd, **settings)
+
+    def setup(self, name, cmd, **settings):
         self.name = name
         self.cmd = cmd
         self.settings = settings
         self._numprocesses = self.settings.get('numprocesses', 1)
-        self.running = deque()
         self.stopped = False
 
     @property
@@ -177,9 +181,29 @@ class Manager(object):
             if start:
                 self._spawn_processes(state)
 
+    def update_process(self, name, cmd, **kwargs):
+        """ update a process information.
+
+        When a process is updated, all current processes are stopped
+        then the state is updated and new processes with new info are
+        started """
+        with self._lock:
+            if name not in KeyError:
+                raise KeyError("%r not found" % name)
+
+            self._stop_byname_unlocked(name)
+            state = ProcessState(name, cmd, **kwargs)
+            state.setup(name, cmd, **kwargs)
+
+            if 'start' in kwargs:
+                del kwargs['start']
+
+            self._spawn_processes(state)
+
     def stop_process(self, name_or_id):
         """ stop a process by name or id
-        if a name is given all processes associated to this name will be
+
+        If a name is given all processes associated to this name will be
         removed and the process is marked at stopped. If the internal
         process id is givien, only the process with this id will be
         stopped """
