@@ -9,7 +9,7 @@ import pytest
 
 from gaffer import __version__
 from gaffer.manager import get_manager
-from gaffer.http_handler import HttpHandler
+from gaffer.http_handler import HttpEndpoint, HttpHandler
 from gaffer.httpclient import Server, Process, GafferNotFound, GafferConflict
 
 from .test_manager import dummy_cmd
@@ -18,7 +18,8 @@ TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
 
 def start_manager():
-    http_handler = HttpHandler(uri="%s:%s" % (TEST_HOST, TEST_PORT))
+    http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
+    http_handler = HttpHandler(endpoints=[http_endpoint])
     m = get_manager(controllers=[http_handler], background=True)
     m.start()
     time.sleep(0.2)

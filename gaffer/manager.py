@@ -160,7 +160,7 @@ class Manager(object):
         """ stop all processes in the manager """
         with self._lock:
             for name, _ in self.processes.items():
-                self.stop_process(name)
+                self._stop_byname_unlocked(name)
 
     def running_processes(self):
         with self._lock:
@@ -354,14 +354,14 @@ class Manager(object):
         self.stop_processes()
 
         with self._lock:
+            # stop controllers
+            for ctl in self.controllers:
+                ctl.stop()
+
             # stop events
             self._rpc_ev.close()
             self._wakeup_ev.close()
             self._restart_ev.close()
-
-            # stop controllers
-            for ctl in self.controllers:
-                ctl.stop()
 
             # we are now stopped
             self.started = False
@@ -387,6 +387,7 @@ class Manager(object):
             return
 
         state = self.processes[name]
+
         state.stopped = True
 
         while True:

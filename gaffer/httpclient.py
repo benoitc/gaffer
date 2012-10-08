@@ -106,13 +106,13 @@ class Server(object):
 
         if force:
             if self.is_process(name):
-                resp = self.request("put", "/%s %name", body=body,
+                self.request("put", "/processes/%s" % name, body=body,
                         headers=headers)
             else:
-                resp = self.request("post", "/processes", body=body,
+                self.request("post", "/processes", body=body,
                         headers=headers)
         else:
-            resp = self.request("post", "/processes", body=body,
+            self.request("post", "/processes", body=body,
                         headers=headers)
 
         return Process(server=self, process=process)
@@ -174,27 +174,27 @@ class Process(object):
         return self.server.json_body(resp)
 
     def start(self):
-        resp = self.server.request("post", "/processes/%s/_start" %
-                (self.process['name'],))
+        self.server.request("post", "/processes/%s/_start" %
+                self.process['name'])
         return True
 
     def stop(self):
-        resp = self.server.request("post", "/processes/%s/_stop" %
+        self.server.request("post", "/processes/%s/_stop" %
                 self.process['name'])
         return True
 
     def restart(self):
-        resp = self.server.request("post", "/processes/%s/_restart" %
+        self.server.request("post", "/processes/%s/_restart" %
                 self.process['name'])
         return True
 
     def add(self, num=1):
-        resp = self.server.request("post", "/processes/%s/_add/%s" %
+        self.server.request("post", "/processes/%s/_add/%s" %
                 (self.process['name'], num))
         return True
 
     def sub(self, num=1):
-        resp = self.server.request("post", "/processes/%s/_sub/%s" %
+        self.server.request("post", "/processes/%s/_sub/%s" %
                 (self.process['name'], num))
         return True
 
@@ -210,7 +210,7 @@ class Process(object):
         else:
             signum = num_or_str
 
-        resp = self.server.request("post", "/processes/%s/_signal/%s" %
+        self.server.request("post", "/processes/%s/_signal/%s" %
                 (self.process['name'], signum))
         return True
 
