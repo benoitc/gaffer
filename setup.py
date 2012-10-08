@@ -7,8 +7,6 @@ import sys
 
 from setuptools import setup, find_packages, Extension
 
-from gaffer import __version__
-
 py_version = sys.version_info[:2]
 
 if py_version < (2, 6):
@@ -46,7 +44,7 @@ DATA_FILES = [
 
 
 setup(name='gaffer',
-      version=__version__,
+      version="0.1.0",
       description = 'simple system process manager',
       long_description = long_description,
       classifiers = CLASSIFIERS,
