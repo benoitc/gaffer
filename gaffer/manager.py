@@ -349,6 +349,12 @@ class Manager(object):
 
     # ------------- private functions
 
+    def _stop_watcher(self, handle):
+        if not handle.active:
+            return
+        # we just unref the handler instead of closing or stopping it
+        handle.unref()
+
     def _stop(self):
         # stop all processes
         self.stop_processes()
@@ -362,6 +368,11 @@ class Manager(object):
             self._rpc_ev.close()
             self._wakeup_ev.close()
             self._restart_ev.close()
+
+            # FIX: fix race condition with the tornadop ioloop
+            # stop unknown active handlers sometimes some handlers are
+            # still active, we unref them so we can stop the loop quietly.
+            self.loop.walk(self._stop_watcher)
 
             # we are now stopped
             self.started = False
