@@ -6,6 +6,23 @@ import signal
 
 import pyuv
 
+if pyuv.__version__.startswith("0.8"):
+    class Signal(object):
+
+        def __init__(self, loop):
+            self.loop = loop
+            self._signal_uv = pyuv.Signal(loop)
+
+        def start(self, cb, signum):
+            self._signal_uv.start()
+            signal.signal(signum, cb)
+
+        def stop(self):
+            self._signal_uv.stop()
+else:
+    Signal = pyuv.Signal
+
+
 class SigHandler(object):
     """ A simple controller to handle signals """
 
@@ -20,17 +37,17 @@ class SigHandler(object):
 
         # quit signals handling
         for sig in self.QUIT_SIGNALS:
-            s = pyuv.Signal(self.loop)
+            s = Signal(self.loop)
             s.start(self.handle_quit, sig)
             self.signal_handlers.append(s)
 
         # reload signal
-        s = pyuv.Signal(self.loop)
+        s = Signal(self.loop)
         s.start(self.handle_reload, signal.SIGHUP)
         self.signal_handlers.append(s)
 
         # chld
-        s = pyuv.Signal(self.loop)
+        s = Signal(self.loop)
         s.start(self.handle_chld, signal.SIGCHLD)
         self.signal_handlers.append(s)
 
