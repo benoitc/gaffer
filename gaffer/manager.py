@@ -109,11 +109,16 @@ class ProcessState(object):
 
 class Manager(object):
 
-    def __init__(self, loop=None, controllers=[], on_start_cb=None):
-        self.loop = loop or pyuv.Loop.default_loop()
-        self.controllers = controllers
-        self.on_start_cb = on_start_cb
+    def __init__(self, loop=None,):
 
+        # by default we run on the default loop
+        self.loop = loop or pyuv.Loop.default_loop()
+
+        # setup wakeup event
+        self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
+
+        # initialize some values
+        self.controllers = None
         self.started = False
         self._stop_ev = None
         self.max_process_id = 0
@@ -127,29 +132,25 @@ class Manager(object):
         self.restart_cb = None
         self._lock = RLock()
 
-    def start(self):
+    def start(self, controllers=[]):
         """ start the manager. """
-        self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
-        self._rpc_ev = pyuv.Async(self.loop, self._on_rpc)
+        self.controllers = controllers
 
         # start contollers
         for ctl in self.controllers:
             ctl.start(self.loop, self)
 
         self.started = True
-        if six.callable(self.on_start_cb):
-            self.on_start_cb(self)
-
 
     def run(self):
-        """ Start the manager if not started and wat for all loop
-        events.
+        """ Convenience function to use in place of `loop.run()'
+        If the manager is not started it raises a `RuntimeError'.
 
         Note: if you want to use separately the default loop for this
-        thread then just use the function and run the loop somewhere
+        thread then just use the start function and run the loop somewhere
         else. """
         if not self.started:
-            self.start()
+            raise RuntimeError("manager hasn't been started")
         self.loop.run()
 
     def stop(self, callback=None):
@@ -320,25 +321,6 @@ class Manager(object):
 
     # ------------- general purpose utilities
 
-    def call(self, func_name, *args, **kwargs):
-        """ method to make a synchronous call to a manager function from
-        another thread. This method is threadsafe. It always wait for a
-        result from the manager """
-
-        c = Queue()
-        self.channel.append((func_name, args, kwargs, c))
-        self._rpc_ev.send()
-        res = c.get()
-        if isinstance(res, bomb):
-            res.raise_()
-        return res
-
-    def cast(self, func_name, *args, **kwargs):
-        """ method to call asynchronously a manager function from
-        another thread. This method is threadsafe. """
-        self.channel.append((func_name, args, kwargs, None))
-        self._rpc_ev.send()
-
     def wakeup(self):
         self._wakeup_ev.send()
 
@@ -362,12 +344,6 @@ class Manager(object):
 
     # ------------- private functions
 
-    def _stop_watcher(self, handle):
-        if not handle.active:
-            return
-        # we just unref the handler instead of closing or stopping it
-        handle.unref()
-
     def _stop(self):
         # stop all processes
         self.stop_processes()
@@ -376,9 +352,6 @@ class Manager(object):
             # stop controllers
             for ctl in self.controllers:
                 ctl.stop()
-
-            # stop events
-            self._rpc_ev.close()
 
             # we are now stopped
             self.started = False
@@ -501,18 +474,6 @@ class Manager(object):
 
 
     # ------------- events handler
-
-    def _on_rpc(self, handle):
-        func_name, args, kwargs, c = self.channel.popleft()
-
-        try:
-            res = func(*args, **kwargs)
-        except:
-            ex_info = sys.ex_info()
-            res = bomb(ex_info[0], ex_info[1], ex_info[2])
-
-        if c is not None:
-            c.put(res)
 
     def _on_wakeup(self, handle):
         sig = None
