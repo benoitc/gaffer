@@ -242,14 +242,18 @@ class Process(object):
         return True
 
     def add(self, num=1):
-        self.server.request("post", "/processes/%s/_add/%s" %
+        resp = self.server.request("post", "/processes/%s/_add/%s" %
                 (self.process['name'], num))
-        return True
+
+        obj = self.server.json_body(resp)
+        return obj['numprocesses']
 
     def sub(self, num=1):
-        self.server.request("post", "/processes/%s/_sub/%s" %
+        resp = self.server.request("post", "/processes/%s/_sub/%s" %
                 (self.process['name'], num))
-        return True
+
+        obj = self.server.json_body(resp)
+        return obj['numprocesses']
 
     def signal(self, num_or_str):
         if isinstance(num_or_str, six.string_types):

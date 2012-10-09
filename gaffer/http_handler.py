@@ -141,6 +141,7 @@ class ProcessManagerHandler(RequestHandler):
             return
 
         action = args[1]
+        extra = {}
         if action == "_start":
             m.start_process(name)
         elif action == "_stop":
@@ -150,13 +151,15 @@ class ProcessManagerHandler(RequestHandler):
                 i = int(args[2])
             else:
                 i = 1
-            m.ttin(name, i)
+            ret = m.ttin(name, i)
+            extra = {"numprocesses": ret}
         elif action == "_sub":
             if len(args) > 2:
                 i = int(args[2])
             else:
                 i = 1
-            m.ttou(name, i)
+            ret = m.ttou(name, i)
+            extra = {"numprocesses": ret}
         elif action == "_restart":
             m.restart_process(name)
         elif action == "_signal":
@@ -172,7 +175,9 @@ class ProcessManagerHandler(RequestHandler):
             self.write({"error": "resource_not_found"})
             return
 
-        self.write({"ok": True})
+        json_obj = {"ok": True}
+        json_obj.update(extra)
+        self.write(json_obj)
 
 class StatusHandler(RequestHandler):
 
