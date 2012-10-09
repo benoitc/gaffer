@@ -129,7 +129,124 @@ class ProcessHandler(RequestHandler):
 
         self.write({"ok": True})
 
+class ProcessIdHandler(RequestHandler):
+
+    def head(self, *args):
+        m = self.settings.get('manager')
+
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            return
+
+        if pid in m.running:
+            self.set_status(200)
+        else:
+            self.set_status(404)
+
+
+    def get(self, *args):
+        m = self.settings.get('manager')
+
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            return
+
+        if pid in m.running:
+            p = m.running[pid]
+            try:
+                info = m.get_process_info(p.name)
+            except KeyError:
+                self.set_status(404)
+                self.write({"error": "not_found"})
+                return
+            self.write(info)
+        else:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+
+    def delete(self, *args):
+        m = self.settings.get('manager')
+
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            return
+
+        if pid in m.running:
+            m.stop_process(pid)
+            self.write({"ok": True})
+        else:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+
+class ProcessIdManageHandler(RequestHandler):
+
+    def post(self, *args):
+        m = self.settings.get('manager')
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            return
+
+        if pid in m.running:
+            p = m.running[pid]
+            action = args[1]
+            if action == "_stop":
+                m.stop_process(pid)
+            elif action == "_signal":
+                if len(args) < 2:
+                    self.set_status(400)
+                    self.write({"error": "no_signal_number"})
+                    return
+                else:
+                    try:
+                        signum = int(args[2])
+                    except ValueError:
+                        self.set_status(400)
+                        self.write({"error": "bad_value"})
+                        return
+                    m.send_signal(name, signum)
+
+            self.write({"ok": True})
+        else:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+
 class ProcessManagerHandler(RequestHandler):
+
+    def get(self, *args):
+        m = self.settings.get('manager')
+        name = args[0]
+
+        if name not in m.processes:
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+
+        action = args[1]
+        extra = {}
+        if action == "_pids":
+            state = m.processes[name]
+            pids = [p.id for p in state.running]
+            extra = {"pids": pids}
+        else:
+            self.set_status(404)
+            self.write({"error": "resource_not_found"})
+            return
+
+        json_obj = {"ok": True}
+        json_obj.update(extra)
+        self.write(json_obj)
 
     def post(self, *args):
         m = self.settings.get('manager')
@@ -260,7 +377,9 @@ class HttpHandler(object):
     DEFAULT_HANDLERS = [
             (r'/', WelcomeHandler),
             (r'/processes', ProcessesHandler),
+            (r'/processes/([0-9^/]+)', ProcessIdHandler),
             (r'/processes/([^/]+)', ProcessHandler),
+            (r'/processes/([0-9^/]+)/(_[^/]+)$', ProcessIdManageHandler),
             (r'/processes/([^/]+)/(_[^/]+)$', ProcessManagerHandler),
             (r'/processes/([^/]+)/(_[^/]+)/(.*)$', ProcessManagerHandler),
             (r'/status/([^/]+)', StatusHandler)

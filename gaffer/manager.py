@@ -424,7 +424,7 @@ class Manager(object):
         if pid not in self.running:
             return
 
-        p = self.running.drop(pid)
+        p = self.running.pop(pid)
 
         # remove the process from the running processes
         state = self.processes[p.name]

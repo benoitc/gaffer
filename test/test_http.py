@@ -10,7 +10,8 @@ import pytest
 from gaffer import __version__
 from gaffer.manager import Manager
 from gaffer.http_handler import HttpEndpoint, HttpHandler
-from gaffer.httpclient import Server, Process, GafferNotFound, GafferConflict
+from gaffer.httpclient import (Server, Process, ProcessId,
+        GafferNotFound, GafferConflict)
 
 from .test_manager import dummy_cmd
 
@@ -194,6 +195,34 @@ def test_running():
 
     assert 1 in m.running
     assert s.running()[0] == 1
+
+    m.stop()
+    m.run()
+
+
+def test_pids():
+    m, s = init()
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
+
+    p = s.get_process("dummy")
+    assert isinstance(p, Process) == True
+
+    pid = s.get_process(1)
+    assert isinstance(pid, ProcessId) == True
+    assert pid.pid == 1
+    assert pid.process.get('name') == "dummy"
+
+    assert p.pids == [1]
+
+    pid.stop()
+    assert 1 not in m.running
+
+    time.sleep(0.2)
+    assert p.pids == [2]
+
 
     m.stop()
     m.run()

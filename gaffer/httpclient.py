@@ -136,9 +136,13 @@ class Server(object):
         resp = self.request("get", "/processes", running="true")
         return self.json_body(resp)
 
-    def get_process(self, name):
-        resp = self.request("get", "/processes/%s" % name)
+    def get_process(self, name_or_id):
+        resp = self.request("get", "/processes/%s" % name_or_id)
         process = self.json_body(resp)
+
+        if isinstance(name_or_id, int):
+            return ProcessId(server=self, pid=name_or_id, process=process)
+
         return Process(server=self, process=process)
 
     def is_process(self, name):
@@ -182,6 +186,51 @@ class Server(object):
         self.request("delete", "/processes/%s" % name)
         return True
 
+    def send_signal(self, name_or_id, signum):
+        self.request('post', "/processes/%s/_signal/%s" % (name_or_id,
+            signum))
+
+
+class ProcessId(object):
+
+    def __init__(self, server, pid, process):
+        self.server = server
+        self.pid = pid
+
+        if isinstance(process, dict):
+            self.process = process
+        else:
+            self.process = server.get_process(process)
+
+    def __str__(self):
+        return str(self.pid)
+
+    @property
+    def active(self):
+        resp = self.server.head("get", "/processes/%s" % self.pid)
+        if resp.code == 200:
+            return True
+        return False
+
+    def stop(self):
+        self.server.request("post", "/processes/%s/_stop" % self.pid)
+        return True
+
+    def signal(self, num_or_str):
+        if isinstance(num_or_str, six.string_types):
+            signame = num_or_str.upper()
+            if not signame.startswith('SIG'):
+                signame = "SIG%s" % signame
+            try:
+                signum = getattr(signal, signame)
+            except AttributeError:
+                raise ValueError("invalid signal name")
+        else:
+            signum = num_or_str
+
+        self.server.request("post", "/processes/%s/_signal/%s" %
+                (self.pid, signum))
+        return True
 
 class Process(object):
 
@@ -219,12 +268,21 @@ class Process(object):
         status = self.status()
         return status['max_processes']
 
+    @property
+    def pids(self):
+        resp = self.server.request("get", "/processes/%s/_pids" %
+                self.process['name'])
+
+        result = self.server.json_body(resp)
+        return result['pids']
+
     def info(self):
         return self.process
 
     def status(self):
         resp = self.server.request("get", "/status/%s" % self.process['name'])
         return self.server.json_body(resp)
+
 
     def start(self):
         self.server.request("post", "/processes/%s/_start" %
