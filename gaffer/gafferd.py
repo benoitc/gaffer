@@ -161,13 +161,7 @@ class Server(object):
 
         if not endpoints:
             # we create a default endpoint
-            if not tempfile.tempdir:
-                base_dir = os.getcwd()
-            else:
-                base_dir = tempfile.tempdir
-
-            path = os.path.join([base_dir, "gaffer.sock"])
-            endpoints = [HttpEndpoint(uri="unix:%s" % path)]
+            endpoints = [HttpEndpoint()]
 
         controllers = [SigHandler(), HttpHandler(endpoints=endpoints)]
         return controllers, processes
