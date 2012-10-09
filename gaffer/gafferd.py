@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import argparse
-
+import fnmatch
 try:
     import configparser
 except ImportError:

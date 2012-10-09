@@ -143,7 +143,7 @@ try:
 except ImportError:
     def closerange(fd_low, fd_high):    # NOQA
         # Iterate through and close all file descriptors.
-        for fd in xrange(fd_low, fd_high):
+        for fd in range(fd_low, fd_high):
             try:
                 os.close(fd)
             except OSError:    # ERROR, fd wasn't open to begin with (ignored)
@@ -169,29 +169,3 @@ def daemonize():
     os.open(REDIRECT_TO, os.O_RDWR)
     os.dup2(0, 1)
     os.dup2(0, 2)
-
-def locate_program(program, use_none=False, raise_error=False):
-    if os.path.isabs(program):
-        # Absolute path: nothing to do
-        return program
-    if os.path.dirname(program):
-        # ./test => $PWD/./test
-        # ../python => $PWD/../python
-        program = os.path.normpath(os.path.realpath(program))
-        return program
-    if use_none:
-        default = None
-    else:
-        default = program
-    paths = os.getenv('PATH')
-    if not paths:
-        if raise_error:
-            raise ValueError("Unable to get PATH environment variable")
-        return default
-    for path in paths.split(os.pathsep):
-        filename = os.path.join(path, program)
-        if os.access(filename, os.X_OK):
-            return filename
-    if raise_error:
-        raise ValueError("Unable to locate program %r in PATH" % program)
-    return default

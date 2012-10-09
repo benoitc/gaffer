@@ -3,8 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 from collections import deque
-from functools import partial
-from threading import Thread, RLock
+from threading import RLock
 try:
     from queue import Queue
 except ImportError:

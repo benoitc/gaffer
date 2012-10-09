@@ -5,11 +5,11 @@
 import json
 import signal
 
+import pyuv
+import six
 from tornado import httpclient
 
 from .tornado_pyuv import IOLoop
-
-import six
 
 if six.PY3:
     import urllib.parse
@@ -179,7 +179,7 @@ class Server(object):
         return self.save_process(name, cmd, **kwargs)
 
     def remove_process(self, name):
-        resp = self.request("delete", "/processes/%s" % name)
+        self.request("delete", "/processes/%s" % name)
         return True
 
 

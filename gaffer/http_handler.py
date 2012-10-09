@@ -3,8 +3,8 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import json
+import socket
 
-import pyuv
 # patch tornado IOLoop
 from .tornado_pyuv import IOLoop, install
 install()
