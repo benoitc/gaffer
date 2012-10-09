@@ -187,7 +187,28 @@ class Manager(object):
 
     def add_process(self, name, cmd, **kwargs):
         """ add a process to the manager. all process should be added
-        using this function """
+        using this function
+
+        - **name**: name of the process
+        - **cmd**: program command, string)
+        - **args**: the arguments for the command to run. Can be a list or
+          a string. If **args** is  a string, it's splitted using
+          :func:`shlex.split`. Defaults to None.
+        - **env**: a mapping containing the environment variables the command
+          will run with. Optional
+        - **uid**: int or str, user id
+        - **gid**: int or st, user group id,
+        - **cwd**: working dir
+        - **detach**: the process is launched but won't be monitored and
+          won't exit when the manager is stopped.
+        - **shell**: boolean, run the script in a shell. (UNIX
+          only),
+        - os_env: boolean, pass the os environment to the program
+        - numprocesses: int the number of OS processes to launch for
+          this description
+
+        """
+
         with self._lock:
             if name in self.processes:
                 raise KeyError("a process named %r is already managed" % name)
