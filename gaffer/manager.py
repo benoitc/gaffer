@@ -139,7 +139,7 @@ class Manager(object):
         # start the controller
         m.start(controllers=[HttpHandler])
 
-        .... # so smth
+        .... # do smth
 
         m.stop() # stop the controlller
         m.run() # run the event loop
