@@ -14,6 +14,7 @@ from gaffer.commands import (
     process_sub,
     process_status,
     process_numprocess,
-    process_running)
+    process_running,
+    process_pids)
 
 from gaffer.commands.base import get_commands
