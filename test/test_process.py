@@ -28,15 +28,8 @@ def test_simple():
     p.spawn()
     assert p.active == True
 
-    def test_cb(handle):
-        handle.stop()
-        p.stop()
-
-        time.sleep(0.2)
-        assert p.active == False
-
-    stop_later = pyuv.Timer(loop)
-    stop_later.start(test_cb, 0.4, 0.4)
+    time.sleep(0.2)
+    p.stop()
     loop.run()
     assert p.active == False
     with open(testfile, 'r') as f:
@@ -49,18 +42,10 @@ def test_signal():
     p = Process(loop, "someid", "dummy", cmd, args=args,
         cwd=cwd)
     p.spawn()
-
-    def test_cb(handle):
-        handle.stop()
-        p.kill(signal.SIGHUP)
-        time.sleep(0.2)
-        p.stop()
-
-        time.sleep(0.2)
-        assert p.active == False
-
-    stop_later = pyuv.Timer(loop)
-    stop_later.start(test_cb, 0.4, 0.4)
+    time.sleep(0.2)
+    p.kill(signal.SIGHUP)
+    time.sleep(0.2)
+    p.stop()
     loop.run()
     with open(testfile, 'r') as f:
         res = f.read()

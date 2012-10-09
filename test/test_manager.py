@@ -8,7 +8,7 @@ import sys
 import time
 from tempfile import mkstemp
 
-from gaffer.manager import get_manager
+from gaffer.manager import Manager
 from gaffer.process import Process
 
 class DummyProcess(object):
@@ -62,14 +62,18 @@ def dummy_cmd():
     return (testfile, cmd, args, wdir)
 
 def test_simple():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
-    assert m.manager.started == True
-    m.stop()
-    assert m.manager.started == False
+    assert m.started == True
+
+    def on_stop(manager):
+        assert manager.started == False
+
+    m.stop(on_stop)
+    m.run()
 
 def test_simple_process():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
@@ -83,11 +87,11 @@ def test_simple_process():
 
     m.remove_process("dummy")
     assert m.get_process_state("dummy") == None
-
     m.stop()
+    m.run()
 
 def test_start_stop_process():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir)
@@ -99,10 +103,11 @@ def test_start_stop_process():
     assert len(state.running) == 0
 
     m.stop()
+    m.run()
 
 
 def test_start_multiple():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=2)
@@ -112,8 +117,10 @@ def test_start_multiple():
 
     m.stop()
 
+    m.run()
+
 def test_ttin():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
@@ -140,10 +147,10 @@ def test_ttin():
     assert len(state.running) == 6
 
     m.stop()
-
+    m.run()
 
 def test_ttou():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
 
     testfile, cmd, args, wdir = dummy_cmd()
@@ -164,9 +171,10 @@ def test_ttou():
     time.sleep(0.2)
     assert len(state.running) == 1
     m.stop()
+    m.run()
 
 def test_numprocesses():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
@@ -181,8 +189,10 @@ def test_numprocesses():
     assert len(state.running) == 0
     m.stop()
 
+    m.run()
+
 def test_process_id():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
@@ -200,8 +210,10 @@ def test_process_id():
 
     m.stop()
 
+    m.run()
+
 def test_restart():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
@@ -212,17 +224,18 @@ def test_restart():
     b = state.list_processes()
     assert a != b
 
-    time.sleep(0.2)
-    m.restart()
-    time.sleep(0.2)
-    state = m.get_process_state("dummy")
-    c = state.list_processes()
-    assert b != c
+    def on_restart(manager):
+        print("ici")
+        state = m.get_process_state("dummy")
+        c = state.list_processes()
+        assert b != c
+        m.stop()
 
-    m.stop()
+    m.restart(on_restart)
+    m.run()
 
 def test_send_signal():
-    m = get_manager(background=True)
+    m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir)
@@ -240,3 +253,5 @@ def test_send_signal():
         assert res == 'STARTHUPHUPQUITSTOP'
 
     m.stop()
+
+    m.run()

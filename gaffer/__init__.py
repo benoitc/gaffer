@@ -5,4 +5,4 @@
 version_info = (0, 1, 0)
 __version__ = ".".join(map(str, version_info))
 
-from gaffer.manager import Manager, ManagerThread, get_manager
+from gaffer.manager import Manager

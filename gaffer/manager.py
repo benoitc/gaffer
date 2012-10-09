@@ -109,10 +109,10 @@ class ProcessState(object):
 
 class Manager(object):
 
-    def __init__(self, controllers=[], on_error_cb=None):
-        self.loop = pyuv.Loop.default_loop()
+    def __init__(self, loop=None, controllers=[], on_start_cb=None):
+        self.loop = loop or pyuv.Loop.default_loop()
         self.controllers = controllers
-        self.on_error_cb = on_error_cb
+        self.on_start_cb = on_start_cb
 
         self.started = False
         self._stop_ev = None
@@ -121,12 +121,14 @@ class Manager(object):
         self.running = {}
         self.channel = deque()
         self._updates = deque()
+        self._signals = deque()
+
+        self.stop_cb = None
+        self.restart_cb = None
         self._lock = RLock()
 
     def start(self):
         """ start the manager. """
-        self._stop_ev = pyuv.Async(self.loop, self._on_stop)
-        self._restart_ev = pyuv.Async(self.loop, self._on_restart)
         self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
         self._rpc_ev = pyuv.Async(self.loop, self._on_rpc)
 
@@ -135,6 +137,9 @@ class Manager(object):
             ctl.start(self.loop, self)
 
         self.started = True
+        if six.callable(self.on_start_cb):
+            self.on_start_cb(self)
+
 
     def run(self):
         """ Start the manager if not started and wat for all loop
@@ -147,19 +152,23 @@ class Manager(object):
             self.start()
         self.loop.run()
 
-    def stop(self):
+    def stop(self, callback=None):
         """ stop the manager. This function is threadsafe """
-        self._stop_ev.send()
+        self.stop_cb = callback
+        self._signals.append("STOP")
+        self.wakeup()
 
-    def restart(self):
+    def restart(self, callback=None):
         """ restart all processes in the manager. This function is
         threadsafe """
-        self._restart_ev.send()
+        self.restart_cb = callback
+        self._signals.append("RESTART")
+        self.wakeup()
 
     def stop_processes(self):
         """ stop all processes in the manager """
         with self._lock:
-            for name, _ in self.processes.items():
+            for name in self.processes:
                 self._stop_byname_unlocked(name)
 
     def running_processes(self):
@@ -279,7 +288,7 @@ class Manager(object):
         with self._lock:
             state = self.get_process_state(name)
             ret = state.ttin(i)
-            self.update_state(name)
+            self._manage_processes(state)
             return ret
 
     def ttou(self, name, i=1):
@@ -289,7 +298,7 @@ class Manager(object):
         with self._lock:
             state = self.get_process_state(name)
             ret = state.ttou(i)
-            self.update_state(name)
+            self._manage_processes(state)
             return ret
 
     def send_signal(self, name_or_id, signum):
@@ -311,20 +320,24 @@ class Manager(object):
 
     # ------------- general purpose utilities
 
-    def send(self, cmd, *args, **kwargs):
-        cmd_type, func_name = cmd
+    def call(self, func_name, *args, **kwargs):
+        """ method to make a synchronous call to a manager function from
+        another thread. This method is threadsafe. It always wait for a
+        result from the manager """
 
-        c = None
-        if cmd_type == "call":
-            c = Queue()
-
+        c = Queue()
         self.channel.append((func_name, args, kwargs, c))
         self._rpc_ev.send()
-        if c is not None:
-            res = c.get()
-            if isinstance(res, bomb):
-                res.raise_()
-            return res
+        res = c.get()
+        if isinstance(res, bomb):
+            res.raise_()
+        return res
+
+    def cast(self, func_name, *args, **kwargs):
+        """ method to call asynchronously a manager function from
+        another thread. This method is threadsafe. """
+        self.channel.append((func_name, args, kwargs, None))
+        self._rpc_ev.send()
 
     def wakeup(self):
         self._wakeup_ev.send()
@@ -366,16 +379,29 @@ class Manager(object):
 
             # stop events
             self._rpc_ev.close()
-            self._wakeup_ev.close()
-            self._restart_ev.close()
-
-            # FIX: fix race condition with the tornadop ioloop
-            # stop unknown active handlers sometimes some handlers are
-            # still active, we unref them so we can stop the loop quietly.
-            self.loop.walk(self._stop_watcher)
 
             # we are now stopped
             self.started = False
+
+            if self.stop_cb:
+                self.stop_cb(self)
+                self.stop_cb = None
+
+    def _restart(self):
+        with self._lock:
+            to_restart = [state for name, state in self.processes.items()]
+
+        for state in to_restart:
+            if state is not None:
+                self._restart_processes(state)
+
+        with self._lock:
+            for ctl in self.controllers:
+                ctl.restart()
+
+            if self.restart_cb:
+                self.restart_cb(self)
+                self.restart_cb = None
 
     def _spawn_process(self, state):
         """ spawn a new process and add it to the state """
@@ -471,44 +497,37 @@ class Manager(object):
         state.reset()
 
         # start the processes the next time
-        self.update_state(state.name)
+        self.manage_process(state.name)
 
 
     # ------------- events handler
 
-    def _on_stop(self, handle):
-        handle.close()
-        self._stop()
-
-    def _on_restart(self, handle):
-        with self._lock:
-            to_restart = [state for name, state in self.processes.items()]
-
-        for state in to_restart:
-            if state is not None:
-                self._restart_processes(state)
-
-        with self._lock:
-            for ctl in self.controllers:
-                ctl.restart()
-
-    def _on_state_change(self, handle, name):
-        handle.stop()
-        self.manage_process(name)
-
     def _on_rpc(self, handle):
         func_name, args, kwargs, c = self.channel.popleft()
-        func = getattr(self, func_name)
 
         try:
             res = func(*args, **kwargs)
         except:
-            return
+            ex_info = sys.ex_info()
+            res = bomb(ex_info[0], ex_info[1], ex_info[2])
 
         if c is not None:
             c.put(res)
 
     def _on_wakeup(self, handle):
+        sig = None
+        try:
+            sig = self._signals.popleft()
+        except IndexError:
+            pass
+        if sig is not None:
+            sig = sig.upper()
+            if sig == "STOP":
+                handle.close()
+                return self._stop()
+            elif sig == "RESTART":
+                return self._restart()
+
         if not len(self._updates):
             pass
 
@@ -531,56 +550,3 @@ class Manager(object):
             # if not stopped we may need to restart a new process
             if not state.stopped:
                 self._manage_processes(state)
-
-
-class ManagerThread(Thread):
-    """ A threaded manager class
-
-    The manager is started in a thread, all managers method are proxied
-    and handled asynchronously """
-
-    def __init__(self, controllers=[], on_error_cb=None, daemon=True):
-        Thread.__init__(self)
-        self.daemon = daemon
-        self.manager = Manager(controllers=controllers,
-                on_error_cb=on_error_cb)
-
-    def run(self):
-        self.manager.run()
-
-    def stop(self):
-        self.manager.stop()
-        self.join()
-
-    def restart(self):
-        self.manager.restart()
-
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-
-        if not hasattr(self.manager, name):
-            raise AttributeError("%r is not a manager method")
-
-        attr = getattr(self.manager, name)
-        if six.callable(attr):
-            return partial(self.call, name)
-        return attr
-
-    def cast(self, name, *args, **kwargs):
-        """ call a manager method asynchronously """
-        self.manager.send(("cast", name), *args, **kwargs)
-
-    def call(self, name, *args, **kwargs):
-        """ call a manager method and wait for the result """
-        res = self.manager.send(("call", name), *args, **kwargs)
-        return res
-
-
-def get_manager(controllers=[], background=False):
-    """ return a manager """
-
-    if background:
-        return ManagerThread(controllers=controllers)
-
-    return Manager(controllers=controllers)

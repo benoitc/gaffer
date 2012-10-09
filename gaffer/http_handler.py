@@ -235,6 +235,8 @@ class HttpEndpoint(object):
             else:
                 self.server.add_socket(sock)
 
+        print("%s bound" % sock)
+
         # start the server
         self.server.start()
 
@@ -277,7 +279,9 @@ class HttpHandler(object):
 
         # start endpoints
         for endpoint in self.endpoints:
+            print("start %s" % endpoint)
             endpoint.start(self.loop, self.app)
+            print("%s started" % endpoint)
 
     def stop(self):
         for endpoint in self.endpoints:
