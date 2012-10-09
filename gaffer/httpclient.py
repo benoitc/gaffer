@@ -83,6 +83,8 @@ class HTTPClient(object):
         return response
 
 class Server(object):
+    """ Server, main object to connect to a gaffer node. Most of the
+    calls are blocking. (but running in the loop) """
 
     def __init__(self, uri=None, loop=None, **options):
         self.loop = loop or pyuv.Loop()
@@ -125,18 +127,25 @@ class Server(object):
 
     @property
     def version(self):
+        """ get gaffer version """
         resp = self.request("get", "/")
         return self.json_body(resp)['version']
 
     def processes(self):
+        """ get list of registered processes """
         resp = self.request("get", "/processes")
         return self.json_body(resp)
 
     def running(self):
+        """ get list of running processes by pid """
         resp = self.request("get", "/processes", running="true")
         return self.json_body(resp)
 
     def get_process(self, name_or_id):
+        """ get a process by name or id.
+
+        If id is given a ProcessId instance is returned in other cases a
+        Process instance is returned. """
         resp = self.request("get", "/processes/%s" % name_or_id)
         process = self.json_body(resp)
 
@@ -146,12 +155,37 @@ class Server(object):
         return Process(server=self, process=process)
 
     def is_process(self, name):
+        """ is the process exists ? """
         resp = self.request("head", "/processes/%s" % name)
         if resp.code == 200:
             return True
         return False
 
     def save_process(self, name, cmd, **kwargs):
+        """ save a process.
+
+        Args:
+
+        - **name**: name of the process
+        - **cmd**: program command, string)
+        - **args**: the arguments for the command to run. Can be a list or
+          a string. If **args** is  a string, it's splitted using
+          :func:`shlex.split`. Defaults to None.
+        - **env**: a mapping containing the environment variables the command
+          will run with. Optional
+        - **uid**: int or str, user id
+        - **gid**: int or st, user group id,
+        - **cwd**: working dir
+        - **detach**: the process is launched but won't be monitored and
+          won't exit when the manager is stopped.
+        - **shell**: boolean, run the script in a shell. (UNIX
+          only),
+        - os_env: boolean, pass the os environment to the program
+        - numprocesses: int the number of OS processes to launch for
+          this description
+
+        If `_force_update=True` is passed, the existing process template
+        will be overwritten. """
         if "_force_update" in kwargs:
             force = kwargs.pop("_force_update")
 
@@ -175,18 +209,27 @@ class Server(object):
         return Process(server=self, process=process)
 
     def add_process(self, name, cmd, **kwargs):
+        """ add a process. Use the same arguments as in save_process.
+
+        If a process with the same name is already registred a
+        `GafferConflict' exception is raised
+        """
         kwargs["_force_update"] = False
         return self.save_process(name, cmd, **kwargs)
 
     def update_process(self, name, cmd, **kwargs):
+        """ update a process. """
         kwargs["_force_update"] = True
         return self.save_process(name, cmd, **kwargs)
 
     def remove_process(self, name):
+        """ Stop a process and remove it from the managed processes """
+
         self.request("delete", "/processes/%s" % name)
         return True
 
     def send_signal(self, name_or_id, num_or_str):
+        """ Send a signal to the pid or the process name """
         if isinstance(num_or_str, six.string_types):
             signame = num_or_str.upper()
             if not signame.startswith('SIG'):
@@ -200,11 +243,11 @@ class Server(object):
 
         self.request('post', "/processes/%s/_signal/%s" % (name_or_id,
             signum))
-
         return True
 
 
 class ProcessId(object):
+    """ Process Id object. It represent a pid """
 
     def __init__(self, server, pid, process):
         self.server = server
@@ -220,16 +263,19 @@ class ProcessId(object):
 
     @property
     def active(self):
+        """ return True if the process is active """
         resp = self.server.head("get", "/processes/%s" % self.pid)
         if resp.code == 200:
             return True
         return False
 
     def stop(self):
+        """ stop the process """
         self.server.request("post", "/processes/%s/_stop" % self.pid)
         return True
 
     def signal(self, num_or_str):
+        """ Send a signal to the pid """
         if isinstance(num_or_str, six.string_types):
             signame = num_or_str.upper()
             if not signame.startswith('SIG'):
@@ -246,6 +292,7 @@ class ProcessId(object):
         return True
 
 class Process(object):
+    """ Process object. Represent a remote process state"""
 
     def __init__(self, server, process):
         self.server = server
@@ -268,21 +315,26 @@ class Process(object):
 
     @property
     def active(self):
+        """ return True if the process is active """
         status = self.status()
         return status['active']
 
     @property
     def running(self):
+        """ return the number of processes running for this template """
         status = self.status()
         return status['running']
 
     @property
     def numprocesses(self):
+        """ return the maximum number of processes that can be launched
+        for this template """
         status = self.status()
         return status['max_processes']
 
     @property
     def pids(self):
+        """ return a list of running pids """
         resp = self.server.request("get", "/processes/%s/_pids" %
                 self.process['name'])
 
@@ -290,29 +342,42 @@ class Process(object):
         return result['pids']
 
     def info(self):
+        """ return the process info dict """
         return self.process
 
     def status(self):
+        """ return the status::
+
+            {
+                "active": true,
+                "running": 1,
+                "numprocesses": 1
+            }
+        """
         resp = self.server.request("get", "/status/%s" % self.process['name'])
         return self.server.json_body(resp)
 
 
     def start(self):
+        """ start the process if not started, spawn new processes """
         self.server.request("post", "/processes/%s/_start" %
                 self.process['name'])
         return True
 
     def stop(self):
+        """ stop the process """
         self.server.request("post", "/processes/%s/_stop" %
                 self.process['name'])
         return True
 
     def restart(self):
+        """ restart the process """
         self.server.request("post", "/processes/%s/_restart" %
                 self.process['name'])
         return True
 
     def add(self, num=1):
+        """ increase the number of processes for this template """
         resp = self.server.request("post", "/processes/%s/_add/%s" %
                 (self.process['name'], num))
 
@@ -320,6 +385,8 @@ class Process(object):
         return obj['numprocesses']
 
     def sub(self, num=1):
+        """ decrease the number of processes for this template """
+
         resp = self.server.request("post", "/processes/%s/_sub/%s" %
                 (self.process['name'], num))
 
@@ -327,6 +394,7 @@ class Process(object):
         return obj['numprocesses']
 
     def signal(self, num_or_str):
+        """ send a signal to all processes of this template """
         if isinstance(num_or_str, six.string_types):
             signame = num_or_str.upper()
             if not signame.startswith('SIG'):
