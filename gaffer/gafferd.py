@@ -12,7 +12,7 @@ import os
 import sys
 
 from .http_handler import HttpHandler, HttpEndpoint
-from .manager import Manager
+from .manager import Manager, FlappingInfo
 from .pidfile import Pidfile
 from .sig_handler import SigHandler
 from .util import daemonize
@@ -156,6 +156,16 @@ class Server(object):
                         elif key == 'start':
                             params[key] = cfg.getboolean(section, key,
                                     True)
+                        elif key == 'flapping':
+                            # flapping values are passed in order on one
+                            # line
+                            values_str = val.split(None)
+                            try:
+                                values = [float(val) for val in values_str]
+                                params['flapping'] = FlappingInfo(*values)
+                            except ValueError:
+                                pass
+
                     processes.append((name, cmd, params))
 
         if not endpoints:

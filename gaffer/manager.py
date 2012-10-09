@@ -14,11 +14,8 @@ Classes
 
 from collections import deque
 from threading import RLock
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
 import os
+import time
 
 import pyuv
 import six
@@ -26,15 +23,22 @@ import six
 from .process import Process
 from .sync import increment, add, sub, atomic_read, compare_and_swap
 
-class bomb(object):
-    def __init__(self, exp_type=None, exp_value=None, exp_traceback=None):
-        self.type = exp_type
-        self.value = exp_value
-        self.traceback = exp_traceback
+class FlappingInfo(object):
+    """ object to keep flapping infos """
 
-    def raise_(self):
-        six.reraise(self.type, self.value, self.traceback)
+    def __init__(self, attempts=2, window=1., retry_in=7., max_retry=5):
+        self.attempts = attempts
+        self.window = window
+        self.retry_in = retry_in
+        self.max_retry = max_retry
 
+        # exit history
+        self.history = deque(maxlen = max_retry)
+        self.retries = 0
+
+    def reset(self):
+        self.history.clear()
+        self.retries = 0
 
 class ProcessState(object):
     """ object used by the manager to maintain the process state """
@@ -58,6 +62,17 @@ class ProcessState(object):
         self.cmd = cmd
         self.settings = settings
         self._numprocesses = self.settings.get('numprocesses', 1)
+
+        # set flapping
+        self.flapping = self.settings.get('flapping')
+        if isinstance(self.flapping, dict):
+            try:
+                self.flapping = FlappingInfo(**self.flapping)
+            except TypeError: # unknown value
+                self.flapping = None
+
+        self.flapping_timer = None
+
         self.stopped = False
 
     @property
@@ -100,6 +115,9 @@ class ProcessState(object):
 
     def reset(self):
         self.numprocesses = self.settings.get('numprocesses', 1)
+        # reset flapping
+        if self.flapping and self.flapping is not None:
+            self.flapping.reset()
 
     def ttin(self, i=1):
         self._numprocesses = add(self._numprocesses, i)
@@ -123,6 +141,24 @@ class ProcessState(object):
 
     def list_processes(self):
         return list(self.running)
+
+    def check_flapping(self):
+        f = self.flapping
+        if len(f.history) < f.attempts:
+            f.history.append(time.time())
+        else:
+            diff = f.history[-1] - f.history[0]
+            if diff > f.window:
+                f.reset()
+                f.history.append(time.time())
+            elif f.retries < f.max_retry:
+                increment(f.retries)
+                return False, True
+            else:
+                f.reset()
+                return False, False
+        return True, None
+
 
 class Manager(object):
     """ Manager - maintain process alive
@@ -248,9 +284,20 @@ class Manager(object):
           won't exit when the manager is stopped.
         - **shell**: boolean, run the script in a shell. (UNIX
           only),
-        - os_env: boolean, pass the os environment to the program
-        - numprocesses: int the number of OS processes to launch for
+        - **os_env**: boolean, pass the os environment to the program
+        - **numprocesses**: int the number of OS processes to launch for
           this description
+        - **flapping**: a FlappingInfo instance or, if flapping detection
+          should be used. flapping parameters are:
+
+          - **attempts**: maximum number of attempts before we stop the
+            process and set it to retry later
+          - **window**: period in which we are testing the number of
+            retry
+          - **retry_in**: seconds, the time after we restart the process
+            and try to spawn them
+          - ** max_retry**: maximum number of retry before we give up
+            and stop the process.
 
         """
 
@@ -472,6 +519,9 @@ class Manager(object):
         state = self.processes[name]
         state.stopped = True
 
+        if state.flapping_timer is not None:
+            state.flapping_timer.stop()
+
         while True:
             try:
                 p = state.dequeue()
@@ -524,6 +574,7 @@ class Manager(object):
         # the processes
         state.numprocesses = 0
 
+
         # stop the processes, we need to lock here
         with self._lock:
             while True:
@@ -544,6 +595,34 @@ class Manager(object):
 
         # start the processes the next time
         self.manage_process(state.name)
+
+    def _check_flapping(self, state):
+        if not state.flapping:
+            return True
+
+        check_flapping, can_retry = state.check_flapping()
+        if not check_flapping:
+            # stop the processes
+            self._stop_byname_unlocked(state.name)
+            if can_retry:
+                # if we can retry later then set a callback
+                def flapping_cb(handle):
+                    handle.stop()
+
+                    # allows respawning
+                    state.stopped = False
+                    state._flapping_timer = None
+
+                    # restart processes
+                    self._restart_processes(state)
+
+                # set a callback
+                t = pyuv.Timer(self.loop)
+                t.start(flapping_cb, state.flapping.retry_in,
+                        state.flapping.retry_in)
+                state._flapping_timer = t
+            return False
+        return True
 
 
     # ------------- events handler
@@ -582,5 +661,5 @@ class Manager(object):
             state.remove(process)
 
             # if not stopped we may need to restart a new process
-            if not state.stopped:
+            if not state.stopped and self._check_flapping(state):
                 self._manage_processes(state)

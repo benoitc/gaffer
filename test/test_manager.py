@@ -8,7 +8,9 @@ import sys
 import time
 from tempfile import mkstemp
 
-from gaffer.manager import Manager
+import pyuv
+
+from gaffer.manager import Manager, FlappingInfo
 from gaffer.process import Process
 
 class DummyProcess(object):
@@ -20,7 +22,6 @@ class DummyProcess(object):
         signal.signal(signal.SIGQUIT, self.handle_quit)
         signal.signal(signal.SIGTERM, self.handle_quit)
         signal.signal(signal.SIGCHLD, self.handle_chld)
-
 
     def _write(self, msg):
         with open(self.testfile, 'a+') as f:
@@ -60,6 +61,30 @@ def dummy_cmd():
     args = ['generic.py', "test_manager.run_dummy", testfile]
     wdir = os.path.dirname(__file__)
     return (testfile, cmd, args, wdir)
+
+
+def CrashProcess(object):
+
+    def __init__(self):
+        self.alive = True
+
+    def run(self):
+        while self.alive:
+            time.sleep(0.1)
+            break
+
+def run_crashprocess():
+    c = CrashProcess()
+    c.run()
+    return 1
+
+
+def crash_cmd():
+    cmd = sys.executable
+    args = ['generic.py', "test_manager.run_crashprocess"]
+    wdir = os.path.dirname(__file__)
+    return (cmd, args, wdir)
+
 
 def test_simple():
     m = Manager()
@@ -225,7 +250,6 @@ def test_restart():
     assert a != b
 
     def on_restart(manager):
-        print("ici")
         state = m.get_process_state("dummy")
         c = state.list_processes()
         assert b != c
@@ -255,3 +279,25 @@ def test_send_signal():
     m.stop()
 
     m.run()
+
+def test_flapping():
+    m = Manager()
+    m.start()
+
+    cmd, args, wdir = crash_cmd()
+    flapping = FlappingInfo(attempts=1, window=1, retry_in=0.1, max_retry=2)
+
+    m.add_process("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
+
+    state = m.get_process_state("crashing")
+
+    def cb(handle):
+        handle.stop()
+        assert state.stopped == True
+
+    t = pyuv.Timer(m.loop)
+    t.start(cb, 0.8, 0.8)
+
+    m.stop()
+    m.run()
+
