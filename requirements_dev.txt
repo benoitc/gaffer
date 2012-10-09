@@ -1,0 +1,5 @@
+pyuv
+six
+psutil
+tornado
+pytest
