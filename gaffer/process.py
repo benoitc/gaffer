@@ -167,8 +167,9 @@ class Process(object):
 
 
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
-            uid=None, gid=None, cwd=None, detach=False, redirect_stream=[],
-            monitor=False, monitor_cb=None, on_exit_cb=None):
+            uid=None, gid=None, cwd=None, detach=False, shell=False,
+            redirect_stream=[], monitor=False, monitor_cb=None,
+            on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -190,6 +191,10 @@ class Process(object):
             else:
                 self.cmd = args_[0]
                 self.args = args_[1:]
+
+        if shell:
+            self.args = ['-c', cmd] + args
+            self.cmd = "sh"
 
         self.uid = uid
         if self.uid is not None:

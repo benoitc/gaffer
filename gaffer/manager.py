@@ -34,7 +34,8 @@ class ProcessState(object):
             "uid": None,
             "gid": None,
             "cwd": None,
-            "detach": False}
+            "detach": False,
+            "shell": False}
 
     def __init__(self, name, cmd, **settings):
         self.running = deque()
@@ -59,6 +60,12 @@ class ProcessState(object):
         params = {}
         for name, default in self.DEFAULT_PARAMS.items():
             params[name] = self.settings.get(name, default)
+
+        os_env = self.settings.get('os_env', False)
+        if os_env:
+            env = params.get('env', {})
+            env.update(os.environ())
+            params['env'] = env
 
         params['on_exit_cb'] = on_exit
 

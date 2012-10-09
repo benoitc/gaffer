@@ -32,6 +32,8 @@ PROCESS_DEFAULTS = dict(
         gid = None,
         cwd = None,
         detach = False,
+        shell = False,
+        os_env = False,
         numprocesses = 1,
         start = True)
 
@@ -144,6 +146,12 @@ class Server(object):
                         elif key == 'detach':
                             params[key] = cfg.getboolean(section, key,
                                     False)
+                        elif key == 'shell':
+                            params[key] = cfg.getboolean(section, key,
+                                    False)
+                        elif key == 'os_env':
+                            params[key] = cfg.getboolean(section, key,
+                                    False)
                         elif key == 'numprocesses':
                             params[key] = cfg.getint(section, key, 1)
                         elif key == 'start':
@@ -153,7 +161,12 @@ class Server(object):
 
         if not endpoints:
             # we create a default endpoint
-            path = os.path.join([tempfile.gettempdir(), "gaffer.sock"])
+            if not tempfile.tempdir:
+                base_dir = os.getcwd()
+            else:
+                base_dir = tempfile.tempdir
+
+            path = os.path.join([base_dir, "gaffer.sock"])
             endpoints = [HttpEndpoint(uri="unix:%s" % path)]
 
         controllers = [SigHandler(), HttpHandler(endpoints=endpoints)]
