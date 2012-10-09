@@ -10,7 +10,6 @@ except ImportError:
     import ConfigParser as configparser
 import os
 import sys
-import tempfile
 
 from .http_handler import HttpHandler, HttpEndpoint
 from .manager import Manager

@@ -2,8 +2,8 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-
 import copy
+import json
 import textwrap
 
 # import pygments if here

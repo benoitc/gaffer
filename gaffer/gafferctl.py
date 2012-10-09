@@ -5,7 +5,6 @@
 # -*- coding: utf-8 -
 
 import getopt
-import json
 import sys
 import traceback
 
@@ -59,6 +58,9 @@ class GafferCtl(object):
             sys.stderr.write("%s\n" % str(e))
             sys.exit(1)
         except KeyboardInterrupt:
+            sys.exit(1)
+        except RuntimeError as e:
+            sys.stderr.write("%s\n" % str(e))
             sys.exit(1)
         except Exception as e:
             sys.stderr.write(traceback.format_exc())
@@ -216,4 +218,4 @@ def run():
     GafferCtl().run(sys.argv[1:])
 
 if __name__ == '__main__':
-    main()
+    run()

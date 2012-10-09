@@ -2,6 +2,8 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import json
+
 from .base import Command, prettify
 
 class GetProcess(Command):
@@ -78,5 +80,5 @@ class GetProcess(Command):
 
     def run(self, server, args, options):
         p = server.get_process(*args)
-        return pretiffy(json.dumps(p.process))
+        return prettify(json.dumps(p.process))
 
