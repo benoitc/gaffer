@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+"""
+The manager module is a core component of gaffer. A Manager is
+responsible of maintaining processes and allows you to interract with
+them.
+
+Classes
+=======
+
+"""
+
 
 from collections import deque
 from threading import RLock
@@ -144,9 +154,11 @@ class Manager(object):
         m.stop() # stop the controlller
         m.run() # run the event loop
 
-    .. note:: The loop can be omitted if the first thing you do is
-    launching a manager. The run function is here for convenience. You
-    can of course just run `loop.run()` instead
+    .. note::
+
+        The loop can be omitted if the first thing you do is
+        launching a manager. The run function is here for convenience. You
+        can of course just run `loop.run()` instead
     """
 
     def __init__(self, loop=None,):
