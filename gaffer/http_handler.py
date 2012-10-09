@@ -197,7 +197,6 @@ class ProcessIdManageHandler(RequestHandler):
             self.set_status(400)
             self.write({"error": "bad_value"})
             return
-
         if pid in m.running:
             p = m.running[pid]
             action = args[1]
@@ -215,7 +214,7 @@ class ProcessIdManageHandler(RequestHandler):
                         self.set_status(400)
                         self.write({"error": "bad_value"})
                         return
-                    m.send_signal(name, signum)
+                    m.send_signal(pid, signum)
 
             self.write({"ok": True})
         else:
@@ -381,6 +380,7 @@ class HttpHandler(object):
             (r'/processes/([^/]+)', ProcessHandler),
             (r'/processes/([0-9^/]+)/(_[^/]+)$', ProcessIdManageHandler),
             (r'/processes/([^/]+)/(_[^/]+)$', ProcessManagerHandler),
+            (r'/processes/([0-9^/]+)/(_[^/]+)/(.*)$', ProcessIdManageHandler),
             (r'/processes/([^/]+)/(_[^/]+)/(.*)$', ProcessManagerHandler),
             (r'/status/([^/]+)', StatusHandler)
     ]

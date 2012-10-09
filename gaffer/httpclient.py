@@ -186,9 +186,22 @@ class Server(object):
         self.request("delete", "/processes/%s" % name)
         return True
 
-    def send_signal(self, name_or_id, signum):
+    def send_signal(self, name_or_id, num_or_str):
+        if isinstance(num_or_str, six.string_types):
+            signame = num_or_str.upper()
+            if not signame.startswith('SIG'):
+                signame = "SIG%s" % signame
+            try:
+                signum = getattr(signal, signame)
+            except AttributeError:
+                raise ValueError("invalid signal name")
+        else:
+            signum = num_or_str
+
         self.request('post', "/processes/%s/_signal/%s" % (name_or_id,
             signum))
+
+        return True
 
 
 class ProcessId(object):

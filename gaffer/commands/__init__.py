@@ -4,6 +4,7 @@
 
 from gaffer.commands import (
     processes,
+    kill,
     add_process,
     del_process,
     get_process,
