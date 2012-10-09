@@ -35,7 +35,8 @@ class DelProcess(Command):
 
             gafferctl del_process name
 
-         Options
+
+        Options
         +++++++
 
         - <name>: name of the process to remove

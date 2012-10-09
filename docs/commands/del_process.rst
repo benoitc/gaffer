@@ -30,7 +30,8 @@ Command line:
 
     gafferctl del_process name
 
- Options
+
+Options
 +++++++
 
 - <name>: name of the process to remove

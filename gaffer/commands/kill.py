@@ -12,12 +12,13 @@ class Kill(Command):
         This command send any signal to a process by name or id.
 
 
-        HTTP Message:
-        -------------
+        HTTP Message
+        ------------
 
         ::
 
             HTTP/1.1 POST /processes/<name_or_id>/_signal/<signum>
+
 
         The response `{"ok": True}' if everything was ok.
 
@@ -27,6 +28,7 @@ class Kill(Command):
         ::
 
             gafferctl kill <name_or_id> <signum>
+
 
         Options
         +++++++
