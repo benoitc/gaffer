@@ -21,6 +21,8 @@ import six
 from .util import bytestring, getcwd, check_uid, check_gid, bytes2human
 from .sync import atomic_read, decrement
 
+pyuv.Process.disable_stdio_inheritance()
+
 def get_process_info(process=None, interval=0):
 
     """Return information about a process. (can be an pid or a Process object)
@@ -167,7 +169,13 @@ class Process(object):
       :func:`shlex.split`. Defaults to None.
     - **env**: a mapping containing the environment variables the command
       will run with. Optional
-
+    - **uid**: int or str, user id
+    - **gid**: int or st, user group id,
+    - **cwd**: working dir
+    - **detach**: the process is launched but won't be monitored and
+      won't exit when the manager is stopped.
+    - **shell**: boolean, run the script in a shell. (UNIX
+      only)
     """
 
 
@@ -264,7 +272,6 @@ class Process(object):
 
         self.running = True
         self._process = pyuv.Process(self.loop)
-        self._process.disable_stdio_inheritance()
 
         # spawn the process
         self._process.spawn(**kwargs)

@@ -13,7 +13,7 @@ Example of usage::
     # initialize a loop
     loop = pyuv.Loop.defaul_loop()
 
-    s = Server("http://localhost:5000")
+    s = Server("http://localhost:5000", loop=loop)
 
     # add a process without starting it
     process = s.add_process("dummy", "/some/path/to/dummy/script", start=False)

@@ -1,8 +1,8 @@
 .. _get_process:
 
 
-Remove a process from the monitoring
-====================================
+Fetch a process template
+========================
 
 This command stop a process and remove it from the monitored
 process.
