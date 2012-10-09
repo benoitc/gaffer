@@ -15,6 +15,7 @@ distribute-0.6.8.tar.gz
 nohup.out
 .coverage
 doc/.sass-cache
+docs/_build
 bin/
 lib/
 man/

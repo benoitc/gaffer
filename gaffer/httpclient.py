@@ -41,10 +41,10 @@ class HTTPClient(object):
 
         http_client = httpclient.HTTPClient()
         try:
-            response = http_client.fetch("http://www.google.com/")
+            response = http_client.fetch("http://www.friendpaste.com/")
             print response.body
-        except httpclient.HTTPError, e:
-            print "Error:", e
+        except httpclient.HTTPError as e:
+            print("Error: %s" % e)
     """
     def __init__(self, async_client_class=None, loop=None, **kwargs):
         self._io_loop = IOLoop(_loop=loop)
@@ -212,7 +212,7 @@ class Server(object):
         """ add a process. Use the same arguments as in save_process.
 
         If a process with the same name is already registred a
-        `GafferConflict' exception is raised
+        `GafferConflict` exception is raised.
         """
         kwargs["_force_update"] = False
         return self.save_process(name, cmd, **kwargs)
@@ -346,13 +346,16 @@ class Process(object):
         return self.process
 
     def status(self):
-        """ return the status::
+        """ Return the status
+
+        ::
 
             {
                 "active": true,
                 "running": 1,
                 "numprocesses": 1
             }
+
         """
         resp = self.server.request("get", "/status/%s" % self.process['name'])
         return self.server.json_body(resp)
