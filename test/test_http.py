@@ -20,31 +20,27 @@ TEST_PORT = (os.getpid() % 31000) + 1024
 TEST_PORT2 = (os.getpid() % 31000) + 1023
 
 
-def start_manager(callback=None):
+def start_manager():
     http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
     http_handler = HttpHandler(endpoints=[http_endpoint])
-    m = Manager(controllers=[http_handler], on_start_cb=callback)
-    m.start()
+    m = Manager()
+    m.start(controllers=[http_handler])
     time.sleep(0.2)
     return m
 
-def get_server():
-    return Server("http://%s:%s" % (TEST_HOST, TEST_PORT))
+def get_server(loop):
+    return Server("http://%s:%s" % (TEST_HOST, TEST_PORT), loop=loop)
 
 def init():
     m = start_manager()
-    s = get_server()
+    s = get_server(m.loop)
     return (m, s)
 
 def test_basic():
     m = start_manager()
-
-    print("pssshit")
-    s = get_server()
-    print("mmm")
+    s = get_server(m.loop)
     assert s.version == __version__
 
-    print("la")
     m.stop()
     m.run()
 
@@ -52,12 +48,12 @@ def test_multiple_handers():
     http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
     http_endpoint2 = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT2))
     http_handler = HttpHandler(endpoints=[http_endpoint, http_endpoint2])
-    m = Manager(controllers=[http_handler])
-    m.start()
+    m = Manager()
+    m.start(controllers=[http_handler])
     time.sleep(0.2)
 
-    s = Server("http://%s:%s" % (TEST_HOST, TEST_PORT))
-    s2 = Server("http://%s:%s" % (TEST_HOST, TEST_PORT2))
+    s = Server("http://%s:%s" % (TEST_HOST, TEST_PORT), loop=m.loop)
+    s2 = Server("http://%s:%s" % (TEST_HOST, TEST_PORT2), loop=m.loop)
     assert TEST_PORT != TEST_PORT2
     assert s.version == __version__
     assert s2.version == __version__
@@ -66,8 +62,7 @@ def test_multiple_handers():
     m.run()
 
 def test_processes():
-    m = start_manager()
-    s = get_server()
+    m, s = init()
 
     assert s.processes() == []
 

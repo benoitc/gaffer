@@ -7,6 +7,8 @@ import signal
 
 from tornado import httpclient
 
+from .tornado_pyuv import IOLoop
+
 import six
 
 if six.PY3:
@@ -30,12 +32,63 @@ class GafferConflict(Exception):
     """ exption raised on HTTP 409 """
 
 
+class HTTPClient(object):
+    """A blocking HTTP client.
+
+    This interface is provided for convenience and testing; most applications
+    that are running an IOLoop will want to use `AsyncHTTPClient` instead.
+    Typical usage looks like this::
+
+        http_client = httpclient.HTTPClient()
+        try:
+            response = http_client.fetch("http://www.google.com/")
+            print response.body
+        except httpclient.HTTPError, e:
+            print "Error:", e
+    """
+    def __init__(self, async_client_class=None, loop=None, **kwargs):
+        self._io_loop = IOLoop(_loop=loop)
+        if async_client_class is None:
+            async_client_class = httpclient.AsyncHTTPClient
+        self._async_client = async_client_class(self._io_loop, **kwargs)
+        self._response = None
+        self._closed = False
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        """Closes the HTTPClient, freeing any resources used."""
+        if not self._closed:
+            self._async_client.close()
+            self._closed = True
+
+    def fetch(self, request, **kwargs):
+        """Executes a request, returning an `HTTPResponse`.
+
+        The request may be either a string URL or an `HTTPRequest` object.
+        If it is a string, we construct an `HTTPRequest` using any additional
+        kwargs: ``HTTPRequest(request, **kwargs)``
+
+        If an error occurs during the fetch, we raise an `HTTPError`.
+        """
+        def callback(response):
+            self._response = response
+            self._io_loop.stop()
+        self._async_client.fetch(request, callback, **kwargs)
+        self._io_loop.start()
+        response = self._response
+        self._response = None
+        response.rethrow()
+        return response
+
 class Server(object):
 
-    def __init__(self, uri=None, **options):
+    def __init__(self, uri=None, loop=None, **options):
+        self.loop = loop or pyuv.Loop()
         self.uri = uri
         self.options = options
-        self.client = httpclient.HTTPClient()
+        self.client = HTTPClient(loop=loop)
 
     def request(self, method, path, headers=None, body=None, **params):
         headers = headers or {}
