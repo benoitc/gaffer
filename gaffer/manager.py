@@ -115,6 +115,39 @@ class ProcessState(object):
         return list(self.running)
 
 class Manager(object):
+    """ Manager - maintain process alive
+
+    A manager is responsible of maintaining process alive and manage
+    actions on them:
+
+    - increase/decrease the number of processes / process template
+    - start/stop processes
+    - add/remove process templates to manage
+
+    The design is pretty simple. The manager is running on the default
+    event loop and listening on events. Events are sent when a process
+    exit or from any method call. The control of a manager can be
+    extended by adding controllers on startup. For example gaffer
+    provides a controller allowing you to control processes via HTTP.
+
+    Running a controller is done like this::
+
+        # initialize the controller with the default loop
+        loop = pyuv.Loop.default_loop()
+        m = Manager(loop=loop)
+
+        # start the controller
+        m.start(controllers=[HttpHandler])
+
+        .... # so smth
+
+        m.stop() # stop the controlller
+        m.run() # run the event loop
+
+    .. note:: The loop can be omitted if the first thing you do is
+    launching a manager. The run function is here for convenience. You
+    can of course just run `loop.run()` instead
+    """
 
     def __init__(self, loop=None,):
 
