@@ -32,7 +32,6 @@ Features
     - Compatible with python 2.6x, 2.7x, 3.x
 
 .. note::
-
     gaffer source code is hosted on `Github <http://github.com/benoitc/gaffer.git>`_
 
 Contents:
