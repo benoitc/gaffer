@@ -12,6 +12,7 @@ Contents:
    :titlesonly:
 
    overview
+   commands
    processframework
    httpclient
    controllers
