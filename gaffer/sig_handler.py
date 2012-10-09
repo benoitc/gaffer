@@ -20,6 +20,7 @@ if pyuv.__version__.startswith("0.8"):
         def stop(self):
             self._signal_uv.stop()
 else:
+    print("la")
     Signal = pyuv.Signal
 
 
@@ -34,6 +35,7 @@ class SigHandler(object):
     def start(self, loop, manager):
         self.loop = loop
         self.manager = manager
+
 
         # quit signals handling
         for sig in self.QUIT_SIGNALS:

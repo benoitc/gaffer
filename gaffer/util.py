@@ -5,6 +5,7 @@
 import grp
 import os
 import pwd
+import resource
 import socket
 
 import six
@@ -19,6 +20,12 @@ else:
         return s
 
 _SYMBOLS = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
+
+MAXFD = 1024
+if hasattr(os, "devnull"):
+    REDIRECT_TO = os.devnull
+else:
+    REDIRECT_TO = "/dev/null"
 
 def getcwd():
     """Returns current path, try to use PWD env first"""
@@ -122,3 +129,69 @@ def is_ipv6(addr):
     except socket.error: # not a valid address
         return False
     return True
+
+
+
+def get_maxfd():
+    maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+    if (maxfd == resource.RLIM_INFINITY):
+        maxfd = MAXFD
+    return maxfd
+
+try:
+    from os import closerange
+except ImportError:
+    def closerange(fd_low, fd_high):    # NOQA
+        # Iterate through and close all file descriptors.
+        for fd in xrange(fd_low, fd_high):
+            try:
+                os.close(fd)
+            except OSError:    # ERROR, fd wasn't open to begin with (ignored)
+                pass
+
+
+# http://www.svbug.com/documentation/comp.unix.programmer-FAQ/faq_2.html#SEC16
+def daemonize():
+    """Standard daemonization of a process.
+    """
+    #if not 'CIRCUS_PID' in os.environ:
+    if os.fork():
+        os._exit(0)
+    os.setsid()
+
+    if os.fork():
+        os._exit(0)
+
+    os.umask(0)
+    maxfd = get_maxfd()
+    closerange(0, maxfd)
+
+    os.open(REDIRECT_TO, os.O_RDWR)
+    os.dup2(0, 1)
+    os.dup2(0, 2)
+
+def locate_program(program, use_none=False, raise_error=False):
+    if os.path.isabs(program):
+        # Absolute path: nothing to do
+        return program
+    if os.path.dirname(program):
+        # ./test => $PWD/./test
+        # ../python => $PWD/../python
+        program = os.path.normpath(os.path.realpath(program))
+        return program
+    if use_none:
+        default = None
+    else:
+        default = program
+    paths = os.getenv('PATH')
+    if not paths:
+        if raise_error:
+            raise ValueError("Unable to get PATH environment variable")
+        return default
+    for path in paths.split(os.pathsep):
+        filename = os.path.join(path, program)
+        if os.access(filename, os.X_OK):
+            return filename
+    if raise_error:
+        raise ValueError("Unable to locate program %r in PATH" % program)
+    return default

@@ -196,7 +196,7 @@ class HttpEndpoint(object):
             ssl_options=None):
         # uri should be a list
         if isinstance(uri, six.string_types):
-            self.uri = [uri]
+            self.uri = uri.split(",")
         else:
             self.uri = uri
         self.backlog = backlog
@@ -234,8 +234,6 @@ class HttpEndpoint(object):
                     self.server.add_socket(s)
             else:
                 self.server.add_socket(sock)
-
-        print("%s bound" % sock)
 
         # start the server
         self.server.start()
@@ -279,9 +277,7 @@ class HttpHandler(object):
 
         # start endpoints
         for endpoint in self.endpoints:
-            print("start %s" % endpoint)
             endpoint.start(self.loop, self.app)
-            print("%s started" % endpoint)
 
     def stop(self):
         for endpoint in self.endpoints:

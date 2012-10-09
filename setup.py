@@ -61,5 +61,5 @@ setup(name='gaffer',
       entry_points="""
 
       [console_scripts]
-      gafferd=gaffer.server:run
+      gafferd=gaffer.gafferd:run
       """)
