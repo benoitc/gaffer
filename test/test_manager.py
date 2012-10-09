@@ -286,9 +286,7 @@ def test_flapping():
 
     cmd, args, wdir = crash_cmd()
     flapping = FlappingInfo(attempts=1, window=1, retry_in=0.1, max_retry=2)
-
     m.add_process("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
-
     state = m.get_process_state("crashing")
 
     def cb(handle):
@@ -297,6 +295,17 @@ def test_flapping():
 
     t = pyuv.Timer(m.loop)
     t.start(cb, 0.8, 0.8)
+
+
+    m.add_process("crashing2", cmd, args=args, cwd=wdir)
+    state = m.get_process_state("crashing2")
+
+    def cb1(handle):
+        handle.stop()
+        assert state.stopped == False
+
+    t = pyuv.Timer(m.loop)
+    t.start(cb1, 0.8, 0.8)
 
     m.stop()
     m.run()
