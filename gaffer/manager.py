@@ -8,6 +8,7 @@ try:
     from queue import Queue
 except ImportError:
     from Queue import Queue
+import os
 
 import pyuv
 import six
