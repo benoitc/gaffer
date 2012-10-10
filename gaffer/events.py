@@ -162,6 +162,9 @@ class EventEmitter(object):
             self._wildcards.add((once, listener))
             return
 
+        if evtype.endswith("."):
+            evtype = evtype[:-1]
+
         if evtype not in self._events:
             self._events[evtype] = set()
 

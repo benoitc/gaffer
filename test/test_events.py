@@ -104,6 +104,7 @@ def test_wildcard():
     loop = pyuv.Loop.default_loop()
     emitted = []
     emitted2 = []
+    emitted3 = []
 
     def cb(ev, val):
         emitted.append(val)
@@ -111,9 +112,14 @@ def test_wildcard():
     def cb2(ev, val):
         emitted2.append(val)
 
+    def cb3(ev, val):
+        emitted3.append(val)
+
+
     emitter = EventEmitter(loop)
     emitter.subscribe(".", cb)
     emitter.subscribe("a.b", cb2)
+    emitter.subscribe("a.b.", cb3)
 
     assert emitter._wildcards == set([(False, cb)])
 
@@ -122,3 +128,4 @@ def test_wildcard():
 
     assert emitted == [1]
     assert emitted2 == [1]
+    assert emitted3 == [1]
