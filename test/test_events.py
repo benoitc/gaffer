@@ -14,7 +14,7 @@ def test_basic():
     emitted = []
     loop = pyuv.Loop.default_loop()
 
-    def cb():
+    def cb(ev):
         emitted.append(True)
 
     emitter = EventEmitter(loop)
@@ -35,7 +35,7 @@ def test_basic():
 def test_publish_value():
     emitted = []
     loop = pyuv.Loop.default_loop()
-    def cb(val):
+    def cb(ev, val):
         emitted.append(val)
 
     emitter = EventEmitter(loop)
@@ -49,7 +49,7 @@ def test_publish_value():
 def test_publish_once():
     emitted = []
     loop = pyuv.Loop.default_loop()
-    def cb(val):
+    def cb(ev, val):
         emitted.append(val)
 
     emitter = EventEmitter(loop)
@@ -65,10 +65,10 @@ def test_multiple_listener():
     emitted = []
 
     loop = pyuv.Loop.default_loop()
-    def cb1(val):
+    def cb1(ev, val):
         emitted.append((1, val))
 
-    def cb2(val):
+    def cb2(ev, val):
         emitted.append((2, val))
 
     emitter = EventEmitter(loop)
@@ -86,10 +86,10 @@ def test_multipart():
     emitted2 = []
     loop = pyuv.Loop.default_loop()
 
-    def cb1(val):
+    def cb1(ev, val):
         emitted.append(val)
 
-    def cb2(val):
+    def cb2(ev, val):
         emitted2.append(val)
 
     emitter = EventEmitter(loop)
@@ -102,3 +102,26 @@ def test_multipart():
     assert emitted == [1]
     assert 1 in emitted2
     assert 2 in emitted2
+
+def test_wildcard():
+    loop = pyuv.Loop.default_loop()
+    emitted = []
+    emitted2 = []
+
+    def cb(ev, val):
+        emitted.append(val)
+
+    def cb2(ev, val):
+        emitted2.append(val)
+
+    emitter = EventEmitter(loop)
+    emitter.subscribe(".", cb)
+    emitter.subscribe("a.b", cb2)
+
+    assert emitter._wildcards == set([(False, cb)])
+
+    emitter.publish("a.b", 1)
+    loop.run()
+
+    assert emitted == [1]
+    assert emitted2 == [1]
