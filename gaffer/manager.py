@@ -340,6 +340,7 @@ class Manager(object):
 
             self._emitter.publish("create", name)
             if start:
+                self._emitter.publish("start", name)
                 self._spawn_processes(state)
 
     def update_process(self, name, cmd, **kwargs):
@@ -419,7 +420,9 @@ class Manager(object):
             state.stopped = False
             self._manage_processes(state)
 
-    start_process = manage_process
+    def start_process(self, name):
+        self._emitter.publish("start", name)
+        self.manage_process(name)
 
     def reap_process(self, name):
         with self._lock:

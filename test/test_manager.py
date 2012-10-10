@@ -333,6 +333,7 @@ def test_events():
 
 
     assert ('create', 'dummy') in emitted
+    assert ('start', 'dummy') in emitted
     assert ('update', 'dummy') in emitted
     assert ('stop', 'dummy') in emitted
     assert ('delete', 'dummy') in emitted
