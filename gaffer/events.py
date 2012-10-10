@@ -2,6 +2,35 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+""""
+Many events happend in gaffer. For example a process will emist the
+events "start", "stop", "exit". This module offeres a common way to
+susbscribe and emit events.
+
+ex::
+
+        event = EventEmitter()
+
+        # subscribe to all events with the pattern a.*
+        event.subscribe("a", subscriber)
+
+        # subscribe to all events "a.b"
+        event.subscribe("a.b", subscriber2)
+
+        # subscribe to all events (wildcard)
+        event.subscribe(".", subscriber3)
+
+        # publish an event
+        event.publish("a.b", arg, namedarg=val)
+
+In this example all subscribers will be notified of the event. A
+subscriber is just a callable *(event, *args, **kwargs)*
+
+Classes
+-------
+
+"""
+
 from collections import deque
 from threading import RLock
 
