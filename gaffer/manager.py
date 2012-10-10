@@ -338,10 +338,10 @@ class Manager(object):
             state = ProcessState(name, cmd, **kwargs)
             self.processes[name] = state
 
-            self._emitter.publish("create", name)
+            self._publish("create", name=name)
             if start:
-                self._emitter.publish("start", name)
-                self._emitter.publish("proc.%s.start" % name)
+                self._publish("start", name=name)
+                self._publish("proc.%s.start" % name, name=name)
                 self._spawn_processes(state)
 
     def update_process(self, name, cmd, **kwargs):
@@ -361,7 +361,7 @@ class Manager(object):
             if 'start' in kwargs:
                 del kwargs['start']
 
-            self._emitter.publish("update", name)
+            self._publish("update", name=name)
             self._spawn_processes(state)
 
     def stop_process(self, name_or_id):
@@ -390,7 +390,7 @@ class Manager(object):
 
             self._stop_byname_unlocked(name)
             del self.processes[name]
-            self._emitter.publish("delete", name)
+            self._publish("delete", name=name)
 
     def get_process_info(self, name):
         """ get process info """
@@ -421,8 +421,8 @@ class Manager(object):
             self._manage_processes(state)
 
     def start_process(self, name):
-        self._emitter.publish("start", name)
-        self._emitter.publish("proc.%s.start" % name)
+        self._publish("start", name=name)
+        self._publish("proc.%s.start" % name, name=name)
         self.manage_process(name)
 
     def reap_process(self, name):
@@ -442,7 +442,7 @@ class Manager(object):
         with self._lock:
             state = self.get_process_state(name)
             ret = state.ttin(i)
-            self._emitter.publish("update", name)
+            self._publish("update", name=name)
             self._manage_processes(state)
             return ret
 
@@ -453,7 +453,7 @@ class Manager(object):
         with self._lock:
             state = self.get_process_state(name)
             ret = state.ttou(i)
-            self._emitter.publish("update", name)
+            self._publish("update", name=name)
             self._manage_processes(state)
             return ret
 
@@ -546,15 +546,15 @@ class Manager(object):
         # we keep a list of all running process by id here
         self.running[pid] = p
 
-        self._emitter.publish("proc.%s.spawn" % p.name, pid)
+        self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid)
 
     def _stop_byname_unlocked(self, name):
         """ stop a process by name """
         if name not in self.processes:
             return
 
-        self._emitter.publish("stop", name)
-        self._emitter.publish("proc.%s.stop" % name)
+        self._publish("stop", name=name)
+        self._publish("proc.%s.stop" % name, name=name)
 
         state = self.processes[name]
         state.stopped = True
@@ -581,7 +581,7 @@ class Manager(object):
 
         p = self.running.pop(pid)
 
-        self._emitter.publish("proc.%s.stop_pid" % p.name, pid)
+        self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid)
 
         # remove the process from the running processes
         state = self.processes[p.name]
@@ -602,7 +602,8 @@ class Manager(object):
         if diff > 0:
             for i in range(diff):
                 p = state.dequeue()
-                self._emitter.publish("proc.%s.reap" % p.name, p.id)
+                self._publish("proc.%s.reap" % p.name, name=p.name,
+                    pid=p.id)
                 p.stop()
 
     def _manage_processes(self, state):
@@ -644,7 +645,7 @@ class Manager(object):
 
         check_flapping, can_retry = state.check_flapping()
         if not check_flapping:
-            self._emitter.publish("flap", state.name)
+            self._publish("flap", name=state.name)
             # stop the processes
             self._stop_byname_unlocked(state.name)
             if can_retry:
@@ -666,6 +667,11 @@ class Manager(object):
                 state._flapping_timer = t
             return False
         return True
+
+    def _publish(self, evtype, **ev):
+        event = {"event": evtype }
+        event.update(ev)
+        self._emitter.publish(evtype, event)
 
 
     # ------------- events handler
@@ -693,8 +699,9 @@ class Manager(object):
     def _on_exit(self, process, exit_status, term_signal):
         """ exit callback returned when a process exit """
 
-        self._emitter.publish("proc.%s.exit" % process.name, process.id,
-                exit_status, term_signal)
+        self._publish("proc.%s.exit" % process.name, name=process.name,
+                pid=process.id, exit_status=exit_status,
+                term_signal=term_signal)
 
         with self._lock:
             # remove the process from the running processes

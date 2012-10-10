@@ -378,8 +378,7 @@ class WatcherHandler(RequestHandler):
     def _on_heartbeat(self, handle):
         self.write("\n")
 
-    def _on_event(self, evtype, *args, **kwargs):
-        msg = {"event": evtype, "args": args, "kwargs": kwargs}
+    def _on_event(self, evtype, msg):
         if self._feed == "eventsource":
             event = ["event: %s" % evtype,
                     "data: %s" % json.dumps(msg), ""]

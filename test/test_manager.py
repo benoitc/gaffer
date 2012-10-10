@@ -316,8 +316,8 @@ def test_events():
     m = Manager()
     m.start()
 
-    def cb(ev, name):
-        emitted.append((ev, name))
+    def cb(ev, msg):
+        emitted.append((ev, msg['name']))
 
     # subscribe to all events
     m.on('.', cb)
@@ -369,8 +369,9 @@ def test_process_exit_event():
     m = Manager()
     m.start()
 
-    def cb(ev, *args):
-        emitted.append(args)
+    def cb(ev, msg):
+        print(msg)
+        emitted.append(msg)
 
     # subscribe to all events
     m.on('proc.dummy.exit', cb)
@@ -384,5 +385,7 @@ def test_process_exit_event():
     m.run()
 
     assert len(emitted) == 1
-    assert len(emitted[0]) == 3
-    assert emitted[0][0] == 1
+    assert len(emitted[0]) == 5
+
+    msg = emitted[0]
+    assert "exit_status" in msg
