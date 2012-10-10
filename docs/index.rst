@@ -22,7 +22,7 @@ Features
 
     - Framework to manage and interract your processes
     - Fully evented. Use the libuv event loop using the
-      `pyuv library <https://pyuv.readthedocs.org>`_
+      `pyuv library <https://pyuv.readthedocs.com>`_
     - Server and console tool to manage your process via HTTP on TCP and
       UNIX sockets.
     - HTTPS supported
