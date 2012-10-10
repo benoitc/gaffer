@@ -309,4 +309,3 @@ def test_flapping():
 
     m.stop()
     m.run()
-

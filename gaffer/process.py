@@ -119,11 +119,11 @@ class RedirectIO(object):
         # redirect the message to the main pipe
         if data:
             msg = { "name": self.process.name,
-                    "pid": self.process_type,
+                    "pid": self.process.id,
                     "label": self.label,
                     "data": data,
                     "msg_type": "redirect"}
-            handle.write2(json.dumps(msg), self.stream)
+            self.stream.write(json.dumps(msg))
 
 
 class ProcessWatcher(object):
