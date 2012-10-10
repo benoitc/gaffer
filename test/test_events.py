@@ -2,9 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import time
-
-
 import pyuv
 
 from gaffer.events import EventEmitter
