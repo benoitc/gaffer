@@ -337,3 +337,29 @@ def test_events():
     assert ('update', 'dummy') in emitted
     assert ('stop', 'dummy') in emitted
     assert ('delete', 'dummy') in emitted
+
+def test_process_events():
+    emitted = []
+    m = Manager()
+    m.start()
+
+    def cb(ev, *args):
+        print(ev)
+        emitted.append(ev)
+
+    # subscribe to all events
+    m.on('proc.dummy', cb)
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir)
+    m.stop_process("dummy")
+
+    time.sleep(0.4)
+    m.stop()
+    m.run()
+
+
+    assert 'proc.dummy.start' in emitted
+    assert 'proc.dummy.spawn' in emitted
+    assert 'proc.dummy.stop' in emitted
+    assert 'proc.dummy.exit' in emitted

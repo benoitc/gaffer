@@ -100,6 +100,21 @@ def test_multipart():
     assert 1 in emitted2
     assert 2 in emitted2
 
+
+def test_multipart2():
+    emitted = []
+    loop = pyuv.Loop.default_loop()
+
+    def cb(ev, val):
+        emitted.append(ev)
+
+    emitter = EventEmitter(loop)
+    emitter.subscribe("a.b", cb)
+    emitter.publish("a.b.c", 2)
+    loop.run()
+
+    assert emitted == ['a.b.c']
+
 def test_wildcard():
     loop = pyuv.Loop.default_loop()
     emitted = []

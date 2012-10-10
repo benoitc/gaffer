@@ -73,24 +73,23 @@ class EventEmitter(object):
         """
         if "." in evtype:
             parts = evtype.split(".")
-            self._publish(parts[0], *args, **kwargs)
+            self._publish(parts[0], evtype, *args, **kwargs)
             key = []
             for part in parts:
                 key.append(part)
-                self._publish(".".join(key), *args, **kwargs)
+                self._publish(".".join(key), evtype, *args, **kwargs)
         else:
-            self._publish(evtype, *args, **kwargs)
+            self._publish(evtype, evtype, *args, **kwargs)
 
         # emit the event for wildcards events
         self._publish_wildcards(evtype, *args, **kwargs)
 
-    def _publish(self, evtype, *args, **kwargs):
-        if evtype in self._events:
-            self._queue.append((evtype, args, kwargs))
+    def _publish(self, pattern, evtype, *args, **kwargs):
+        if pattern in self._events:
+            self._queue.append((pattern, evtype, args, kwargs))
 
             idle = pyuv.Idle(self.loop)
             idle.start(self._send)
-            idle.unref()
             self._triggered.append(idle)
 
     def _publish_wildcards(self, evtype, *args, **kwargs):
@@ -99,7 +98,6 @@ class EventEmitter(object):
 
             idle = pyuv.Idle(self.loop)
             idle.start(self._send_wildcards)
-            idle.unref()
             self._triggered.append(idle)
 
     def _send_wildcards(self, handle):
@@ -121,14 +119,14 @@ class EventEmitter(object):
     def _send(self, handle):
         # find an event to send
         try:
-            evtype, args, kwargs = self._queue.popleft()
+            pattern, evtype, args, kwargs = self._queue.popleft()
         except IndexError:
             return
 
         # emit the event to all listeners
-        if evtype in self._events:
-            self._events[evtype] = self._send_listeners(evtype,
-                self._events[evtype].copy(), *args, **kwargs)
+        if pattern in self._events:
+            self._events[pattern] = self._send_listeners(evtype,
+                self._events[pattern].copy(), *args, **kwargs)
 
         # close the handle and removed it from the list of triggered
         self._triggered.remove(handle)

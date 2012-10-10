@@ -341,6 +341,7 @@ class Manager(object):
             self._emitter.publish("create", name)
             if start:
                 self._emitter.publish("start", name)
+                self._emitter.publish("proc.%s.start" % name)
                 self._spawn_processes(state)
 
     def update_process(self, name, cmd, **kwargs):
@@ -413,7 +414,6 @@ class Manager(object):
                        "max_processes": state.numprocesses }
             return status
 
-
     def manage_process(self, name):
         with self._lock:
             state = self.get_process_state(name)
@@ -422,6 +422,7 @@ class Manager(object):
 
     def start_process(self, name):
         self._emitter.publish("start", name)
+        self._emitter.publish("proc.%s.start" % name)
         self.manage_process(name)
 
     def reap_process(self, name):
@@ -545,12 +546,15 @@ class Manager(object):
         # we keep a list of all running process by id here
         self.running[pid] = p
 
+        self._emitter.publish("proc.%s.spawn" % p.name, pid)
+
     def _stop_byname_unlocked(self, name):
         """ stop a process by name """
         if name not in self.processes:
             return
 
         self._emitter.publish("stop", name)
+        self._emitter.publish("proc.%s.stop" % name)
 
         state = self.processes[name]
         state.stopped = True
@@ -568,7 +572,6 @@ class Manager(object):
             # running pid now.
             if p.id in self.running:
                 self.running.pop(p.id)
-
             p.stop()
 
     def _stop_byid_unlocked(self, pid):
@@ -577,6 +580,8 @@ class Manager(object):
             return
 
         p = self.running.pop(pid)
+
+        self._emitter.publish("proc.%s.stop_pid" % p.name, pid)
 
         # remove the process from the running processes
         state = self.processes[p.name]
@@ -597,6 +602,7 @@ class Manager(object):
         if diff > 0:
             for i in range(diff):
                 p = state.dequeue()
+                self._emitter.publish("proc.%s.reap" % p.name, p.id)
                 p.stop()
 
     def _manage_processes(self, state):
@@ -686,6 +692,11 @@ class Manager(object):
 
     def _on_exit(self, process, exit_status, term_signal):
         """ exit callback returned when a process exit """
+
+        print("odd proc.%s.exit" % process.name)
+        self._emitter.publish("proc.%s.exit" % process.name, process.id)
+
+        print("emitted")
         with self._lock:
             # remove the process from the running processes
             if process.id in self.running:
