@@ -6,57 +6,41 @@ import signal
 
 import pyuv
 
-if pyuv.__version__.startswith("0.8"):
-    class Signal(object):
-
-        def __init__(self, loop):
-            self.loop = loop
-            self._signal_uv = pyuv.Signal(loop)
-
-        def start(self, cb, signum):
-            self._signal_uv.start()
-            signal.signal(signum, cb)
-
-        def stop(self):
-            self._signal_uv.stop()
-else:
-    print("la")
-    Signal = pyuv.Signal
-
-
 class SigHandler(object):
     """ A simple controller to handle signals """
 
     QUIT_SIGNALS = (signal.SIGQUIT, signal.SIGTERM, signal.SIGINT)
 
     def __init__(self):
-        self.signal_handlers = []
+        self._sig_handler = None
 
     def start(self, loop, manager):
         self.loop = loop
         self.manager = manager
 
+        need_unref = False
+        if hasattr(pyuv, "SignalChecker"):
+            self._sig_handler = pyuv.SignalChecker(self.loop)
+        else:
+            self._sig_handler = pyuv.Signal(self.loop)
+            need_unref = True
 
         # quit signals handling
-        for sig in self.QUIT_SIGNALS:
-            s = Signal(self.loop)
-            s.start(self.handle_quit, sig)
-            self.signal_handlers.append(s)
+        for signum in self.QUIT_SIGNALS:
+            signal.signal(signum, self.handle_quit)
 
         # reload signal
-        s = Signal(self.loop)
-        s.start(self.handle_reload, signal.SIGHUP)
-        self.signal_handlers.append(s)
+        signal.signal(signal.SIGHUP, self.handle_reload)
 
         # chld
-        s = Signal(self.loop)
-        s.start(self.handle_chld, signal.SIGCHLD)
-        self.signal_handlers.append(s)
+        signal.signal(signal.SIGCHLD, self.handle_chld)
+
+        self._sig_handler.start()
+        if need_unref:
+            self._sig_handler.unref()
 
     def stop(self):
-        # stop all signals handlers
-        for h in self.signal_handlers:
-            h.stop()
+        self._sig_handler.close()
 
     def restart(self):
         # we never restart, just return

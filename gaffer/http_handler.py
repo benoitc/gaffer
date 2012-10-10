@@ -362,7 +362,6 @@ class WatcherHandler(RequestHandler):
             self._heartbeat.start(self._on_heartbeat, heartbeat,
                     heartbeat)
 
-
         if feed == "eventsource":
             self.set_header("Content-Type", "text/event-stream")
         else:
@@ -370,7 +369,6 @@ class WatcherHandler(RequestHandler):
         self.set_header("Cache-Control", "no-cache")
 
         # subscribe to events
-        print(pattern)
         self._pattern = pattern
         m.subscribe(pattern, self._on_event)
 
@@ -382,7 +380,6 @@ class WatcherHandler(RequestHandler):
         if self._feed == "eventsource":
             event = ["event: %s" % evtype,
                     "data: %s" % json.dumps(msg), ""]
-            #print("send %s" % "\n".join(event))
             self.write("\r\n".join(event))
             self.flush()
         else:
@@ -391,12 +388,11 @@ class WatcherHandler(RequestHandler):
 
     def _handle_disconnect(self):
         self._closed = True
-
         m = self.settings.get('manager')
         m.unsubscribe(self._pattern, self._on_event)
-
         if self._heartbeat is not None:
             self._heartbeat.close()
+
 
     def on_close_connection(self):
         self._handle_disconnect()

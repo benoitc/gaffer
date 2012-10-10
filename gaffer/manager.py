@@ -574,6 +574,7 @@ class Manager(object):
                 self.running.pop(p.id)
             p.stop()
 
+
     def _stop_byid_unlocked(self, pid):
         """ stop a process bby id """
         if pid not in self.running:
