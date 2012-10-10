@@ -2,6 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import copy
 from collections import deque
 from threading import RLock
 
@@ -51,9 +52,9 @@ class EventEmitter(object):
             return
 
         # emit the event to all listeners
-        listeners =  self._events[evtype]
+        listeners =  copy.copy(self._events[evtype])
         to_remove = []
-        for once, listener in self._events[evtype]:
+        for once, listener in listeners:
             try:
                 listener(*args, **kwargs)
             except Exception as e: # we ignore all exception
