@@ -43,7 +43,7 @@ class DefaultConfigParser(configparser.ConfigParser):
     def get(self, section, option, default=None):
         if not self.has_option(section, option):
             return default
-        return super(DefaultConfigParser, self).get(section, option)
+        return configparser.ConfigParser.get(self, section, option)
 
     def getint(self, section, option, default=None):
         if not self.has_option(section, option):
@@ -53,7 +53,7 @@ class DefaultConfigParser(configparser.ConfigParser):
     def getboolean(self, section, option, default=None):
         if not self.has_option(section, option):
             return default
-        return super(DefaultConfigParser, self).getboolean(section, option)
+        return configparser.ConfigParser.getboolean(self,section, option)
 
 
 class Server(object):
@@ -175,6 +175,11 @@ class Server(object):
         controllers = [SigHandler(), HttpHandler(endpoints=endpoints)]
         return controllers, processes
 
+def trace(frame, event, arg):
+        print "%s, %s:%d" % (event, frame.f_code.co_filename, frame.f_lineno)
+        return trace
+
+#sys.settrace(trace)
 
 def run():
     parser = argparse.ArgumentParser(description='Run some watchers.')
@@ -200,6 +205,7 @@ def run():
             sys.exit(1)
 
     s = Server(args.config)
+
 
     try:
         s.run()

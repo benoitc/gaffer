@@ -508,6 +508,7 @@ class Manager(object):
             for ctl in self.controllers:
                 ctl.stop()
 
+
             # we are now stopped
             self.started = False
 
@@ -714,7 +715,6 @@ class Manager(object):
             if not state:
                 return
             state.remove(process)
-
             # if not stopped we may need to restart a new process
             if not state.stopped and self._check_flapping(state):
                 self._manage_processes(state)
