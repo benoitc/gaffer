@@ -175,12 +175,6 @@ class Server(object):
         controllers = [SigHandler(), HttpHandler(endpoints=endpoints)]
         return controllers, processes
 
-def trace(frame, event, arg):
-        print "%s, %s:%d" % (event, frame.f_code.co_filename, frame.f_lineno)
-        return trace
-
-#sys.settrace(trace)
-
 def run():
     parser = argparse.ArgumentParser(description='Run some watchers.')
     parser.add_argument('config', help='configuration file')
@@ -205,7 +199,6 @@ def run():
             sys.exit(1)
 
     s = Server(args.config)
-
 
     try:
         s.run()
