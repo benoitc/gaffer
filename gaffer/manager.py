@@ -693,10 +693,9 @@ class Manager(object):
     def _on_exit(self, process, exit_status, term_signal):
         """ exit callback returned when a process exit """
 
-        print("odd proc.%s.exit" % process.name)
-        self._emitter.publish("proc.%s.exit" % process.name, process.id)
+        self._emitter.publish("proc.%s.exit" % process.name, process.id,
+                exit_status, term_signal)
 
-        print("emitted")
         with self._lock:
             # remove the process from the running processes
             if process.id in self.running:
