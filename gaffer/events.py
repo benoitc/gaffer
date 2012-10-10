@@ -72,8 +72,7 @@ class EventEmitter(object):
 
                 self._events[evtype] = listeners
 
-        with self._lock:
-            self._triggered.remove(handle)
+        self._triggered.remove(handle)
 
         handle.stop()
         handle.close()
