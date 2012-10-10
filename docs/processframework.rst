@@ -6,6 +6,7 @@ Core gaffer framework
 
    manager
    process
+   events
    pidfile
    util
    tornado_pyuv
