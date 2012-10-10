@@ -309,3 +309,30 @@ def test_flapping():
 
     m.stop()
     m.run()
+
+
+def test_events():
+    emitted = []
+    m = Manager()
+    m.start()
+
+    def cb(ev, name):
+        emitted.append((ev, name))
+
+    # subscribe to all events
+    m.on('.', cb)
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.ttin("dummy", 1)
+    m.remove_process("dummy")
+
+    time.sleep(0.2)
+    m.stop()
+    m.run()
+
+
+    assert ('create', 'dummy') in emitted
+    assert ('update', 'dummy') in emitted
+    assert ('stop', 'dummy') in emitted
+    assert ('delete', 'dummy') in emitted

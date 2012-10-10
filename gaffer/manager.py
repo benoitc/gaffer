@@ -20,6 +20,7 @@ import time
 import pyuv
 import six
 
+from .events import EventEmitter
 from .process import Process
 from .sync import increment, add, sub, atomic_read, compare_and_swap
 
@@ -197,13 +198,16 @@ class Manager(object):
         can of course just run `loop.run()` instead
     """
 
-    def __init__(self, loop=None,):
+    def __init__(self, loop=None):
 
         # by default we run on the default loop
         self.loop = loop or pyuv.Loop.default_loop()
 
         # setup wakeup event
         self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
+
+        # initialize the emitter
+        self._emitter = EventEmitter(self.loop)
 
         # initialize some values
         self.controllers = None
@@ -264,6 +268,27 @@ class Manager(object):
         with self._lock:
             return self.running
 
+    def subscribe(self, evtype, listener):
+        """ subscribe to the manager event *eventype*
+
+        'on' is an alias to this function
+        """
+        self._emitter.subscribe(evtype, listener)
+    on = subscribe
+
+    def subscribe_once(self, evtype, listener):
+        """ subscribe once to the manager event *eventype*
+
+        'once' is an alias to this function
+        """
+        self._emitter.subscribe_once(evtype, listener)
+    once = subscribe
+
+
+    def unsubscribe(self, evtype, listener):
+        """ unsubscribe from the event *eventype* """
+        self._emitter.unsubscribe(evtype, listener)
+
     # ------------- process functions
 
     def add_process(self, name, cmd, **kwargs):
@@ -312,6 +337,8 @@ class Manager(object):
 
             state = ProcessState(name, cmd, **kwargs)
             self.processes[name] = state
+
+            self._emitter.publish("create", name)
             if start:
                 self._spawn_processes(state)
 
@@ -332,6 +359,7 @@ class Manager(object):
             if 'start' in kwargs:
                 del kwargs['start']
 
+            self._emitter.publish("update", name)
             self._spawn_processes(state)
 
     def stop_process(self, name_or_id):
@@ -360,6 +388,7 @@ class Manager(object):
 
             self._stop_byname_unlocked(name)
             del self.processes[name]
+            self._emitter.publish("delete", name)
 
     def get_process_info(self, name):
         """ get process info """
@@ -409,6 +438,7 @@ class Manager(object):
         with self._lock:
             state = self.get_process_state(name)
             ret = state.ttin(i)
+            self._emitter.publish("update", name)
             self._manage_processes(state)
             return ret
 
@@ -419,6 +449,7 @@ class Manager(object):
         with self._lock:
             state = self.get_process_state(name)
             ret = state.ttou(i)
+            self._emitter.publish("update", name)
             self._manage_processes(state)
             return ret
 
@@ -516,6 +547,8 @@ class Manager(object):
         if name not in self.processes:
             return
 
+        self._emitter.publish("stop", name)
+
         state = self.processes[name]
         state.stopped = True
 
@@ -602,6 +635,7 @@ class Manager(object):
 
         check_flapping, can_retry = state.check_flapping()
         if not check_flapping:
+            self._emitter.publish("flap", state.name)
             # stop the processes
             self._stop_byname_unlocked(state.name)
             if can_retry:
