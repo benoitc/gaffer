@@ -31,6 +31,9 @@ class EventEmitter(object):
             self._queue.clear()
             self._events = {}
 
+            # it will be garbage collected later
+            self._triggered = []
+
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**
 
