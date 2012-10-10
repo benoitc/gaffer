@@ -2,7 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import copy
 from collections import deque
 from threading import RLock
 
@@ -55,7 +54,7 @@ class EventEmitter(object):
             return
 
         # emit the event to all listeners
-        listeners =  copy.copy(self._events[evtype])
+        listeners =  self._events[evtype].copy()
         to_remove = []
         for once, listener in listeners:
             try:
