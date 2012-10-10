@@ -74,8 +74,6 @@ class EventEmitter(object):
                 self._events[evtype] = listeners
 
         self._triggered.remove(handle)
-
-        handle.stop()
         handle.close()
 
     def subscribe(self, evtype, listener, once=False):
