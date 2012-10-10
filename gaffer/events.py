@@ -38,7 +38,17 @@ class EventEmitter(object):
 
         The event will be emitted asynchronously so we don't block here
         """
+        if "." in evtype:
+            parts = evtype.split(".")
+            self._publish(parts[0], *args, **kwargs)
+            key = []
+            for part in parts:
+                key.append(part)
+                self._publish(".".join(key), *args, **kwargs)
+        else:
+            self._publish(evtype, *args, **kwargs)
 
+    def _publish(self, evtype, *args, **kwargs):
         if evtype in self._events:
             self._queue.append((evtype, args, kwargs))
             idle = pyuv.Idle(self.loop)
@@ -80,7 +90,7 @@ class EventEmitter(object):
 
     def subscribe(self, evtype, listener, once=False):
         """ subcribe to an event """
-        if not evtype in self._events:
+        if evtype not in self._events:
             self._events[evtype] = set()
 
         self._events[evtype].add((once, listener))

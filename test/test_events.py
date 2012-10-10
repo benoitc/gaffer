@@ -80,3 +80,25 @@ def test_multiple_listener():
     assert (1, 1) in emitted
     assert (2, 1) in emitted
 
+
+def test_multipart():
+    emitted = []
+    emitted2 = []
+    loop = pyuv.Loop.default_loop()
+
+    def cb1(val):
+        emitted.append(val)
+
+    def cb2(val):
+        emitted2.append(val)
+
+    emitter = EventEmitter(loop)
+    emitter.subscribe("a.b", cb1)
+    emitter.subscribe("a", cb2)
+    emitter.publish("a.b", 1)
+    emitter.publish("a", 2)
+    loop.run()
+
+    assert emitted == [1]
+    assert 1 in emitted2
+    assert 2 in emitted2
