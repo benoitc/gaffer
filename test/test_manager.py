@@ -414,9 +414,7 @@ def test_processes_stats():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-
     testfile1, cmd1, args1, wdir1 = dummy_cmd()
-
     m.add_process("a", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
     infos = list(m.processes_stats())
@@ -432,4 +430,3 @@ def test_processes_stats():
     assert infos[0]['name'] == "a"
     assert infos2[0]['name'] == "a"
     assert infos2[1]['name'] == "b"
-
