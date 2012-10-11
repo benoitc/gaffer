@@ -499,9 +499,25 @@ class Manager(object):
 
     # ------------- private functions
 
+    def _shutdown(self, handle):
+
+        def clean_cb(h):
+            if isinstance(h, pyuv.Process) and h.active:
+                h.close()
+
+        self.loop.walk(clean_cb)
+        handle.stop()
+
+
     def _stop(self):
         # stop all processes
         self.stop_processes()
+
+        if self.processes:
+            # graceful shutdown let a chance to unstopped process to
+            # close cleanly
+            self._shutdown_h = pyuv.Timer(self.loop)
+            self._shutdown_h.start(self._shutdown, 0.1, 0.1)
 
         with self._lock:
             # stop controllers
