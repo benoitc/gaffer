@@ -430,3 +430,30 @@ def test_processes_stats():
     assert infos[0]['name'] == "a"
     assert infos2[0]['name'] == "a"
     assert infos2[1]['name'] == "b"
+
+def test_monitor():
+    m = Manager()
+    monitored = []
+    def cb(evtype, info):
+        monitored.append((evtype, info))
+
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("a", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
+    pid = m.running[1].pid
+    m.monitor("a", cb)
+
+    def stop(handle):
+        m.unmonitor("a", cb)
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.3, 0.0)
+
+    m.run()
+    assert len(monitored) >= 1
+    res = monitored[0]
+    assert res[0] == "stat"
+    assert "cpu" in res[1]
+    assert res[1]["pid"] == pid

@@ -300,6 +300,38 @@ class Manager(object):
                 state = self.processes[name_or_id]
                 return state.stats()
 
+    def monitor(self, name_or_id, listener):
+        """ get stats changes on a process template or id
+        """
+        with self._lock:
+            if isinstance(name_or_id, int):
+                try:
+                    return self.running[name_or_id].monitor(listener)
+                except KeyError:
+                    raise KeyError("%s not found" % name_or_id)
+            else:
+                if name_or_id not in self.processes:
+                    raise KeyError("%r not found" % name_or_id)
+
+                state = self.processes[name_or_id]
+                return state.monitor(listener)
+
+    def unmonitor(self, name_or_id, listener):
+        """ get stats changes on a process template or id
+        """
+        with self._lock:
+            if isinstance(name_or_id, int):
+                try:
+                    return self.running[name_or_id].unmonitor(listener)
+                except KeyError:
+                    raise KeyError("%s not found" % name_or_id)
+            else:
+                if name_or_id not in self.processes:
+                    raise KeyError("%r not found" % name_or_id)
+
+                state = self.processes[name_or_id]
+                return state.unmonitor(listener)
+
     def manage_process(self, name):
         with self._lock:
             state = self.get_process_state(name)
@@ -769,6 +801,13 @@ class ProcessState(object):
                 min_cpu=min_cpu)
         return ret
 
+    def monitor(self, listener):
+        for p in self.running:
+            p.monitor(listener)
+
+    def unmonitor(self, listener):
+        for p in self.running:
+            p.unmonitor(listener)
 
     def check_flapping(self):
         f = self.flapping
