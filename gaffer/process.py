@@ -100,7 +100,7 @@ class RedirectIO(object):
         self._emitter = EventEmitter(loop, max_size=1024)
 
         self._stdio = []
-        self._channels = {}
+        self._channels = []
 
         if not stdio:
             self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE),
@@ -115,15 +115,14 @@ class RedirectIO(object):
                 io = pyuv.StdIO(stream=p, flags=pyuv.UV_CREATE_PIPE | \
                                                 pyuv.UV_READABLE_PIPE | \
                                                 pyuv.UV_WRITABLE_PIPE)
-                self._channels[label] = p
+                setattr(p, 'label', label)
+                self._channels.append(p)
                 self._stdio.append(io)
 
 
     def start(self):
         # start reading
-        for label, p in self._channels.items():
-            setattr(p, 'label', label)
-            p.start_read(self._on_read)
+        [p.start_read(self._on_read) for p in self._channels]
 
     @property
     def stdio(self):
@@ -136,12 +135,9 @@ class RedirectIO(object):
         self._emitter.unsubscribe(label, listener)
 
     def stop(self):
-        for label, p in self._channels.items():
+        for p in self._channels:
             if p.active:
-                try:
-                    p.close()
-                except:
-                    pass
+                p.close()
 
     def _on_read(self, handle, data, error):
         if error:
@@ -231,7 +227,7 @@ class Process(object):
       only)
     - **stdio**: list of io to redict (max 2) this is a list of custom
       labels to use for the redirection. Ex: ["a", "b"] will
-      redirect sdoutt & stderr and stdout events will be labeled "a"
+      redirect stdoutt & stderr and stdout events will be labeled "a"
     """
 
 
