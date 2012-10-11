@@ -3,11 +3,12 @@
 # This file is part of gaffer. See the NOTICE for more information.
 import json
 
-from tornado.web import RequestHandler, asynchronous
-
+from tornado.web import asynchronous
 import pyuv
 
-class WatcherHandler(RequestHandler):
+from .util import CorsHandler
+
+class WatcherHandler(CorsHandler):
     """ watcher handler used to watch process and manager events """
 
     MANAGER_EVENTS = ["start", "stop", "create", "update", "delete"]
@@ -21,6 +22,7 @@ class WatcherHandler(RequestHandler):
 
     @asynchronous
     def get(self, *args):
+        self.preflight()
         self._feed = feed = self.get_argument('feed', default="longpoll")
         heartbeat = self.get_argument('heartbeat', default="true")
         m = self.settings.get('manager')

@@ -4,11 +4,12 @@
 
 import json
 
-from tornado.web import RequestHandler
+from .util import CorsHandler
 
-class ProcessesHandler(RequestHandler):
+class ProcessesHandler(CorsHandler):
 
     def get(self, *args, **kwargs):
+        self.preflight()
         m = self.settings.get('manager')
         running = self.get_argument('running', default="")
 
@@ -22,6 +23,7 @@ class ProcessesHandler(RequestHandler):
         self.write(json.dumps(processes))
 
     def post(self, *args, **kwargs):
+        self.preflight()
         try:
             obj = json.loads(self.request.body.decode('utf-8'))
         except ValueError:
@@ -47,9 +49,10 @@ class ProcessesHandler(RequestHandler):
 
         self.write({"ok": True})
 
-class ProcessHandler(RequestHandler):
+class ProcessHandler(CorsHandler):
 
     def head(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
         if name in m.processes:
@@ -58,6 +61,7 @@ class ProcessHandler(RequestHandler):
             self.set_status(404)
 
     def get(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
 
@@ -71,6 +75,7 @@ class ProcessHandler(RequestHandler):
         self.write(info)
 
     def delete(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
 
@@ -84,6 +89,7 @@ class ProcessHandler(RequestHandler):
         self.write({"ok": True})
 
     def put(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
 
@@ -112,9 +118,10 @@ class ProcessHandler(RequestHandler):
 
         self.write({"ok": True})
 
-class ProcessIdHandler(RequestHandler):
+class ProcessIdHandler(CorsHandler):
 
     def head(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
 
         try:
@@ -131,6 +138,7 @@ class ProcessIdHandler(RequestHandler):
 
 
     def get(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
 
         try:
@@ -154,6 +162,7 @@ class ProcessIdHandler(RequestHandler):
             self.write({"error": "not_found"})
 
     def delete(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
 
         try:
@@ -170,9 +179,10 @@ class ProcessIdHandler(RequestHandler):
             self.set_status(404)
             self.write({"error": "not_found"})
 
-class ProcessIdManageHandler(RequestHandler):
+class ProcessIdManageHandler(CorsHandler):
 
     def post(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         try:
             pid = int(args[0])
@@ -204,9 +214,10 @@ class ProcessIdManageHandler(RequestHandler):
             self.set_status(404)
             self.write({"error": "not_found"})
 
-class ProcessManagerHandler(RequestHandler):
+class ProcessManagerHandler(CorsHandler):
 
     def get(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
 
@@ -231,6 +242,7 @@ class ProcessManagerHandler(RequestHandler):
         self.write(json_obj)
 
     def post(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
 

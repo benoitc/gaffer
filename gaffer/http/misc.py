@@ -2,19 +2,21 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-from tornado.web import RequestHandler
 
 from .. import __version__
+from .util import CorsHandler
 
-class WelcomeHandler(RequestHandler):
+class WelcomeHandler(CorsHandler):
 
     def get(self):
+        self.preflight()
         self.write({"welcome": "gaffer", "version": __version__})
 
 
-class StatusHandler(RequestHandler):
+class StatusHandler(CorsHandler):
 
     def get(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
         name = args[0]
 

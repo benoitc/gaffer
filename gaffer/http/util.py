@@ -4,10 +4,42 @@
 
 import json
 
-from tornado.web import RequestHandler
+from tornado.web import RequestHandler, asynchronous
 
 import pyuv
-class AsyncHandler(RequestHandler):
+
+ACCESS_CONTROL_HEADERS = ['X-Requested-With',
+            'X-HTTP-Method-Override', 'Content-Type', 'Accept',
+            'Authorization']
+
+CORS_HEADERS = {
+    'Access-Control-Allow-Methods' : 'POST, GET, PUT, DELETE, OPTIONS',
+    'Access-Control-Max-Age'       : '86400', # 24 hours
+    'Access-Control-Allow-Headers' : ", ".join(ACCESS_CONTROL_HEADERS),
+    'Access-Control-Allow-Credentials': 'true'
+}
+
+
+class CorsHandler(RequestHandler):
+
+    @asynchronous
+    def options(self, *args, **kwargs):
+        self.prefligh()
+        self.set_status(204)
+        self.finish()
+
+    def preflight(self):
+        origin = self.request.headers.get('Origin', '*')
+
+        if origin == 'null':
+            origin = '*'
+
+        self.set_header('Access-Control-Allow-Origin', origin)
+        for k, v in CORS_HEADERS.items():
+            self.set_header(k, v)
+
+
+class AsyncHandler(CorsHandler):
 
     def initialize(self, *args, **kwargs):
         self._heartbeat = None
@@ -15,7 +47,6 @@ class AsyncHandler(RequestHandler):
         self._closed = False
         self._source = None
         self._pattern = None
-
 
     def setup_stream(self, feed, m, heartbeat):
         self._feed = feed

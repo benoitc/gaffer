@@ -13,6 +13,7 @@ class StatsHandler(AsyncHandler):
 
     @asynchronous
     def get(self, *args):
+        self.preflight()
         self._feed = feed = self.get_argument('feed', default="normal")
         heartbeat = self.get_argument('heartbeat', default="true")
         m = self.settings.get('manager')

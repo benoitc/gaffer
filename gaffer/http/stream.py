@@ -11,6 +11,7 @@ class StreamHandler(AsyncHandler):
 
 
     def post(self, *args):
+        self.preflight()
         m = self.settings.get('manager')
 
         try:
@@ -38,9 +39,9 @@ class StreamHandler(AsyncHandler):
         self.set_status(200)
         self.write({"ok": True})
 
-
     @asynchronous
     def get(self, *args):
+        self.preflight()
         self._feed = feed = self.get_argument('feed', default="longpoll")
         heartbeat = self.get_argument('heartbeat', default="true")
         m = self.settings.get('manager')
