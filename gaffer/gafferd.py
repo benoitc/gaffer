@@ -165,6 +165,8 @@ class Server(object):
                                 params['flapping'] = FlappingInfo(*values)
                             except ValueError:
                                 pass
+                        elif key == "stdio":
+                            params[key] = [v.strip() for val.split(",")]
 
                     processes.append((name, cmd, params))
 
