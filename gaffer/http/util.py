@@ -24,7 +24,7 @@ class CorsHandler(RequestHandler):
 
     @asynchronous
     def options(self, *args, **kwargs):
-        self.prefligh()
+        self.preflight()
         self.set_status(204)
         self.finish()
 
