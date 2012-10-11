@@ -11,7 +11,6 @@ Classes
 
 """
 
-
 from collections import deque
 from threading import RLock
 import os
@@ -23,172 +22,6 @@ import six
 from .events import EventEmitter
 from .process import Process
 from .sync import increment, add, sub, atomic_read, compare_and_swap
-
-class FlappingInfo(object):
-    """ object to keep flapping infos """
-
-    def __init__(self, attempts=2, window=1., retry_in=7., max_retry=5):
-        self.attempts = attempts
-        self.window = window
-        self.retry_in = retry_in
-        self.max_retry = max_retry
-
-        # exit history
-        self.history = deque(maxlen = max_retry)
-        self.retries = 0
-
-    def reset(self):
-        self.history.clear()
-        self.retries = 0
-
-class ProcessState(object):
-    """ object used by the manager to maintain the process state """
-
-    DEFAULT_PARAMS = {
-            "group": None,
-            "args": None,
-            "uid": None,
-            "gid": None,
-            "cwd": None,
-            "detach": False,
-            "shell": False}
-
-    def __init__(self, name, cmd, **settings):
-        self.running = deque()
-        self.stopped = False
-        self.setup(name, cmd, **settings)
-
-    def setup(self, name, cmd, **settings):
-        self.name = name
-        self.cmd = cmd
-        self.settings = settings
-        self._numprocesses = self.settings.get('numprocesses', 1)
-
-        # set flapping
-        self.flapping = self.settings.get('flapping')
-        if isinstance(self.flapping, dict):
-            try:
-                self.flapping = FlappingInfo(**self.flapping)
-            except TypeError: # unknown value
-                self.flapping = None
-
-        self.flapping_timer = None
-
-        self.stopped = False
-
-    @property
-    def active(self):
-        return len(self.running) > 0
-
-    def __str__(self):
-        return "state: %s" % self.name
-
-    def make_process(self, loop, id, on_exit):
-        params = {}
-        for name, default in self.DEFAULT_PARAMS.items():
-            params[name] = self.settings.get(name, default)
-
-        os_env = self.settings.get('os_env', False)
-        if os_env:
-            env = params.get('env', {})
-            env.update(os.environ())
-            params['env'] = env
-
-        params['on_exit_cb'] = on_exit
-
-        return Process(loop, id, self.name, self.cmd, **params)
-
-    @property
-    def group(self):
-        return self.settings.get('group')
-
-    def __get_numprocesses(self):
-        return atomic_read(self._numprocesses)
-    def __set_numprocesses(self, n):
-        self._numprocesses = compare_and_swap(self._numprocesses, n)
-    numprocesses = property(__get_numprocesses, __set_numprocesses,
-            doc="""return the max numbers of processes that we keep
-            alive for this command""")
-
-    @property
-    def hup(self):
-        return self.settings.get('hup', False)
-
-    def reset(self):
-        self.numprocesses = self.settings.get('numprocesses', 1)
-        # reset flapping
-        if self.flapping and self.flapping is not None:
-            self.flapping.reset()
-
-    def ttin(self, i=1):
-        self._numprocesses = add(self._numprocesses, i)
-        return self._numprocesses
-
-    def ttou(self, i=1):
-        self._numprocesses = sub(self._numprocesses, i)
-        return self._numprocesses
-
-    def queue(self, process):
-        self.running.append(process)
-
-    def dequeue(self):
-        return self.running.popleft()
-
-    def remove(self, process):
-        try:
-            self.running.remove(process)
-        except ValueError:
-            pass
-
-    def list_processes(self):
-        return list(self.running)
-
-    def stats(self):
-        infos = []
-        lmem = []
-        lcpu = []
-        for p in self.running:
-            info = p.info
-            infos.append(info)
-            lmem.append(info['mem'])
-            lcpu.append(info['cpu'])
-
-        if 'N/A' in lmem:
-            mem, max_mem, min_mem = "N/A"
-        else:
-            max_mem = max(lmem)
-            min_mem = min(lmem)
-            mem = sum(lmem)
-
-        if 'N/A' in lcpu:
-            mem, max_mem, min_mem = "N/A"
-        else:
-            max_cpu = max(lcpu)
-            min_cpu = min(lcpu)
-            cpu = sum(lcpu)
-
-        ret = dict(name=self.name, stats=infos, mem=mem, max_mem=max_mem,
-                min_mem=min_mem, cpu=cpu, max_cpu=max_cpu,
-                min_cpu=min_cpu)
-        return ret
-
-
-    def check_flapping(self):
-        f = self.flapping
-        if len(f.history) < f.attempts:
-            f.history.append(time.time())
-        else:
-            diff = f.history[-1] - f.history[0]
-            if diff > f.window:
-                f.reset()
-                f.history.append(time.time())
-            elif f.retries < f.max_retry:
-                increment(f.retries)
-                return False, True
-            else:
-                f.reset()
-                return False, False
-        return True, None
 
 
 class Manager(object):
@@ -780,3 +613,169 @@ class Manager(object):
             # if not stopped we may need to restart a new process
             if not state.stopped and self._check_flapping(state):
                 self._manage_processes(state)
+
+class FlappingInfo(object):
+    """ object to keep flapping infos """
+
+    def __init__(self, attempts=2, window=1., retry_in=7., max_retry=5):
+        self.attempts = attempts
+        self.window = window
+        self.retry_in = retry_in
+        self.max_retry = max_retry
+
+        # exit history
+        self.history = deque(maxlen = max_retry)
+        self.retries = 0
+
+    def reset(self):
+        self.history.clear()
+        self.retries = 0
+
+class ProcessState(object):
+    """ object used by the manager to maintain the process state """
+
+    DEFAULT_PARAMS = {
+            "group": None,
+            "args": None,
+            "uid": None,
+            "gid": None,
+            "cwd": None,
+            "detach": False,
+            "shell": False}
+
+    def __init__(self, name, cmd, **settings):
+        self.running = deque()
+        self.stopped = False
+        self.setup(name, cmd, **settings)
+
+    def setup(self, name, cmd, **settings):
+        self.name = name
+        self.cmd = cmd
+        self.settings = settings
+        self._numprocesses = self.settings.get('numprocesses', 1)
+
+        # set flapping
+        self.flapping = self.settings.get('flapping')
+        if isinstance(self.flapping, dict):
+            try:
+                self.flapping = FlappingInfo(**self.flapping)
+            except TypeError: # unknown value
+                self.flapping = None
+
+        self.flapping_timer = None
+
+        self.stopped = False
+
+    @property
+    def active(self):
+        return len(self.running) > 0
+
+    def __str__(self):
+        return "state: %s" % self.name
+
+    def make_process(self, loop, id, on_exit):
+        params = {}
+        for name, default in self.DEFAULT_PARAMS.items():
+            params[name] = self.settings.get(name, default)
+
+        os_env = self.settings.get('os_env', False)
+        if os_env:
+            env = params.get('env', {})
+            env.update(os.environ())
+            params['env'] = env
+
+        params['on_exit_cb'] = on_exit
+
+        return Process(loop, id, self.name, self.cmd, **params)
+
+    @property
+    def group(self):
+        return self.settings.get('group')
+
+    def __get_numprocesses(self):
+        return atomic_read(self._numprocesses)
+    def __set_numprocesses(self, n):
+        self._numprocesses = compare_and_swap(self._numprocesses, n)
+    numprocesses = property(__get_numprocesses, __set_numprocesses,
+            doc="""return the max numbers of processes that we keep
+            alive for this command""")
+
+    @property
+    def hup(self):
+        return self.settings.get('hup', False)
+
+    def reset(self):
+        self.numprocesses = self.settings.get('numprocesses', 1)
+        # reset flapping
+        if self.flapping and self.flapping is not None:
+            self.flapping.reset()
+
+    def ttin(self, i=1):
+        self._numprocesses = add(self._numprocesses, i)
+        return self._numprocesses
+
+    def ttou(self, i=1):
+        self._numprocesses = sub(self._numprocesses, i)
+        return self._numprocesses
+
+    def queue(self, process):
+        self.running.append(process)
+
+    def dequeue(self):
+        return self.running.popleft()
+
+    def remove(self, process):
+        try:
+            self.running.remove(process)
+        except ValueError:
+            pass
+
+    def list_processes(self):
+        return list(self.running)
+
+    def stats(self):
+        infos = []
+        lmem = []
+        lcpu = []
+        for p in self.running:
+            info = p.info
+            infos.append(info)
+            lmem.append(info['mem'])
+            lcpu.append(info['cpu'])
+
+        if 'N/A' in lmem:
+            mem, max_mem, min_mem = "N/A"
+        else:
+            max_mem = max(lmem)
+            min_mem = min(lmem)
+            mem = sum(lmem)
+
+        if 'N/A' in lcpu:
+            mem, max_mem, min_mem = "N/A"
+        else:
+            max_cpu = max(lcpu)
+            min_cpu = min(lcpu)
+            cpu = sum(lcpu)
+
+        ret = dict(name=self.name, stats=infos, mem=mem, max_mem=max_mem,
+                min_mem=min_mem, cpu=cpu, max_cpu=max_cpu,
+                min_cpu=min_cpu)
+        return ret
+
+
+    def check_flapping(self):
+        f = self.flapping
+        if len(f.history) < f.attempts:
+            f.history.append(time.time())
+        else:
+            diff = f.history[-1] - f.history[0]
+            if diff > f.window:
+                f.reset()
+                f.history.append(time.time())
+            elif f.retries < f.max_retry:
+                increment(f.retries)
+                return False, True
+            else:
+                f.reset()
+                return False, False
+        return True, None
