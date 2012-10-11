@@ -393,13 +393,8 @@ class WatcherHandler(RequestHandler):
         if self._heartbeat is not None:
             self._heartbeat.close()
 
-
     def on_close_connection(self):
         self._handle_disconnect()
-
-    def on_finish(self):
-        if not self._closed:
-            self._handle_disconnect()
 
 class HttpEndpoint(object):
 
