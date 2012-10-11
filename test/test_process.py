@@ -10,7 +10,7 @@ import time
 import pyuv
 from gaffer.process import Process
 
-from .test_manager import echo_cmd
+from .test_manager import dummy_cmd
 
 if sys.version_info >= (3, 0):
     linesep = os.linesep.encode()

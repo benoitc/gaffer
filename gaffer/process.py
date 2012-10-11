@@ -263,6 +263,9 @@ class Process(object):
     - **redirect_output**: list of io to redict (max 2) this is a list of custom
       labels to use for the redirection. Ex: ["a", "b"] will
       redirect stdoutt & stderr and stdout events will be labeled "a"
+    - **redirect_input**: Boolean (False is the default). Set it if
+      you want to be able to write to stdin.
+
     """
 
 

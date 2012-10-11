@@ -9,6 +9,36 @@ from .util import AsyncHandler
 class StreamHandler(AsyncHandler):
     """ stream handler to stream stout & stderr """
 
+
+    def post(self, *args):
+        m = self.settings.get('manager')
+
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            self.finish()
+            return
+
+        if not pid in m.running or args[1] != "stdin":
+            self.set_status(404)
+            self.write({"error": "not_found"})
+            return
+
+        p = m.running[pid]
+
+        try:
+            p.write(self.request.body)
+        except IOError:
+            self.set_status(403)
+            self.write({"error": "forbidden_write"})
+            return
+
+        self.set_status(200)
+        self.write({"ok": True})
+
+
     @asynchronous
     def get(self, *args):
         self._feed = feed = self.get_argument('feed', default="longpoll")

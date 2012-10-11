@@ -40,20 +40,20 @@ class DefaultConfigParser(configparser.ConfigParser):
     """ object overriding ConfigParser to return defaults values instead
     of raising an error if needed """
 
-    def get(self, section, option, default=None):
+    def dget(self, section, option, default=None):
         if not self.has_option(section, option):
             return default
-        return configparser.ConfigParser.get(self, section, option)
+        return self.get(section, option)
 
-    def getint(self, section, option, default=None):
+    def dgetint(self, section, option, default=None):
         if not self.has_option(section, option):
             return default
-        return self._get(section, int, option)
+        return self.getint(section, option)
 
-    def getboolean(self, section, option, default=None):
+    def dgetboolean(self, section, option, default=None):
         if not self.has_option(section, option):
             return default
-        return configparser.ConfigParser.getboolean(self,section, option)
+        return self.getboolean(section, option)
 
 
 class Server(object):
@@ -81,10 +81,10 @@ class Server(object):
 
         # load included config files
         includes = []
-        for include_file in cfg.get('gaffer', 'include', '').split():
+        for include_file in cfg.dget('gaffer', 'include', '').split():
             includes.append(include_file)
 
-        for include_dir in cfg.get('gaffer', 'include_dir', '').split():
+        for include_dir in cfg.dget('gaffer', 'include_dir', '').split():
             for root, dirnames, filenames in os.walk(include_dir):
                 for filename in fnmatch.filter(filenames, '*.ini'):
                     cfg_file = os.path.join(root, filename)
@@ -98,7 +98,7 @@ class Server(object):
         cfg, cfg_files_read = self.read_config(config_file)
 
         # you can setup multiple endpoints in the config
-        endpoints_str = cfg.get('gaffer', 'http_endpoints', '')
+        endpoints_str = cfg.dget('gaffer', 'http_endpoints', '')
         endpoints_names = endpoints_str.split(",")
 
         endpoints = []
@@ -113,7 +113,7 @@ class Server(object):
                         if key == "bind":
                             kwargs['uri'] = val
                         elif key == "backlog":
-                            kwargs = cfg.getint(section, key, 128)
+                            kwargs = cfg.dgetint(section, key, 128)
                         elif key == "certfile":
                             kwargs['ssl_options'][key] = val
                         elif key == "keyfile":
@@ -125,7 +125,7 @@ class Server(object):
                         endpoints.append(HttpEndpoint(**kwargs))
             elif section.startswith('process:'):
                 name = section.split("process:", 1)[1]
-                cmd = cfg.get(section, 'cmd', '')
+                cmd = cfg.dget(section, 'cmd', '')
                 if cmd:
                     params = PROCESS_DEFAULTS.copy()
                     for key, val in cfg.items(section):
@@ -143,18 +143,18 @@ class Server(object):
                         elif key == 'cwd':
                             params[key] = val
                         elif key == 'detach':
-                            params[key] = cfg.getboolean(section, key,
+                            params[key] = cfg.dgetboolean(section, key,
                                     False)
                         elif key == 'shell':
-                            params[key] = cfg.getboolean(section, key,
+                            params[key] = cfg.dgetboolean(section, key,
                                     False)
                         elif key == 'os_env':
-                            params[key] = cfg.getboolean(section, key,
+                            params[key] = cfg.dgetboolean(section, key,
                                     False)
                         elif key == 'numprocesses':
-                            params[key] = cfg.getint(section, key, 1)
+                            params[key] = cfg.dgetint(section, key, 1)
                         elif key == 'start':
-                            params[key] = cfg.getboolean(section, key,
+                            params[key] = cfg.dgetboolean(section, key,
                                     True)
                         elif key == 'flapping':
                             # flapping values are passed in order on one
@@ -167,6 +167,10 @@ class Server(object):
                                 pass
                         elif key == "redirect_output":
                             params[key] = [v.strip() for v in val.split(",")]
+                        elif key == "redirect_input":
+                            params[key] = cfg.dgetboolean(section, key,
+                                    False)
+
 
                     processes.append((name, cmd, params))
 

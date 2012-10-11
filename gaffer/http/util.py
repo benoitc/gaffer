@@ -14,6 +14,7 @@ class AsyncHandler(RequestHandler):
         self._feed = None
         self._closed = False
         self._source = None
+        self._pattern = None
 
 
     def setup_stream(self, feed, m, heartbeat):
