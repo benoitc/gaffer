@@ -128,8 +128,15 @@ class Manager(object):
                 self._stop_byname_unlocked(name)
 
     def running_processes(self):
+        """ return running processes """
         with self._lock:
             return self.running
+
+    def processes_stats(self):
+        """ iterator returning all processes stats """
+        with self._lock:
+            for name in self.processes:
+                yield self.get_process_stats(name)
 
     def subscribe(self, evtype, listener):
         """ subscribe to the manager event *eventype*

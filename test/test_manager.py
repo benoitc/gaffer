@@ -409,3 +409,27 @@ def test_process_stats():
     assert info['name'] == "dummy"
     assert len(info['stats']) == 1
     assert info['stats'][0]['pid'] == info_by_id['pid']
+
+def test_processes_stats():
+    m = Manager()
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+
+    testfile1, cmd1, args1, wdir1 = dummy_cmd()
+
+    m.add_process("a", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
+    infos = list(m.processes_stats())
+    pid = m.running[1].pid
+    m.add_process("b", cmd, args=args, cwd=wdir)
+    infos2 = list(m.processes_stats())
+    m.stop()
+    m.run()
+
+    assert len(infos) == 1
+    assert len(infos2) == 2
+
+    assert infos[0]['name'] == "a"
+    assert infos2[0]['name'] == "a"
+    assert infos2[1]['name'] == "b"
+
