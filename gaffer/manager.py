@@ -563,7 +563,8 @@ class Manager(object):
         # we keep a list of all running process by id here
         self.running[pid] = p
 
-        self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid)
+        self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid,
+                detached=p.detach)
 
     def _stop_byname_unlocked(self, name):
         """ stop a process by name """
