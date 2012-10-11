@@ -38,11 +38,9 @@ def resolve_name(name):
 if __name__ == '__main__':
     cb = resolve_name(sys.argv[1])
 
-    print(cb)
     try:
         if len(sys.argv) > 2:
             test_file = sys.argv[2]
-            print(test_file)
             sys.exit(cb(test_file))
         else:
             sys.exit(cb())

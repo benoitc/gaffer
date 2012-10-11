@@ -39,6 +39,13 @@ class DummyProcess(object):
 
     def run(self):
         self._write('START')
+
+        # write to std
+        sys.stdout.write("hello out")
+        sys.stdout.flush()
+        sys.stderr.write("hello err")
+        sys.stderr.flush()
+
         while self.alive:
             time.sleep(0.001)
         self._write('STOP')
@@ -370,7 +377,6 @@ def test_process_exit_event():
     m.start()
 
     def cb(ev, msg):
-        print(msg)
         emitted.append(msg)
 
     # subscribe to all events

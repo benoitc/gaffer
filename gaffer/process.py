@@ -92,39 +92,65 @@ def get_process_info(process=None, interval=0):
 
     return info
 
-
 class RedirectIO(object):
 
-    def __init__(self, loop, label, stream, process):
+    def __init__(self, loop, process, stdio=[]):
         self.loop = loop
-        self.label = label
+        self.process = process
+        self._emitter = EventEmitter(loop, max_size=1024)
 
-        if stream is None:
-            self._stdio = pyuv.StdIO(flags=pyuv.UV_IGNORE)
+        self._stdio = []
+        self._channels = {}
+
+        if not stdio:
+            self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE),
+                    pyuv.StdIO(flags=pyuv.UV_IGNORE)]
+
         else:
-            self.channel = pyuv.Pipe(loop, True)
-            self._stdio = pyuv.StdIO(stream=self.channel,
-                                    flags=pyuv.UV_CREATE_PIPE | \
-                                            pyuv.UV_READABLE_PIPE | \
-                                            pyuv.UV_WRITABLE_PIPE)
-        self.stream = stream
+            # create (channel, stdio) pairs
+            for label in stdio[:2]:
+                # io registered can any label, so it's easy to redirect
+                # stderr to stdout, just use the same label.
+                p = pyuv.Pipe(loop)
+                io = pyuv.StdIO(stream=p, flags=pyuv.UV_CREATE_PIPE | \
+                                                pyuv.UV_READABLE_PIPE | \
+                                                pyuv.UV_WRITABLE_PIPE)
+                self._channels[label] = p
+                self._stdio.append(io)
+
+
+    def start(self):
+        # start reading
+        for label, p in self._channels.items():
+            setattr(p, 'label', label)
+            p.start_read(self._on_read)
 
     @property
     def stdio(self):
         return self._stdio
 
-    def start(self):
-        self.channel.start_read(self._on_read)
+    def subscribe(self, label, listener):
+        self._emitter.subscribe(label, listener)
+
+    def unsubscribe(self, label, listener):
+        self._emitter.unsubscribe(label, listener)
+
+    def stop(self):
+        for label, p in self._channels.items():
+            if p.active:
+                try:
+                    p.close()
+                except:
+                    pass
 
     def _on_read(self, handle, data, error):
-        # redirect the message to the main pipe
-        if data:
-            msg = { "name": self.process.name,
-                    "pid": self.process.id,
-                    "label": self.label,
-                    "data": data,
-                    "msg_type": "redirect"}
-            self.stream.write(json.dumps(msg))
+        if error:
+            return
+
+        label = getattr(handle, 'label')
+        msg = dict(event=label, name=self.process.name,
+                pid=self.process.id, data=data)
+        self._emitter.publish(label, msg)
 
 
 class ProcessWatcher(object):
@@ -203,12 +229,15 @@ class Process(object):
       won't exit when the manager is stopped.
     - **shell**: boolean, run the script in a shell. (UNIX
       only)
+    - **stdio**: list of io to redict (max 2) this is a list of custom
+      labels to use for the redirection. Ex: ["a", "b"] will
+      redirect sdoutt & stderr and stdout events will be labeled "a"
     """
 
 
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
-            redirect_stream=[], on_exit_cb=None):
+            stdio=[], on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -245,8 +274,8 @@ class Process(object):
 
         self.cwd = cwd or getcwd()
         self.env = env or {}
-        self.redirect_stream = redirect_stream
-        self.stdio = self._setup_stdio()
+        self.stdio = stdio
+        self._redirect_io = None
         self.detach = detach
         self.on_exit_cb = on_exit_cb
         self._process = None
@@ -254,23 +283,15 @@ class Process(object):
         self._process_watcher = False
         self.stopped = False
 
+        self._setup_stdio()
+
+
     def _setup_stdio(self):
-        stdio = []
-
-        if not self.redirect_stream:
-            # no redirect streams, ignore all
-            for i in range(3):
-                stdio.append(pyuv.StdIO(flags=pyuv.UV_IGNORE))
-        else:
-            # for now we ignore all stdin
-            stdio.append(pyuv.StdIO(flags=pyuv.UV_IGNORE))
-
-            # setup redirections
-            for stream in self.redirect_stream:
-                stdio.append(RedirectIO(self.loop, "stdout", stream))
-                stdio.append(RedirectIO(self.loop, "stderr", stream))
-
-        return stdio
+        # for now we ignore all stdin
+        self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE)]
+        self._redirect_io = RedirectIO(self.loop, self,
+                self.stdio)
+        self._stdio.extend(self._redirect_io.stdio)
 
     def spawn(self):
         """ spawn the process """
@@ -280,7 +301,7 @@ class Process(object):
                 args = self.args,
                 env = self.env,
                 cwd = self.cwd,
-                stdio = self.stdio)
+                stdio = self._stdio)
 
         flags = 0
         if self.uid is not None:
@@ -301,9 +322,8 @@ class Process(object):
         self._process.spawn(**kwargs)
         self._running = True
 
-        # start redirection
-        for stream in self.redirect_stream:
-            stream.start()
+        # start redirecting IO
+        self._redirect_io.start()
 
     @property
     def active(self):
@@ -345,6 +365,18 @@ class Process(object):
 
         self._process_watcher.unsubscribe(listener)
 
+    def monitor_io(self, io_label, listener):
+        """ subscribe to registered IO events """
+        if not self._redirect_io:
+            raise IOError("%s not redirected")
+        self._redirect_io.subscribe(io_label, listener)
+
+    def unmonitor_io(self, io_label, listener):
+        """ unsubscribe to the IO event """
+        if not self._redirect_io:
+            return
+        self._redirect_io.unsubscribe(io_label, listener)
+
     def stop(self):
         """ stop the process """
         self.kill(signal.SIGTERM)
@@ -357,6 +389,9 @@ class Process(object):
         self._process.kill(signum)
 
     def _exit_cb(self, handle, exit_status, term_signal):
+        if self._redirect_io is not None:
+            self._redirect_io.stop()
+
         self._process.close()
         self._running = False
 

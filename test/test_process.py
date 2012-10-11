@@ -131,3 +131,42 @@ def test_stat_events_refcount():
     assert res[0] == "stat"
     assert "cpu" in res[1]
     assert res[1]["pid"] == pid
+
+
+def test_redirect_io():
+
+    loop = pyuv.Loop.default_loop()
+    monitored1 = []
+    monitored2 = []
+    def cb(evtype, info):
+        monitored1.append((evtype, info))
+
+    def cb2(evtype, info):
+        monitored2.append((evtype, info))
+
+    testfile, cmd, args, cwd = dummy_cmd()
+    p = Process(loop, "someid", "dummy", cmd, args=args,
+        cwd=cwd, stdio=["stdout", "stderr"])
+    p.spawn()
+    time.sleep(0.2)
+    pid = p.pid
+
+    p.monitor_io("stdout", cb)
+    p.monitor_io("stderr", cb2)
+
+    p.stop()
+    loop.run()
+
+    assert len(monitored1) == 1
+    assert len(monitored2) == 1
+
+    ev1 = monitored1[0]
+    ev2 = monitored2[0]
+
+    assert ev1[0] == 'stdout'
+    assert ev1[1] == {'data': b'hello out', 'pid': "someid",
+            'name': 'dummy', 'event': 'stdout'}
+
+    assert ev2[0] == 'stderr'
+    assert ev2[1] == {'data': b'hello err', 'pid': "someid",
+            'name': 'dummy', 'event': 'stderr'}
