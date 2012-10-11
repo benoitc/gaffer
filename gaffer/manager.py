@@ -517,7 +517,7 @@ class Manager(object):
             # graceful shutdown let a chance to unstopped process to
             # close cleanly
             self._shutdown_h = pyuv.Timer(self.loop)
-            self._shutdown_h.start(self._shutdown, 0.1, 0.1)
+            self._shutdown_h.start(self._shutdown, 0.1, 0.0)
 
         with self._lock:
             # stop controllers
