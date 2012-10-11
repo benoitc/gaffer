@@ -40,8 +40,10 @@ class SigHandler(object):
             self._sig_handler.unref()
 
     def stop(self):
-        if not self._sig_handler.closed:
-            self._sig_handler.close()
+        try:
+            self._sig_handler.stop()
+        except:
+            pass
 
     def restart(self):
         # we never restart, just return
