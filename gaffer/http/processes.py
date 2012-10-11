@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -
+#
+# This file is part of gaffer. See the NOTICE for more information.
+
 import json
 
 from tornado.web import RequestHandler
