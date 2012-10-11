@@ -133,7 +133,7 @@ def test_stat_events_refcount():
     assert res[1]["pid"] == pid
 
 
-def test_redirect_io():
+def test_redirect_output():
 
     loop = pyuv.Loop.default_loop()
     monitored1 = []
@@ -146,7 +146,7 @@ def test_redirect_io():
 
     testfile, cmd, args, cwd = dummy_cmd()
     p = Process(loop, "someid", "dummy", cmd, args=args,
-        cwd=cwd, stdio=["stdout", "stderr"])
+        cwd=cwd, redirect_output=["stdout", "stderr"])
     p.spawn()
     time.sleep(0.2)
     pid = p.pid

@@ -225,7 +225,7 @@ class Process(object):
       won't exit when the manager is stopped.
     - **shell**: boolean, run the script in a shell. (UNIX
       only)
-    - **stdio**: list of io to redict (max 2) this is a list of custom
+    - **redirect_output**: list of io to redict (max 2) this is a list of custom
       labels to use for the redirection. Ex: ["a", "b"] will
       redirect stdoutt & stderr and stdout events will be labeled "a"
     """
@@ -233,7 +233,7 @@ class Process(object):
 
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
-            stdio=[], on_exit_cb=None):
+            redirect_output=[], on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -270,7 +270,7 @@ class Process(object):
 
         self.cwd = cwd or getcwd()
         self.env = env or {}
-        self.stdio = stdio
+        self.redirect_output = redirect_output
         self._redirect_io = None
         self.detach = detach
         self.on_exit_cb = on_exit_cb
@@ -286,7 +286,7 @@ class Process(object):
         # for now we ignore all stdin
         self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE)]
         self._redirect_io = RedirectIO(self.loop, self,
-                self.stdio)
+                self.redirect_output)
         self._stdio.extend(self._redirect_io.stdio)
 
     def spawn(self):

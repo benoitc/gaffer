@@ -200,7 +200,7 @@ class Manager(object):
             and try to spawn them
           - **max_retry**: maximum number of retry before we give up
             and stop the process.
-        - **stdio**: list of io to redict (max 2) this is a list of custom
+        - **redirect_output**: list of io to redict (max 2) this is a list of custom
       labels to use for the redirection. Ex: ["a", "b"] will
       redirect stdoutt & stderr and stdout events will be labeled "a"
         """
@@ -690,7 +690,7 @@ class ProcessState(object):
             "cwd": None,
             "detach": False,
             "shell": False,
-            "stdio": []}
+            "redirect_output": []}
 
     def __init__(self, name, cmd, **settings):
         self.running = deque()
