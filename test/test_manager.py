@@ -389,3 +389,23 @@ def test_process_exit_event():
 
     msg = emitted[0]
     assert "exit_status" in msg
+
+def test_process_stats():
+    m = Manager()
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
+    info = m.get_process_stats("dummy")
+    info_by_id = m.get_process_stats(1)
+    pid = m.running[1].pid
+    m.stop()
+    m.run()
+
+    assert isinstance(info, dict)
+    assert isinstance(info_by_id, dict)
+    assert "pid" in info_by_id
+    assert info_by_id["pid"] == pid
+    assert info['name'] == "dummy"
+    assert len(info['stats']) == 1
+    assert info['stats'][0]['pid'] == info_by_id['pid']

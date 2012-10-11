@@ -143,6 +143,36 @@ class ProcessState(object):
     def list_processes(self):
         return list(self.running)
 
+    def stats(self):
+        infos = []
+        lmem = []
+        lcpu = []
+        for p in self.running:
+            info = p.info
+            infos.append(info)
+            lmem.append(info['mem'])
+            lcpu.append(info['cpu'])
+
+        if 'N/A' in lmem:
+            mem, max_mem, min_mem = "N/A"
+        else:
+            max_mem = max(lmem)
+            min_mem = min(lmem)
+            mem = sum(lmem)
+
+        if 'N/A' in lcpu:
+            mem, max_mem, min_mem = "N/A"
+        else:
+            max_cpu = max(lcpu)
+            min_cpu = min(lcpu)
+            cpu = sum(lcpu)
+
+        ret = dict(name=self.name, stats=infos, mem=mem, max_mem=max_mem,
+                min_mem=min_mem, cpu=cpu, max_cpu=max_cpu,
+                min_cpu=min_cpu)
+        return ret
+
+
     def check_flapping(self):
         f = self.flapping
         if len(f.history) < f.attempts:
@@ -413,6 +443,22 @@ class Manager(object):
                        "running": len(state.running),
                        "max_processes": state.numprocesses }
             return status
+
+    def get_process_stats(self, name_or_id):
+        """ return process stats for a process template or a process id
+        """
+        with self._lock:
+            if isinstance(name_or_id, int):
+                try:
+                    return self.running[name_or_id].info
+                except KeyError:
+                    raise KeyError("%s not found" % name_or_id)
+            else:
+                if name_or_id not in self.processes:
+                    raise KeyError("%r not found" % name_or_id)
+
+                state = self.processes[name_or_id]
+                return state.stats()
 
     def manage_process(self, name):
         with self._lock:
