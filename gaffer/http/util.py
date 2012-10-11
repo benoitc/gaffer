@@ -2,10 +2,12 @@
 #
 # this file is part of gaffer. see the notice for more information.
 
-from tornado.web import RequestHandler, asynchronous
+import json
 
+from tornado.web import RequestHandler
+
+import pyuv
 class AsyncHandler(RequestHandler):
-    """ watcher handler used to watch processes stats in quasi rt """
 
     def initialize(self, *args, **kwargs):
         self._heartbeat = None
@@ -27,7 +29,7 @@ class AsyncHandler(RequestHandler):
     def setup_heartbeat(self, heartbeat, m):
         # set heartbeta
         if heartbeat.lower() == "true":
-            heartbeat = 60000
+            heartbeat = 60
         else:
             try:
                 heartbeat = int(heartbeat)
@@ -59,13 +61,17 @@ class AsyncHandler(RequestHandler):
             self.flush()
         else:
             self.write("%s\r\n" % json.dumps(msg))
+            self.flush()
             self.finish()
 
     def handle_disconnect(self):
         self._closed = True
-        self._handle_disconnect(self)
+        self._handle_disconnect()
         if self._heartbeat is not None:
             self._heartbeat.close()
+
+    def on_finish(self):
+        self.handle_disconnect()
 
     def on_close_connection(self):
         self.handle_disconnect()

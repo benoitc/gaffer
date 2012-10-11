@@ -95,6 +95,7 @@ class HttpHandler(object):
             (r'/stats', http.StatsHandler),
             (r'/stats/([^/]+)', http.StatsHandler),
             (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
+            (r'/streams/([0-9^/]+)/([^/]+)$', http.StreamHandler)
     ]
 
     def __init__(self, endpoints=[], handlers=None):

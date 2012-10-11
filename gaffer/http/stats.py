@@ -5,16 +5,11 @@
 import json
 
 from tornado.web import asynchronous
-import pyuv
 
 from .util import AsyncHandler
 
 class StatsHandler(AsyncHandler):
     """ watcher handler used to watch processes stats in quasi rt """
-
-    def initialize(self, *args, **kwargs):
-        super(StatsHandler, self).__initialize__(self)
-        self._source = None
 
     @asynchronous
     def get(self, *args):
@@ -76,4 +71,6 @@ class StatsHandler(AsyncHandler):
 
 
     def _handle_disconnect(self):
+        if not self._source:
+            return
         self._source.unmonitor(self._on_event)

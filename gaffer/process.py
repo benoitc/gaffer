@@ -276,7 +276,7 @@ class Process(object):
         self.on_exit_cb = on_exit_cb
         self._process = None
         self._pprocess = None
-        self._process_watcher = False
+        self._process_watcher = None
         self.stopped = False
 
         self._setup_stdio()

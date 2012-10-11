@@ -25,8 +25,13 @@ class Dummy(object):
     def run(self):
         print("hello, dummy (pid: %s) is alive" % os.getpid())
 
+        i = 0
         while self.alive:
+            sys.stdout.write("STDOUTi %s\n" % i)
+            sys.stdout.flush()
+            sys.stderr.write("STDERR %s\n" % i)
+            sys.stderr.flush()
             time.sleep(0.1)
-
+            i += 1
 if __name__ == "__main__":
     Dummy().run()

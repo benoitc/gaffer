@@ -166,7 +166,7 @@ class Server(object):
                             except ValueError:
                                 pass
                         elif key == "redirect_output":
-                            params[key] = [v.strip() for val.split(",")]
+                            params[key] = [v.strip() for v in val.split(",")]
 
                     processes.append((name, cmd, params))
 
