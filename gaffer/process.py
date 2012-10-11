@@ -97,7 +97,7 @@ class RedirectIO(object):
     def __init__(self, loop, process, stdio=[]):
         self.loop = loop
         self.process = process
-        self._emitter = EventEmitter(loop, max_size=1024)
+        self._emitter = EventEmitter(loop)
 
         self._stdio = []
         self._channels = []
@@ -149,6 +149,40 @@ class RedirectIO(object):
         self._emitter.publish(label, msg)
 
 
+class RedirectStdin(object):
+    """ redirect stdin allows multiple sender to write to same pipe """
+
+    def __init__(self, loop, process):
+        self.loop = loop
+        self.process = process,
+        self.channel = pyuv.Pipe(loop)
+        self.stdio = pyuv.StdIO(stream=self.channel,
+                flags=pyuv.UV_CREATE_PIPE | \
+                        pyuv.UV_READABLE_PIPE | \
+                        pyuv.UV_WRITABLE_PIPE)
+        self._emitter = EventEmitter(loop)
+
+    def start(self):
+        self._emitter.subscribe("WRITE", self._on_write)
+        self._emitter.subscribe("WRITELINES", self._on_writelines)
+
+    def write(self, data):
+        self._emitter.publish("WRITE", data)
+
+    def writelines(self, data):
+        self._emitter.publish("WRITELINES", data)
+
+    def stop(self):
+        if self.channel.active:
+            self.channel.close()
+
+    def _on_write(self, evtype, data):
+        self.channel.write(data)
+
+    def _on_writelines(self, evtype, data):
+        self.channel.writelines(data)
+
+
 class ProcessWatcher(object):
     """ object to retrieve process stats """
 
@@ -162,6 +196,7 @@ class ProcessWatcher(object):
         self._active = 0
         self._refcount = 0
         self._emitter = EventEmitter(loop)
+
 
     @property
     def active(self):
@@ -233,7 +268,7 @@ class Process(object):
 
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
-            redirect_output=[], on_exit_cb=None):
+            redirect_output=[], redirect_input=False, on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -271,7 +306,11 @@ class Process(object):
         self.cwd = cwd or getcwd()
         self.env = env or {}
         self.redirect_output = redirect_output
+        self.redirect_input = redirect_input
+
+
         self._redirect_io = None
+        self._redirect_in = None
         self.detach = detach
         self.on_exit_cb = on_exit_cb
         self._process = None
@@ -284,7 +323,11 @@ class Process(object):
 
     def _setup_stdio(self):
         # for now we ignore all stdin
-        self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE)]
+        if not self.redirect_input:
+            self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE)]
+        else:
+            self._redirect_in = RedirectStdin(self.loop, self)
+            self._stdio = [self._redirect_in.stdio]
         self._redirect_io = RedirectIO(self.loop, self,
                 self.redirect_output)
         self._stdio.extend(self._redirect_io.stdio)
@@ -320,6 +363,9 @@ class Process(object):
 
         # start redirecting IO
         self._redirect_io.start()
+
+        if self._redirect_in is not None:
+            self._redirect_in.start()
 
     @property
     def active(self):
@@ -357,14 +403,14 @@ class Process(object):
         previously.
         """
         if not self._process_watcher:
-            pass
+            return
 
         self._process_watcher.unsubscribe(listener)
 
     def monitor_io(self, io_label, listener):
         """ subscribe to registered IO events """
         if not self._redirect_io:
-            raise IOError("%s not redirected")
+            raise IOError("%s not redirected" % self.name)
         self._redirect_io.subscribe(io_label, listener)
 
     def unmonitor_io(self, io_label, listener):
@@ -372,6 +418,19 @@ class Process(object):
         if not self._redirect_io:
             return
         self._redirect_io.unsubscribe(io_label, listener)
+
+    def write(self, data):
+        """ send data to the process via stdin"""
+        if not self._redirect_in:
+            raise IOError("stdin not redirected")
+        self._redirect_in.write(data)
+
+    def writelines(self, data):
+        """ send data to the process via stdin"""
+
+        if not self._redirect_in:
+            raise IOError("stdin not redirected")
+        self._redirect_in.writelines(data)
 
     def stop(self):
         """ stop the process """
@@ -387,6 +446,9 @@ class Process(object):
     def _exit_cb(self, handle, exit_status, term_signal):
         if self._redirect_io is not None:
             self._redirect_io.stop()
+
+        if self._redirect_in is not None:
+            self._redirect_in.stop()
 
         self._process.close()
         self._running = False

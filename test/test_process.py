@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+
+import os
 import signal
+import sys
 import time
 
 import pyuv
 from gaffer.process import Process
 
-from .test_manager import dummy_cmd
+from .test_manager import echo_cmd
+
+if sys.version_info >= (3, 0):
+    linesep = os.linesep.encode()
+else:
+    linesep = os.linesep
 
 def test_simple():
     def exit_cb(process, return_code, term_signal):
@@ -134,7 +142,6 @@ def test_stat_events_refcount():
 
 
 def test_redirect_output():
-
     loop = pyuv.Loop.default_loop()
     monitored1 = []
     monitored2 = []
@@ -170,3 +177,34 @@ def test_redirect_output():
     assert ev2[0] == 'stderr'
     assert ev2[1] == {'data': b'hello err', 'pid': "someid",
             'name': 'dummy', 'event': 'stderr'}
+
+def test_redirect_input():
+    loop = pyuv.Loop.default_loop()
+    monitored = []
+    def cb(evtype, info):
+        monitored.append(info['data'])
+
+    if sys.platform == 'win32':
+        p = Process(loop, "someid", "echo", "cmd.exe",
+                args=["/c", "proc_stdin_stdout.py"],
+                redirect_output=["stdout"], redirect_input=True)
+
+    else:
+        p = Process(loop, "someid", "echo", "./proc_stdin_stdout.py",
+            cwd= os.path.dirname(__file__),
+            redirect_output=["stdout"], redirect_input=True)
+    p.spawn()
+    time.sleep(0.2)
+    p.monitor_io("stdout", cb)
+    p.write(b"ECHO" + linesep)
+
+    def stop(handle):
+        p.unmonitor_io("stdout", cb)
+        p.stop()
+
+    t = pyuv.Timer(loop)
+    t.start(stop, 0.3, 0.0)
+    loop.run()
+
+    assert len(monitored) == 1
+    assert monitored == [b'ECHO\n\n']

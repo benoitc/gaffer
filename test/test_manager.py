@@ -70,7 +70,7 @@ def dummy_cmd():
     return (testfile, cmd, args, wdir)
 
 
-def CrashProcess(object):
+class CrashProcess(object):
 
     def __init__(self):
         self.alive = True
@@ -91,6 +91,46 @@ def crash_cmd():
     args = ['generic.py', "test_manager.run_crashprocess"]
     wdir = os.path.dirname(__file__)
     return (cmd, args, wdir)
+
+class EchoProcess(object):
+
+    def __init__(self, *args):
+        self.alive = True
+        signal.signal(signal.SIGQUIT, self.handle_quit)
+        signal.signal(signal.SIGTERM, self.handle_quit)
+        signal.signal(signal.SIGINT, self.handle_quit)
+        signal.signal(signal.SIGCHLD, self.handle_chld)
+
+    def handle_quit(self, *args):
+        self.alive = False
+
+    def handle_chld(self, *args):
+        pass
+
+
+
+    def run(self):
+        while self.alive:
+            c = sys.stdin.readline()
+            print(c)
+            sys.stdout.flush()
+            if c == "exit\n":
+                break
+
+def run_echocmd():
+    c = EchoProcess()
+    c.run()
+    return 1
+
+def echo_cmd():
+    fd, testfile = mkstemp()
+    os.close(fd)
+    cmd = sys.executable
+    args = ['generic.py', "test_manager.run_echocmd", testfile]
+    wdir = os.path.dirname(__file__)
+    print(cmd, " ".join(args))
+    return (cmd, args, wdir)
+
 
 
 def test_simple():
