@@ -59,6 +59,13 @@ class Manager(object):
         The loop can be omitted if the first thing you do is
         launching a manager. The run function is here for convenience. You
         can of course just run `loop.run()` instead
+
+    .. warning::
+
+        The manager should be stopped the last one to prevent any lock
+        in your application.
+
+
     """
 
     def __init__(self, loop=None):
@@ -191,7 +198,7 @@ class Manager(object):
             retry
           - **retry_in**: seconds, the time after we restart the process
             and try to spawn them
-          - ** max_retry**: maximum number of retry before we give up
+          - **max_retry**: maximum number of retry before we give up
             and stop the process.
 
         """
