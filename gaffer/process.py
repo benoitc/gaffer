@@ -18,8 +18,9 @@ import psutil
 from psutil.error import AccessDenied, NoSuchProcess
 import six
 
+from .events import EventEmitter
 from .util import bytestring, getcwd, check_uid, check_gid, bytes2human
-from .sync import atomic_read, decrement
+from .sync import atomic_read, increment, decrement
 
 pyuv.Process.disable_stdio_inheritance()
 
@@ -129,32 +130,58 @@ class RedirectIO(object):
 class ProcessWatcher(object):
     """ object to retrieve process stats """
 
-    def __init__(self, loop, pid, on_refresh_cb=None):
+    def __init__(self, loop, pid):
         self.loop = loop
         self.pid = pid
-        self.on_refresh_cb = on_refresh_cb
         self._process = psutil.Process(pid)
+
         self._last_info = None
-        self.active = True
-        self._timer = pyuv.Timer(loop)
-        self._timer.start(self._async_refresh, 0.1, 0.1)
+        self.on_refresh_cb = None
+        self._active = 0
+        self._refcount = 0
+        self._emitter = EventEmitter(loop)
+
+    @property
+    def active(self):
+        return atomic_read(self._active) > 0
+
+    def subscribe(self, listener):
+        self._refcount = increment(self._refcount)
+        self._emitter.subscribe("stat", listener)
+        self._start()
+
+    def subscribe_once(self, listener):
+        self._emitter.subscribe_once("stat", listener)
+
+    def unsubscribe(self, listener):
+        self._emitter.unsubscribe(".", listener)
+        self._refcount = decrement(self._refcount)
+        if not atomic_read(self._refcount):
+            self.stop()
+
+    def stop(self, all_events=False):
+        if self.active:
+            self._active = decrement(self._active)
+            self._timer.stop()
+
+        if all_events:
+            self._emitter.close()
 
     def _async_refresh(self, handle):
         self._last_info = self.refresh()
-        if self.on_refresh_cb is not None:
-            self.on_refresh_cb(self, self._last_info)
-
-    def get_infos(self):
-        if not self._last_info:
-            self._last_info = self.refresh(0.1)
-        return self._last_info
+        self._emitter.publish("stat", self._last_info)
 
     def refresh(self, interval=0):
         return get_process_info(self._process, interval=interval)
 
-    def stop(self):
-        self.active = decrement(self.active)
-        self._timer.stop()
+    def _start(self):
+        if not self.active:
+            self._timer = pyuv.Timer(self.loop)
+            # start the timer to refresh the informations
+            # 0.1 is the minimum interval to fetch cpu stats for this
+            # process.
+            self._timer.start(self._async_refresh, 0.1, 0.1)
+            self._active = increment(self._active)
 
 class Process(object):
     """ class wrapping a process
@@ -181,8 +208,7 @@ class Process(object):
 
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
-            redirect_stream=[], monitor=False, monitor_cb=None,
-            on_exit_cb=None):
+            redirect_stream=[], on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -222,12 +248,10 @@ class Process(object):
         self.redirect_stream = redirect_stream
         self.stdio = self._setup_stdio()
         self.detach = detach
-        self.monitor = monitor
-        self.monitor_cb = monitor_cb
         self.on_exit_cb = on_exit_cb
         self._process = None
         self._pprocess = None
-        self._process_watcher = None
+        self._process_watcher = False
         self.stopped = False
 
     def _setup_stdio(self):
@@ -281,9 +305,6 @@ class Process(object):
         for stream in self.redirect_stream:
             stream.start()
 
-        if self.monitor:
-            self.start_monitor()
-
     @property
     def active(self):
         return self._running
@@ -298,29 +319,31 @@ class Process(object):
         """ return the process info. If the process is monitored it
         return the last informations stored asynchronously by the watcher"""
 
+        if not self._pprocess:
+            self._pprocess = psutil.Process(self.pid)
+        return get_process_info(self._pprocess, 0.1)
+
+    def monitor(self, listener=None):
+        """ start to monitor the process
+
+        Listener can be any callable and receive *("stat", process_info)*
+        """
+
         if not self._process_watcher:
-            if not self._pprocess:
-                self._pprocess = psutil.Process(self.pid)
-            return get_process_info(self._pprocess, 0.1)
-        else:
-            return self._process_watcher.get_info()
+            self._process_watcher = ProcessWatcher(self.loop, self.pid)
 
-    @property
-    def monitored(self):
-        """ return True if the process is monitored """
-        return self._process_watcher is not None
+        self._process_watcher.subscribe(listener)
 
-    def start_monitor(self, monitor_cb=None):
-        """ start to monitor the process """
-        on_refresh_cb = monitor_cb or self.monitor_cb
-        self._process_watcher = ProcessWatcher(self.loop, self.pid,
-                on_refresh_cb=on_refresh_cb)
+    def unmonitor(self, listener):
+        """ stop monitoring this process.
 
-    def stop_monitor(self):
-        """ stop to moonitor the process """
-        if atomic_read(self.monitored):
-            self._process_watcher.stop()
-            self._process_watcher = None
+        listener is the callback passed to the monitor function
+        previously.
+        """
+        if not self._process_watcher:
+            pass
+
+        self._process_watcher.unsubscribe(listener)
 
     def stop(self):
         """ stop the process """
@@ -334,8 +357,6 @@ class Process(object):
         self._process.kill(signum)
 
     def _exit_cb(self, handle, exit_status, term_signal):
-        # stop monitoring
-        self.stop_monitor()
         self._process.close()
         self._running = False
 

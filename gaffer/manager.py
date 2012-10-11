@@ -636,7 +636,6 @@ class Manager(object):
         # the processes
         state.numprocesses = 0
 
-
         # stop the processes, we need to lock here
         with self._lock:
             while True:
