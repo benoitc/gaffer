@@ -92,7 +92,9 @@ class HttpHandler(object):
             (r'/watch/([^/]+)$', http.WatcherHandler),
             (r'/watch/([^/]+)/([^/]+)$', http.WatcherHandler),
             (r'/watch/([^/]+)/([^/]+)/([^/]+)$', http.WatcherHandler),
-
+            (r'/stats', http.StatsHandler),
+            (r'/stats/([^/]+)', http.StatsHandler),
+            (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
     ]
 
     def __init__(self, endpoints=[], handlers=None):

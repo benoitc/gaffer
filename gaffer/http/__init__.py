@@ -6,3 +6,4 @@ from .misc import WelcomeHandler, StatusHandler
 from .processes import (ProcessesHandler, ProcessIdHandler,
         ProcessIdManageHandler, ProcessHandler, ProcessManagerHandler)
 from .watcher import WatcherHandler
+from .stats import StatsHandler
