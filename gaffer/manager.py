@@ -420,7 +420,7 @@ class Manager(object):
     def _shutdown(self, handle):
 
         def clean_cb(h):
-            if isinstance(h, pyuv.Process) and h.active:
+            if h.active:
                 h.close()
 
         self.loop.walk(clean_cb)
