@@ -52,6 +52,7 @@ Contents:
    overview
    commands
    processframework
+   http
    httpclient
    controllers
 
