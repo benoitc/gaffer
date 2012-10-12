@@ -30,7 +30,7 @@ Features
     - Possibility to interract with STDIO:
         - websocket stream to write to stdin and receive from stdout
           (muliple clients can write at the same time)
-        - subscribe on stdout/stderr feed via ongpolling, continuous
+        - subscribe on stdout/stderr feed via longpolling, continuous
           stream, eventsource or websockets
         - write your own client/server using the framework
     - Subscribe to process statistics per process or process templates
