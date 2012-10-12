@@ -32,7 +32,7 @@ Features
 Documentation
 -------------
 
-http://gaffer.readthedoc.org
+http://gaffer.readthedocs.org
 
 Installation
 ------------
