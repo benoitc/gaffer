@@ -804,7 +804,7 @@ class ProcessState(object):
             mem = sum(lmem)
 
         if 'N/A' in lcpu:
-            mem, max_mem, min_mem = "N/A"
+            cpu, max_cpu, min_cpu = "N/A"
         else:
             max_cpu = max(lcpu)
             min_cpu = min(lcpu)

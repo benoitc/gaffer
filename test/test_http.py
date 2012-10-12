@@ -13,7 +13,7 @@ from gaffer.http_handler import HttpEndpoint, HttpHandler
 from gaffer.httpclient import (Server, Process, ProcessId,
         GafferNotFound, GafferConflict)
 
-from .test_manager import dummy_cmd
+from test_manager import dummy_cmd
 
 TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
