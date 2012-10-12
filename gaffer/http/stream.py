@@ -3,12 +3,12 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 from tornado.web import asynchronous
+from tornado import websocket
 
 from .util import AsyncHandler
 
 class StreamHandler(AsyncHandler):
     """ stream handler to stream stout & stderr """
-
 
     def post(self, *args):
         self.preflight()
@@ -134,3 +134,44 @@ class StreamHandler(AsyncHandler):
             self.write(msg['data'])
             self.flush()
             self.finish()
+
+
+class WStreamHandler(websocket.WebSocketHandler):
+
+    def open(self, *args):
+        self._source = None
+        m = self.settings.get('manager')
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.write_message({"error": "bad_value"})
+            self.close()
+
+        if not pid in m.running:
+            self.write_message({"error": "not_found"})
+            self.close()
+
+        self._source = p = m.running[pid]
+
+        if p.redirect_output:
+            p.monitor_io(p.redirect_output[0], self._on_event)
+
+        if not p.redirect_input:
+            self.write_message({"error": "forbidden_write"})
+            self.close()
+
+        if p.redirect_output:
+            p.monitor_io(p.redirect_output[0], self._on_event)
+
+
+    def on_message(self, message):
+        self._source.write(message)
+
+    def on_close(self):
+        if not hasattr(self, '_source') or not self._source:
+            return
+        self._source.unmonitor_io("stdout", self._on_event)
+
+    def _on_event(self, evtype, msg):
+        self.write_message(msg['data'])
+        self.flush()

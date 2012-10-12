@@ -7,4 +7,4 @@ from .processes import (ProcessesHandler, ProcessIdHandler,
         ProcessIdManageHandler, ProcessHandler, ProcessManagerHandler)
 from .watcher import WatcherHandler
 from .stats import StatsHandler
-from .stream import StreamHandler
+from .stream import StreamHandler, WStreamHandler
