@@ -17,13 +17,12 @@ Features
     - HTTPS supported
     - Possibility to interract with STDIO:
         - websocket stream to write to stdin and receive from stdout
-          (muliple clients can write at the same time)
+          (muliple clients can read and write at the same time)
         - subscribe on stdout/stderr feed via longpolling, continuous
           stream, eventsource or websockets
         - write your own client/server using the framework
     - Subscribe to process statistics per process or process templates
       and get them in quasi RT.
-    - Flapping: handle cases where your processes crash too much
     - Easily extensible: add your own endpoint, create your client,
       embed gaffer in your application, ...
     - Compatible with python 2.6x, 2.7x, 3.x
