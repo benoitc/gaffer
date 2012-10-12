@@ -34,6 +34,7 @@ commands in :doc:`commands`:
 
 .. toctree::
     :maxdepth: 1
+    :hidden:
     :glob:
 
     commands/*
