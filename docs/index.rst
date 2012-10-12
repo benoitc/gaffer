@@ -9,9 +9,6 @@ Welcome to gaffer's documentation!
 Gaffer
 ======
 
-.. image:: https://secure.travis-ci.org/benoitc/gaffer.png?branch=master
-    :target: http://travis-ci.org/benoitc/gaffer
-
 Simple process management
 
 Gaffer is a set of Python modules and tools to easily maintain and
