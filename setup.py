@@ -38,7 +38,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
     long_description = f.read()
 
 DATA_FILES = [
-        ('circus', ["LICENSE", "MANIFEST.in", "NOTICE", "README.rst",
+        ('gaffer', ["LICENSE", "MANIFEST.in", "NOTICE", "README.rst",
                         "THANKS", "UNLICENSE"])
         ]
 
