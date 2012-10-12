@@ -27,7 +27,7 @@ class ProcessAdd(Command):
         -----------
 
         - **name**: name of the process
-        - **inc*: The number of new OS processes to start
+        - **inc**: The number of new OS processes to start
 
 
         Command line:

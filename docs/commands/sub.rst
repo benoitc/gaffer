@@ -22,7 +22,7 @@ Properties:
 -----------
 
 - **name**: name of the process
-- **inc*: The number of new OS processes to stop
+- **inc**: The number of new OS processes to stop
 
 
 Command line:

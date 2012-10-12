@@ -105,12 +105,13 @@ class Manager(object):
         self.started = True
 
     def run(self):
-        """ Convenience function to use in place of `loop.run()'
-        If the manager is not started it raises a `RuntimeError'.
+        """ Convenience function to use in place of `loop.run()`
+        If the manager is not started it raises a `RuntimeError`.
 
         Note: if you want to use separately the default loop for this
         thread then just use the start function and run the loop somewhere
-        else. """
+        else.
+        """
         if not self.started:
             raise RuntimeError("manager hasn't been started")
         self.loop.run()
@@ -201,8 +202,8 @@ class Manager(object):
           - **max_retry**: maximum number of retry before we give up
             and stop the process.
         - **redirect_output**: list of io to redict (max 2) this is a list of custom
-      labels to use for the redirection. Ex: ["a", "b"] will
-      redirect stdoutt & stderr and stdout events will be labeled "a"
+          labels to use for the redirection. Ex: ["a", "b"] will
+          redirect stdoutt & stderr and stdout events will be labeled "a"
         - **redirect_input**: Boolean (False is the default). Set it if
           you want to be able to write to stdin.
         """

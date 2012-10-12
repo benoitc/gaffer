@@ -20,7 +20,7 @@ class Kill(Command):
             HTTP/1.1 POST /processes/<name_or_id>/_signal/<signum>
 
 
-        The response `{"ok": True}' if everything was ok.
+        The response `{"ok": True}` if everything was ok.
 
         Command line:
         -------------

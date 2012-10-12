@@ -30,6 +30,7 @@ The response return::
         "numprocesses": 1
     }
 
+
 with an http status 200 if everything is ok.
 
 
@@ -62,7 +63,7 @@ Command line:
 
     gafferctl get_process name
 
- Options
+Options
 +++++++
 
 - <name>: name of the process details to fetch
