@@ -70,7 +70,7 @@ class Manager(object):
 
     """
 
-    def __init__(self, loop=None, graceful_timeout=30.0):
+    def __init__(self, loop=None):
 
         # by default we run on the default loop
         self.loop = loop or pyuv.Loop.default_loop()
