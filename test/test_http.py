@@ -25,7 +25,7 @@ def start_manager():
     http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
     http_handler = HttpHandler(endpoints=[http_endpoint])
     m = Manager()
-    m.start(controllers=[http_handler])
+    m.start(apps=[http_handler])
     time.sleep(0.2)
     return m
 
@@ -50,7 +50,7 @@ def test_multiple_handers():
     http_endpoint2 = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT2))
     http_handler = HttpHandler(endpoints=[http_endpoint, http_endpoint2])
     m = Manager()
-    m.start(controllers=[http_handler])
+    m.start(apps=[http_handler])
     time.sleep(0.2)
 
     s = Server("http://%s:%s" % (TEST_HOST, TEST_PORT), loop=m.loop)

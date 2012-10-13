@@ -60,11 +60,11 @@ class Server(object):
     """ Server object used for gafferd """
 
     def __init__(self, config_path):
-        self.controllers, self.processes = self.get_config(config_path)
+        self.apps, self.processes = self.get_config(config_path)
         self.manager = Manager()
 
     def run(self):
-        self.manager.start(controllers=self.controllers)
+        self.manager.start(apps=self.apps)
 
         # add processes
         for name, cmd, params in self.processes:
@@ -178,8 +178,8 @@ class Server(object):
             # we create a default endpoint
             endpoints = [HttpEndpoint()]
 
-        controllers = [SigHandler(), HttpHandler(endpoints=endpoints)]
-        return controllers, processes
+        apps = [SigHandler(), HttpHandler(endpoints=endpoints)]
+        return apps, processes
 
 def run():
     parser = argparse.ArgumentParser(description='Run some watchers.')

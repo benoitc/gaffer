@@ -7,7 +7,7 @@ import signal
 import pyuv
 
 class SigHandler(object):
-    """ A simple controller to handle signals """
+    """ A simple gaffer application to handle signals """
 
     QUIT_SIGNALS = (signal.SIGQUIT, signal.SIGTERM, signal.SIGINT)
 

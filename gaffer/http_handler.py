@@ -72,9 +72,9 @@ class HttpEndpoint(object):
         self._start_server()
 
 class HttpHandler(object):
-    """ simple HTTP controller for gaffer.
+    """ simple gaffer application that gives an HTTP API access to gaffer.
 
-    This controller can listen on multiple endpoints (tcp or unix
+    This application can listen on multiple endpoints (tcp or unix
     sockets) with different options. Each endpoint can also listen on
     different interfaces """
 

@@ -37,17 +37,17 @@ class Manager(object):
     The design is pretty simple. The manager is running on the default
     event loop and listening on events. Events are sent when a process
     exit or from any method call. The control of a manager can be
-    extended by adding controllers on startup. For example gaffer
-    provides a controller allowing you to control processes via HTTP.
+    extended by adding apps on startup. For example gaffer
+    provides an application allowing you to control processes via HTTP.
 
-    Running a controller is done like this::
+    Running an application is done like this::
 
-        # initialize the controller with the default loop
+        # initialize the application with the default loop
         loop = pyuv.Loop.default_loop()
         m = Manager(loop=loop)
 
-        # start the controller
-        m.start(controllers=[HttpHandler])
+        # start the application
+        m.start(apps=[HttpHandler])
 
         .... # do smth
 
@@ -80,7 +80,7 @@ class Manager(object):
         self._emitter = EventEmitter(self.loop)
 
         # initialize some values
-        self.controllers = None
+        self.apps = None
         self.started = False
         self._stop_ev = None
         self.max_process_id = 0
@@ -94,12 +94,12 @@ class Manager(object):
         self.restart_cb = None
         self._lock = RLock()
 
-    def start(self, controllers=[]):
+    def start(self, apps=[]):
         """ start the manager. """
-        self.controllers = controllers
+        self.apps = apps
 
         # start contollers
-        for ctl in self.controllers:
+        for ctl in self.apps:
             ctl.start(self.loop, self)
 
         self.started = True
@@ -403,7 +403,6 @@ class Manager(object):
             except KeyError:
                 pass
 
-
     # ------------- general purpose utilities
 
     def wakeup(self):
@@ -450,8 +449,8 @@ class Manager(object):
             self._shutdown_h.start(self._shutdown, 0.1, 0.0)
 
         with self._lock:
-            # stop controllers
-            for ctl in self.controllers:
+            # stop apps
+            for ctl in self.apps:
                 ctl.stop()
 
 
@@ -471,7 +470,7 @@ class Manager(object):
                 self._restart_processes(state)
 
         with self._lock:
-            for ctl in self.controllers:
+            for ctl in self.apps:
                 ctl.restart()
 
             if self.restart_cb:

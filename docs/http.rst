@@ -2,10 +2,10 @@ HTTP api
 ========
 
 an http API provided by the ``gaffer.http_handler.HttpHandler```
-controller can be used to control gaffer via HTTP. To embed it in your
+gaffer application can be used to control gaffer via HTTP. To embed it in your
 app just initialize your manager with it::
 
-    manager = Manager(controllers=[HttpHandler()])
+    manager = Manager(apps=[HttpHandler()])
 
 The HttpHandler can be configured to accept multiple endpoinds and can
 be extended with new HTTP handlers. Internally we are using Tornado so
