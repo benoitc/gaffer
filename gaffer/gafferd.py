@@ -16,7 +16,7 @@ from .manager import Manager, FlappingInfo
 from .pidfile import Pidfile
 from .sig_handler import SigHandler
 from .util import daemonize
-
+from .webhooks import WebHooks
 
 ENDPOINT_DEFAULTS = dict(
         uri = None,
@@ -103,6 +103,7 @@ class Server(object):
 
         endpoints = []
         processes = []
+        webhooks = []
         for section in cfg.sections():
             if section.startswith('endpoint:'):
                 name = section.split("endpoint:", 1)[1]
@@ -174,12 +175,18 @@ class Server(object):
                             params[key] = cfg.dgetint(section, key, 30)
 
                     processes.append((name, cmd, params))
+            elif section == "webhooks":
+                for key, val in cfg.items(section):
+                    webhooks.append((key, val))
 
         if not endpoints:
             # we create a default endpoint
             endpoints = [HttpEndpoint()]
 
-        apps = [SigHandler(), HttpHandler(endpoints=endpoints)]
+        apps = [SigHandler(),
+                WebHooks(hooks=webhooks),
+                HttpHandler(endpoints=endpoints)]
+
         return apps, processes
 
 def run():

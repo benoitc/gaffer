@@ -467,7 +467,6 @@ class Manager(object):
             for ctl in self.apps:
                 ctl.stop()
 
-
             # we are now stopped
             self.started = False
 

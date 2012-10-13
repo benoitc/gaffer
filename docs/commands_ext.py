@@ -45,6 +45,10 @@ Config file example
     ;certfile=
     ;keyfile=
 
+    [webhooks]
+    ;create = http://some/url
+    ;proc.dummy.spawn
+
     [process:dummy]
     cmd = ./dummy.py
     ;cwd = .
