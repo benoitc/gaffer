@@ -170,7 +170,8 @@ class Server(object):
                         elif key == "redirect_input":
                             params[key] = cfg.dgetboolean(section, key,
                                     False)
-
+                        elif key == "graceful_timeout":
+                            params[key] = cfg.dgetint(section, key, 30)
 
                     processes.append((name, cmd, params))
 

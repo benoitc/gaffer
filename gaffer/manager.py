@@ -10,10 +10,12 @@ Classes
 =======
 
 """
-
 from collections import deque
+import heapq
 from threading import RLock
+import operator
 import os
+import signal
 import time
 
 import pyuv
@@ -22,7 +24,7 @@ import six
 from .events import EventEmitter
 from .process import Process
 from .sync import increment, add, sub, atomic_read, compare_and_swap
-
+from .util import nanotime
 
 class Manager(object):
     """ Manager - maintain process alive
@@ -68,7 +70,7 @@ class Manager(object):
 
     """
 
-    def __init__(self, loop=None):
+    def __init__(self, loop=None, graceful_timeout=30.0):
 
         # by default we run on the default loop
         self.loop = loop or pyuv.Loop.default_loop()
@@ -78,6 +80,10 @@ class Manager(object):
 
         # initialize the emitter
         self._emitter = EventEmitter(self.loop)
+
+        # initialize the process garbage collector
+        self._stopped = []
+        self._gc_collector = pyuv.Timer(self.loop)
 
         # initialize some values
         self.apps = None
@@ -97,6 +103,9 @@ class Manager(object):
     def start(self, apps=[]):
         """ start the manager. """
         self.apps = apps
+
+        # start the garbage collector
+        self._gc_collector.start(self._gc_handler, 1.0, 1.0)
 
         # start contollers
         for ctl in self.apps:
@@ -206,6 +215,9 @@ class Manager(object):
           redirect stdoutt & stderr and stdout events will be labeled "a"
         - **redirect_input**: Boolean (False is the default). Set it if
           you want to be able to write to stdin.
+        - **graceful_timeout**: graceful time before we send a  SIGKILL
+          to the process (which definitely kill it). By default 30s.
+          This is a time we let to a process to exit cleanly.
         """
 
         with self._lock:
@@ -439,6 +451,8 @@ class Manager(object):
 
 
     def _stop(self):
+        self._gc_collector.stop()
+
         # stop all processes
         self.stop_processes()
 
@@ -495,6 +509,11 @@ class Manager(object):
         self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid,
                 detached=p.detach)
 
+
+    def _collect_for_gc(self, state, p):
+        p.graceful_time = state.graceful_timeout + nanotime()
+        heapq.heappush(self._stopped, p)
+
     def _stop_byname_unlocked(self, name):
         """ stop a process by name """
         if name not in self.processes:
@@ -518,9 +537,11 @@ class Manager(object):
             # race condition, we need to remove the process from the
             # running pid now.
             if p.id in self.running:
-                self.running.pop(p.id)
-            p.stop()
+                # garbage collect
+                self._collect_for_gc(state, p)
 
+                self.running.pop(p.id)
+                p.stop()
 
     def _stop_byid_unlocked(self, pid):
         """ stop a process bby id """
@@ -531,8 +552,12 @@ class Manager(object):
 
         self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid)
 
-        # remove the process from the running processes
         state = self.processes[p.name]
+
+        # garbage collect
+        self._collect_for_gc(state, p)
+
+        # remove the process from the running processes
         state.remove(p)
 
         # finally stop the process
@@ -623,6 +648,25 @@ class Manager(object):
 
     # ------------- events handler
 
+    def _gc_handler(self, handle):
+        with self._lock:
+            while True:
+                if not len(self._stopped):
+                    delta = -1
+                    break
+
+                p = heapq.heappop(self._stopped)
+                now = nanotime()
+                delta = p.graceful_time - now
+                if delta > 0:
+                    heapq.heappush(self._stopped, p)
+                    break
+                else:
+                    try:
+                        p.kill(signal.SIGKILL)
+                    except:
+                        pass
+
     def _on_wakeup(self, handle):
         sig = None
         try:
@@ -655,6 +699,10 @@ class Manager(object):
             if process.id in self.running:
                 self.running.pop(process.id)
 
+            if process in self._stopped:
+                del self._stopped[operator.indexOf(self._stopped,
+                    process)]
+
             # remove the running process from the process state
             state = self.get_process_state(process.name)
             if not state:
@@ -663,6 +711,7 @@ class Manager(object):
             # if not stopped we may need to restart a new process
             if not state.stopped and self._check_flapping(state):
                 self._manage_processes(state)
+
 
 class FlappingInfo(object):
     """ object to keep flapping infos """
@@ -721,6 +770,10 @@ class ProcessState(object):
     @property
     def active(self):
         return len(self.running) > 0
+
+    @property
+    def graceful_timeout(self):
+        return nanotime(self.settings.get('graceful_timeout', 30.0))
 
     def __str__(self):
         return "state: %s" % self.name

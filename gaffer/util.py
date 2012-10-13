@@ -7,6 +7,7 @@ import os
 import pwd
 import resource
 import socket
+import time
 
 import six
 
@@ -169,3 +170,15 @@ def daemonize():
     os.open(REDIRECT_TO, os.O_RDWR)
     os.dup2(0, 1)
     os.dup2(0, 2)
+
+
+def nanotime(s=None):
+    """ convert seconds to nanoseconds. If s is None, current time is
+    returned """
+    if s is not None:
+        return int(s) * 1000000000
+    return time.time() * 1000000000
+
+def from_nanotime(n):
+    """ convert from nanotime to seconds """
+    return n / 1.0e9

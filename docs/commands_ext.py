@@ -56,7 +56,8 @@ Config file example
     ;flapping = 2, 1., 7., 5
     numprocesses = 1
     redirect_output = stdout, stderr
-
+    ; redirect_input  = true
+    ; graceful_timeout = 30
 
     [process:echo]
     cmd = ./echo.py

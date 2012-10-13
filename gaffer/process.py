@@ -8,7 +8,6 @@ The process module wrap a process and IO redirection
 
 
 from datetime import timedelta
-import json
 import os
 import signal
 import shlex
@@ -19,7 +18,8 @@ from psutil.error import AccessDenied, NoSuchProcess
 import six
 
 from .events import EventEmitter
-from .util import bytestring, getcwd, check_uid, check_gid, bytes2human
+from .util import (bytestring, getcwd, check_uid, check_gid,
+        bytes2human)
 from .sync import atomic_read, increment, decrement
 
 pyuv.Process.disable_stdio_inheritance()
@@ -320,6 +320,7 @@ class Process(object):
         self._pprocess = None
         self._process_watcher = None
         self.stopped = False
+        self.graceful_time = 0
 
         self._setup_stdio()
 
@@ -387,6 +388,12 @@ class Process(object):
         if not self._pprocess:
             self._pprocess = psutil.Process(self.pid)
         return get_process_info(self._pprocess, 0.1)
+
+    def __lt__(self, other):
+        return (self.pid == other.pid and
+                self.graceful_time < other.graceful_time)
+
+    __cmp__ = __lt__
 
     def monitor(self, listener=None):
         """ start to monitor the process
