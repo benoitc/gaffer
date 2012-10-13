@@ -2,6 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+from collections import deque
 import os
 import signal
 import sys
@@ -15,26 +16,37 @@ from gaffer.process import Process
 
 class DummyProcess(object):
 
+    QUIT_SIGNALS = (signal.SIGQUIT, signal.SIGTERM,)
+
     def __init__(self, testfile):
         self.alive = True
         self.testfile = testfile
-        signal.signal(signal.SIGHUP, self.handle_hup)
-        signal.signal(signal.SIGQUIT, self.handle_quit)
-        signal.signal(signal.SIGTERM, self.handle_quit)
+        self.queue = deque()
+        signal.signal(signal.SIGHUP, self.handle)
+        signal.signal(signal.SIGQUIT, self.handle)
+        signal.signal(signal.SIGTERM, self.handle)
         signal.signal(signal.SIGCHLD, self.handle_chld)
+        signal.signal(signal.SIGWINCH, self.handle_winch)
 
     def _write(self, msg):
         with open(self.testfile, 'a+') as f:
             f.write(msg)
+            f.flush()
 
-    def handle_quit(self, *args):
+    def handle(self, signum, frame):
+        self.queue.append(signum)
+
+    def handle_quit(self):
         self._write('QUIT')
         self.alive = False
 
     def handle_chld(self, *args):
         self._write('CHLD')
 
-    def handle_hup(self, *args):
+    def handle_winch(self, *args):
+        return
+
+    def handle_hup(self):
         self._write('HUP')
 
     def run(self):
@@ -47,7 +59,20 @@ class DummyProcess(object):
         sys.stderr.flush()
 
         while self.alive:
+            sig = None
+            try:
+                sig = self.queue.popleft()
+            except IndexError:
+                pass
+
+            if sig is not None:
+                if sig in self.QUIT_SIGNALS:
+                    self.handle_quit()
+                elif sig == signal.SIGHUP:
+                    self.handle_hup()
+
             time.sleep(0.001)
+
         self._write('STOP')
 
 
@@ -128,9 +153,7 @@ def echo_cmd():
     cmd = sys.executable
     args = ['generic.py', "test_manager.run_echocmd", testfile]
     wdir = os.path.dirname(__file__)
-    print(cmd, " ".join(args))
     return (cmd, args, wdir)
-
 
 
 def test_simple():
@@ -330,26 +353,30 @@ def test_send_signal():
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
     state = m.get_process_state("dummy")
     processes = state.list_processes()
-
-    time.sleep(0.2)
     m.send_signal("dummy", signal.SIGHUP)
     time.sleep(0.2)
+
     m.send_signal(processes[0].id, signal.SIGHUP)
     m.stop_process("dummy")
-    time.sleep(0.2)
+
+    def stop(handle):
+        handle.stop()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.8, 0.0)
+    m.run()
+
     with open(testfile, 'r') as f:
         res = f.read()
         assert res == 'STARTHUPHUPQUITSTOP'
 
-    m.stop()
-    m.run()
-
 def test_flapping():
     m = Manager()
     m.start()
-
     cmd, args, wdir = crash_cmd()
     flapping = FlappingInfo(attempts=1, window=1, retry_in=0.1, max_retry=2)
     m.add_process("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
@@ -361,8 +388,6 @@ def test_flapping():
 
     t = pyuv.Timer(m.loop)
     t.start(cb, 0.8, 0.8)
-
-
     m.add_process("crashing2", cmd, args=args, cwd=wdir)
     state = m.get_process_state("crashing2")
 
@@ -375,7 +400,6 @@ def test_flapping():
 
     m.stop()
     m.run()
-
 
 def test_events():
     emitted = []
@@ -423,12 +447,10 @@ def test_process_events():
     m.stop()
     m.run()
 
-
     assert 'proc.dummy.start' in emitted
     assert 'proc.dummy.spawn' in emitted
     assert 'proc.dummy.stop' in emitted
     assert 'proc.dummy.exit' in emitted
-
 
 def test_process_exit_event():
     emitted = []
