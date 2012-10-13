@@ -2,12 +2,92 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-""""
-Many events happend in gaffer. For example a process will emist the
-events "start", "stop", "exit". This module offeres a common way to
-susbscribe and emit events.
+"""
+Many events happend in gaffer.
 
-ex::
+
+Manager events
+--------------
+
+Manager events have the following format::
+
+    {
+      "event": "<nameofevent">>,
+      "name": "<templatename>"
+    }
+
+- **create**: a process template is created
+- **start**: a process template start to launch OS processes
+- **stop**: all OS processes of a process template are stopped
+- **restart**: all processes of a process template are restarted
+- **update**: a process template is updated
+- **delete**: a process template is deleted
+
+Processes events
+----------------
+
+All processes' events are prefixed by ``proc.<name>`` to make the pattern
+matching easier, where ``<name>`` is the name of the process template
+
+Events are:
+
+- **proc.<name>.start** : the template <name> start to spawn processes
+- **proc.<name>.spawn** : one OS process using the process <name>
+  template is spawned. Message is::
+
+    {
+      "event": "proc.<name>.spawn">>,
+      "name": "<name>",
+      "detach": false,
+      "pid": int
+    }
+
+    .. note::
+
+        pid is the internal pid
+- **proc.<name>.exit**: one OS process of the <name> template has
+  exited. Message is::
+
+    {
+      "event": "proc.<name>.exit">>,
+      "name": "<name>",
+      "pid": int,
+      "exit_code": int,
+      "term_signal": int
+    }
+
+- **proc.<name>.stop**: all OS processes in the template <name> are
+  stopped.
+- **proc.<name>.stop_pid**: One OS process of the template <name> is
+  stopped. Message is::
+
+    {
+      "event": "proc.<name>.stop_pid">>,
+      "name": "<name>",
+      "pid": int
+    }
+
+- **proc.<name>.stop_pid**: One OS process of the template <name> is
+  reapped. Message is::
+
+    {
+      "event": "proc.<name>.reap">>,
+      "name": "<name>",
+      "pid": int
+    }
+
+
+The :mod:`events` Module
+------------------------
+
+
+This module offeres a common way to susbscribe and emit events. All
+events in gaffer are using.
+
+Example of usage
+++++++++++++++++
+
+::
 
         event = EventEmitter()
 

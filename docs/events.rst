@@ -1,5 +1,5 @@
-:mod:`events` Module
----------------------
+Gaffer events
+=============
 
 .. automodule:: gaffer.events
     :members:
