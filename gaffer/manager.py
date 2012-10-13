@@ -727,6 +727,7 @@ class ProcessState(object):
         return "state: %s" % self.name
 
     def make_process(self, loop, id, on_exit):
+        """ create an OS process using this template """
         params = {}
         for name, default in self.DEFAULT_PARAMS.items():
             params[name] = self.settings.get(name, default)
@@ -753,31 +754,34 @@ class ProcessState(object):
             doc="""return the max numbers of processes that we keep
             alive for this command""")
 
-    @property
-    def hup(self):
-        return self.settings.get('hup', False)
-
     def reset(self):
+        """ reset this template to default values """
         self.numprocesses = self.settings.get('numprocesses', 1)
         # reset flapping
         if self.flapping and self.flapping is not None:
             self.flapping.reset()
 
     def ttin(self, i=1):
+        """ increase the maximum number of running processes """
+
         self._numprocesses = add(self._numprocesses, i)
         return self._numprocesses
 
     def ttou(self, i=1):
+        """ decrease the maximum number of running processes """
         self._numprocesses = sub(self._numprocesses, i)
         return self._numprocesses
 
     def queue(self, process):
+        """ put one OS process in the running queue """
         self.running.append(process)
 
     def dequeue(self):
+        """ retrieved one OS process from the queue (FIFO) """
         return self.running.popleft()
 
     def remove(self, process):
+        """ remove an OS process from the running processes """
         try:
             self.running.remove(process)
         except ValueError:
@@ -787,6 +791,8 @@ class ProcessState(object):
         return list(self.running)
 
     def stats(self):
+        """ return stats from alll running process using this template
+        """
         infos = []
         lmem = []
         lcpu = []
@@ -816,14 +822,18 @@ class ProcessState(object):
         return ret
 
     def monitor(self, listener):
+        """ start monitoring in all processes of the process template """
         for p in self.running:
             p.monitor(listener)
 
     def unmonitor(self, listener):
+        """ unmonitor all processes maintained by this process template
+        """
         for p in self.running:
             p.unmonitor(listener)
 
     def check_flapping(self):
+        """ main function used to check the flapping """
         f = self.flapping
         if len(f.history) < f.attempts:
             f.history.append(time.time())
