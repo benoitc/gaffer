@@ -42,9 +42,10 @@ Events are:
       "pid": int
     }
 
-    .. note::
 
-        pid is the internal pid
+  .. note::
+
+    pid is the internal pid
 - **proc.<name>.exit**: one OS process of the <name> template has
   exited. Message is::
 
