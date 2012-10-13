@@ -47,7 +47,8 @@ Config file example
 
     [webhooks]
     ;create = http://some/url
-    ;proc.dummy.spawn
+    ;proc.dummy.spawn = http://some/otherurl
+
 
     [process:dummy]
     cmd = ./dummy.py
