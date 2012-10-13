@@ -281,29 +281,49 @@ def test_process_id():
     assert p.id == 3
 
     m.stop()
-
     m.run()
 
-def test_restart():
+def test_restart_process():
+    results = []
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
     state = m.get_process_state("dummy")
-
-    a = state.list_processes()
+    results.append(state.list_processes())
     m.restart_process("dummy")
-    b = state.list_processes()
-    assert a != b
 
-    def on_restart(manager):
+    def cb(handle):
         state = m.get_process_state("dummy")
-        c = state.list_processes()
-        assert b != c
+        results.append(state.list_processes())
         m.stop()
 
-    m.restart(on_restart)
+    t = pyuv.Timer(m.loop)
+    t.start(cb, 0.4, 0.0)
     m.run()
+
+    assert results[0] != results[1]
+
+def test_restart_manager():
+    results = []
+    m = Manager()
+    m.start()
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    state = m.get_process_state("dummy")
+    results.append(state.list_processes())
+
+    def cb(manager):
+        state = m.get_process_state("dummy")
+        results.append(state.list_processes())
+        m.stop()
+
+    m.restart()
+    t = pyuv.Timer(m.loop)
+    t.start(cb, 0.4, 0.0)
+    m.run()
+
+    assert results[0] != results[1]
 
 def test_send_signal():
     m = Manager()
@@ -324,7 +344,6 @@ def test_send_signal():
         assert res == 'STARTHUPHUPQUITSTOP'
 
     m.stop()
-
     m.run()
 
 def test_flapping():

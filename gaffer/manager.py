@@ -601,9 +601,11 @@ class Manager(object):
                 # race condition, we need to remove the process from the
                 # running pid now.
                 if p.id in self.running:
-                    self.running.pop(p.id)
+                    # garbage collect
+                    self._collect_for_gc(state, p)
 
-                p.stop()
+                    self.running.pop(p.id)
+                    p.stop()
 
         # reset the number of processes
         state.reset()
