@@ -7,6 +7,7 @@ Core gaffer framework
    manager
    process
    events
+   webhooks
    pidfile
    util
    tornado_pyuv

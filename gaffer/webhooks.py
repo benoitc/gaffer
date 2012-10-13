@@ -2,14 +2,34 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 """
-webhooks module
+Webhooks allow to register an url to a specific event (or alls) and the
+event will be posted on this URL. Each events can triger a post on a
+given url.
 
-This module propose a gaffer application that allows to register an url
-to a specific event (or alls) and the event will be posted on this
-URL.
+for example to listen all create events on http://echohttp.com/echo you
+can add this line in the webhooks sections of the gaffer setting file::
+
+    [webhooks]
+    create = http://echohttp.com/echo you
+
+Or programatically::
+
+    from gaffer.manager import Manager
+    from gaffer.webhooks import WebHooks
+    hooks = [("create", "http://echohttp.com/echo you ")
+    webhooks = WebHooks(hooks=hooks)
+
+    manager = Manager()
+    manager.start(apps=[webhooks])
+
 
 This gaffer application is started like other applications in the
-manager.
+manager. All :doc:`events` are supported.
+
+
+The :mod:`webhooks` Module
+------------------------
+
 """
 from collections import deque
 import json
