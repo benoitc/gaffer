@@ -53,7 +53,8 @@ def create_hooks(events):
 
 def test_manager_hooks():
     hooks = create_hooks(['create', 'start', 'update', 'stop',
-        'delete'])
+        'delete', 'proc.dummy.start', 'proc.dummy.spawn',
+        'proc.dummy.stop', 'proc.dummy.exit'])
     emitted = []
     loop = pyuv.Loop.default_loop()
     s = get_server(loop, emitted)
@@ -69,48 +70,13 @@ def test_manager_hooks():
     def on_stop(manager):
         s.stop()
 
-    def wait(handle):
-        m.stop(on_stop)
-
-
-    t = pyuv.Timer(m.loop)
-    t.start(wait, 0.8, 0.0)
-
+    m.stop(on_stop)
     m.run()
-
     assert ('create', 'dummy') in emitted
     assert ('start', 'dummy') in emitted
     assert ('update', 'dummy') in emitted
     assert ('stop', 'dummy') in emitted
     assert ('delete', 'dummy') in emitted
-
-def test_process_hooks():
-    hooks = create_hooks(['proc.dummy.start', 'proc.dummy.spawn',
-        'proc.dummy.stop', 'proc.dummy.exit'])
-    emitted = []
-    loop = pyuv.Loop.default_loop()
-    s = get_server(loop, emitted)
-    s.start()
-    m = Manager(loop=loop)
-    m.start(apps=[WebHooks(hooks)])
-    testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir)
-    m.stop_process("dummy")
-    time.sleep(0.2)
-
-    def on_stop(manager):
-        s.stop()
-
-    def wait(handle):
-        handle.stop()
-        m.stop(on_stop)
-
-
-    t = pyuv.Timer(m.loop)
-    t.start(wait, 0.8, 0.0)
-
-    m.run()
-
     assert ('proc.dummy.start', 'dummy') in emitted
     assert ('proc.dummy.spawn', 'dummy') in emitted
     assert ('proc.dummy.stop', 'dummy') in emitted

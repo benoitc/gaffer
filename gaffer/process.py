@@ -355,6 +355,7 @@ class Process(object):
             kwargs['gid'] = self.gid
             flags = flags | pyuv.UV_PROCESS_SETGID
 
+        #if self.detach:
         if self.detach:
             flags = flags | pyuv.UV_PROCESS_DETACHED
 
@@ -373,7 +374,11 @@ class Process(object):
 
     @property
     def active(self):
-        return self._running
+        return self._process.active
+
+    @property
+    def closed(self):
+        return self._process.closed
 
     @property
     def pid(self):
@@ -388,6 +393,14 @@ class Process(object):
         if not self._pprocess:
             self._pprocess = psutil.Process(self.pid)
         return get_process_info(self._pprocess, 0.1)
+
+    @property
+    def status(self):
+        """ return the process status """
+        if not self._pprocess:
+            self._pprocess = psutil.Process(self.pid)
+        return self._pprocess.status
+
 
     def __lt__(self, other):
         return (self.pid == other.pid and
@@ -453,6 +466,9 @@ class Process(object):
 
         self._process.kill(signum)
 
+    def close(self):
+        self._process.close()
+
     def _exit_cb(self, handle, exit_status, term_signal):
         if self._redirect_io is not None:
             self._redirect_io.stop()
@@ -460,10 +476,9 @@ class Process(object):
         if self._redirect_in is not None:
             self._redirect_in.stop()
 
-        self._process.close()
         self._running = False
+        handle.close()
 
         # handle the exit callback
-        if not self.on_exit_cb:
-            return
-        self.on_exit_cb(self, exit_status, term_signal)
+        if self.on_exit_cb is not None:
+            self.on_exit_cb(self, exit_status, term_signal)

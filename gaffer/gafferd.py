@@ -172,7 +172,7 @@ class Server(object):
                             params[key] = cfg.dgetboolean(section, key,
                                     False)
                         elif key == "graceful_timeout":
-                            params[key] = cfg.dgetint(section, key, 30)
+                            params[key] = cfg.dgetint(section, key, 10)
 
                     processes.append((name, cmd, params))
             elif section == "webhooks":

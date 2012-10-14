@@ -133,6 +133,7 @@ def test_process_start_stop():
 
     p.start()
     time.sleep(0.2)
+
     assert len(m.running) == 1
     status = p.status()
     assert status['running'] == 1
@@ -153,6 +154,7 @@ def test_process_start_stop():
     assert p.active == True
 
     p.restart()
+    time.sleep(0.4)
     assert len(m.running) == 1
     assert p.active == True
 

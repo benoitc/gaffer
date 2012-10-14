@@ -18,6 +18,7 @@ import os
 import signal
 import time
 
+import psutil
 import pyuv
 import six
 
@@ -75,7 +76,7 @@ class Manager(object):
         # by default we run on the default loop
         self.loop = loop or pyuv.Loop.default_loop()
 
-        # setup wakeup event
+        # wakeup ev for internal signaling
         self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
 
         # initialize the emitter
@@ -94,8 +95,9 @@ class Manager(object):
         self.running = {}
         self.channel = deque()
         self._updates = deque()
-        self._signals = deque()
+        self._signals = []
 
+        self.stopping= False
         self.stop_cb = None
         self.restart_cb = None
         self._lock = RLock()
@@ -106,6 +108,7 @@ class Manager(object):
 
         # start the garbage collector
         self._gc_collector.start(self._gc_handler, 1.0, 1.0)
+        self._gc_collector.unref()
 
         # start contollers
         for ctl in self.apps:
@@ -130,6 +133,7 @@ class Manager(object):
         self.stop_cb = callback
         self._signals.append("STOP")
         self.wakeup()
+
 
     def restart(self, callback=None):
         """ restart all processes in the manager. This function is
@@ -234,9 +238,7 @@ class Manager(object):
 
             self._publish("create", name=name)
             if start:
-                self._publish("start", name=name)
-                self._publish("proc.%s.start" % name, name=name)
-                self._spawn_processes(state)
+                self.start_process(name)
 
     def update_process(self, name, cmd, **kwargs):
         """ update a process information.
@@ -256,7 +258,18 @@ class Manager(object):
                 del kwargs['start']
 
             self._publish("update", name=name)
-            self._spawn_processes(state)
+            self._manage_processes(state)
+
+
+    def start_process(self, name):
+        with self._lock:
+            if name in self.processes:
+                state = self.processes[name]
+                self._publish("start", name=name)
+                self._publish("proc.%s.start" % name, name=name)
+                self._manage_processes(state)
+            else:
+                raise KeyError("%s not found")
 
     def stop_process(self, name_or_id):
         """ stop a process by name or id
@@ -266,14 +279,24 @@ class Manager(object):
         process id is givien, only the process with this id will be
         stopped """
 
-        if isinstance(name_or_id, six.string_types):
-            stop_func = self._stop_byname_unlocked
-        else:
-            stop_func = self._stop_byid_unlocked
-
-        # really stop the process
         with self._lock:
-            stop_func(name_or_id)
+            # stop all processes of the template name
+            if isinstance(name_or_id, six.string_types):
+                print("here")
+                self._stop_processes(name_or_id)
+            else:
+                # stop a process by its internal pid
+                self._stop_process(name_or_id)
+
+
+    def restart_process(self, name):
+        """ restart a process """
+        with self._lock:
+            if name not in self.processes:
+                raise KeyError("%r not found" % name)
+
+            state = self.get_process_state(name)
+            self._restart_processes(state)
 
     def remove_process(self, name):
         """ remove the process and its config from the manager """
@@ -282,9 +305,20 @@ class Manager(object):
             if name not in self.processes:
                 raise KeyError("%r not found" % name)
 
-            self._stop_byname_unlocked(name)
+            # stop all processes
+            self._stop_processes(name)
+            # remove it the list
             del self.processes[name]
+            # notify other that this template has been deleted
             self._publish("delete", name=name)
+
+    def manage_process(self, name):
+        with self._lock:
+            if name not in self.processes:
+                raise KeyError("%r not found" % name)
+            state = self.processes[name]
+            self._manage_processes(state)
+
 
     def get_process_info(self, name):
         """ get process info """
@@ -298,6 +332,21 @@ class Manager(object):
             return info
 
     def get_process_status(self, name):
+        """ return the process status::
+
+            {
+              "active":  str,
+              "running": int,
+              "max_processes": int
+            }
+
+        - **active** can be *active* or *stopped*
+        - **running**: the number of actually running OS processes using
+          this template.
+        - **max_processes**: The maximum number of processes that should
+          run. It is is normally the same than the **runnin** value.
+
+        """
         with self._lock:
             if name not in self.processes:
                 raise KeyError("%r not found" % name)
@@ -328,54 +377,27 @@ class Manager(object):
         """ get stats changes on a process template or id
         """
         with self._lock:
-            if isinstance(name_or_id, int):
-                try:
+            try:
+                if isinstance(name_or_id, int):
                     return self.running[name_or_id].monitor(listener)
-                except KeyError:
-                    raise KeyError("%s not found" % name_or_id)
-            else:
-                if name_or_id not in self.processes:
-                    raise KeyError("%r not found" % name_or_id)
-
-                state = self.processes[name_or_id]
-                return state.monitor(listener)
+                else:
+                    state = self.processes[name_or_id]
+                    return state.monitor(listener)
+            except KeyError:
+                raise KeyError("%s not found" % name_or_id)
 
     def unmonitor(self, name_or_id, listener):
         """ get stats changes on a process template or id
         """
         with self._lock:
-            if isinstance(name_or_id, int):
-                try:
+            try:
+                if isinstance(name_or_id, int):
                     return self.running[name_or_id].unmonitor(listener)
-                except KeyError:
-                    raise KeyError("%s not found" % name_or_id)
-            else:
-                if name_or_id not in self.processes:
-                    raise KeyError("%r not found" % name_or_id)
-
-                state = self.processes[name_or_id]
-                return state.unmonitor(listener)
-
-    def manage_process(self, name):
-        with self._lock:
-            state = self.get_process_state(name)
-            state.stopped = False
-            self._manage_processes(state)
-
-    def start_process(self, name):
-        self._publish("start", name=name)
-        self._publish("proc.%s.start" % name, name=name)
-        self.manage_process(name)
-
-    def reap_process(self, name):
-        with self._lock:
-            self._reap_processes(self.get_process_state(name))
-
-    def restart_process(self, name):
-        """ restart a process """
-        with self._lock:
-            state = self.get_process_state(name)
-        self._restart_processes(state)
+                else:
+                    state = self.get_process_state(name_or_id)
+                    return state.unmonitor(listener)
+            except KeyError:
+                raise KeyError("%s not found" % name_or_id)
 
     def ttin(self, name, i=1):
         """ increase the number of system processes for a state. Change
@@ -420,13 +442,6 @@ class Manager(object):
     def wakeup(self):
         self._wakeup_ev.send()
 
-    def update_state(self, name):
-        """ update the state. When the event loop is idle, the state is
-        read and processes in the state managed """
-
-        self._updates.append(name)
-        self.wakeup()
-
     def get_process_state(self, name):
         if name not in self.processes:
             return
@@ -440,55 +455,132 @@ class Manager(object):
 
     # ------------- private functions
 
-    def _shutdown(self, handle):
-
-        def clean_cb(h):
-            if h.active:
-                h.close()
-
-        self.loop.walk(clean_cb)
-        handle.stop()
-
-
-    def _stop(self):
-        self._gc_collector.stop()
-
-        # stop all processes
-        self.stop_processes()
-
-        if self.processes:
-            # graceful shutdown let a chance to unstopped process to
-            # close cleanly
-            self._shutdown_h = pyuv.Timer(self.loop)
-            self._shutdown_h.start(self._shutdown, 0.1, 0.0)
-
+    def _maybe_shutdown(self, handle):
         with self._lock:
-            # stop apps
+            # still running processes, return.
+            if self._stopped or self.running:
+                return
+
+            # we can finally shutdown, stop the timer
+            handle.close()
+
+            # then stop the applications.
             for ctl in self.apps:
                 ctl.stop()
 
             # we are now stopped
             self.started = False
-
-            if self.stop_cb:
+            # if there any stop callback, excute it
+            if self.stop_cb is not None:
                 self.stop_cb(self)
                 self.stop_cb = None
 
+        # close all handles
+        def walk_cb(h):
+            if h.active:
+                h.close()
+        self.loop.walk(walk_cb)
+
+
+    def _stop(self):
+        # stop should be synchronous. We need to first stop the
+        # processes and let the applications know about it. It is
+        # actually done by setting on startup a timer waiting that all
+        # processes have stopped to run. Then applications are stopped.
+
+        self.stopping = True
+
+        # start the waiting timer
+        self._shutdown_t = pyuv.Timer(self.loop)
+        self._shutdown_t.start(self._maybe_shutdown, 0.1, 0.1)
+
+        # stop all processes
+        with self._lock:
+            for name in self.processes:
+                self._stop_processes(name)
+
+
     def _restart(self):
         with self._lock:
-            to_restart = [state for name, state in self.processes.items()]
+            # on restart we first restart the applications
+            for app in self.apps:
+                app.restart()
 
-        for state in to_restart:
-            if state is not None:
+            # then we restart the processes
+            for name, state in self.processes.items():
                 self._restart_processes(state)
 
-        with self._lock:
-            for ctl in self.apps:
-                ctl.restart()
-
-            if self.restart_cb:
+            # if any callback has been set, run it
+            if self.restart_cb is not None:
                 self.restart_cb(self)
                 self.restart_cb = None
+
+    def _collect_for_gc(self, state, p):
+        p.graceful_time = state.graceful_timeout + nanotime()
+        heapq.heappush(self._stopped, p)
+
+    def _stop_processes(self, name):
+        """ stop all processes in a template """
+        if name not in self.processes:
+            print("return")
+            return
+
+
+        # get the template
+        state = self.processes[name]
+        if state.stopped:
+            return
+        state.stopped = True
+
+        # notify others that all processes of the templates are beeing
+        # stopped.
+        self._publish("stop", name=name)
+        self._publish("proc.%s.stop" % name, name=name)
+
+        # stop the flapping detection.
+        if state.flapping_timer is not None:
+            state.flapping_timer.stop()
+
+        # iterrate over queued processes.
+        while True:
+            try:
+                p = state.dequeue()
+            except IndexError:
+                break
+
+            # notify  other that the process is beeing stopped
+            self._publish("proc.%s.stop_pid" % p.name, name=p.name,
+                    pid=p.id)
+
+            # remove the pid from the running processes
+            if p.id in self.running:
+                self.running.pop(p.id)
+
+            # stop the process
+            p.stop()
+            # collect it for the garbage collection. We make sure a worker
+            # is killed after a gracefull tome
+            self._collect_for_gc(state, p)
+
+    def _stop_process(self, pid):
+        """ stop a process bby id """
+
+        if pid not in self.running:
+            return
+
+        # remove the process from the running processes
+        p = self.running.pop(pid)
+        state = self.processes[p.name]
+        state.remove(p)
+
+        # stop the process
+        p.stop()
+        # collect it for the garbage collection. We make sure a worker
+        # is killed after a gracefull tome
+        self._collect_for_gc(state, p)
+
+        # notify  other that the process is beeing stopped
+        self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid)
 
     def _spawn_process(self, state):
         """ spawn a new process and add it to the state """
@@ -508,60 +600,6 @@ class Manager(object):
         self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid,
                 detached=p.detach)
 
-
-    def _collect_for_gc(self, state, p):
-        p.graceful_time = state.graceful_timeout + nanotime()
-        heapq.heappush(self._stopped, p)
-
-    def _stop_byname_unlocked(self, name):
-        """ stop a process by name """
-        if name not in self.processes:
-            return
-
-        self._publish("stop", name=name)
-        self._publish("proc.%s.stop" % name, name=name)
-
-        state = self.processes[name]
-        state.stopped = True
-
-        if state.flapping_timer is not None:
-            state.flapping_timer.stop()
-
-        while True:
-            try:
-                p = state.dequeue()
-            except IndexError:
-                break
-
-            # race condition, we need to remove the process from the
-            # running pid now.
-            if p.id in self.running:
-                # garbage collect
-                self._collect_for_gc(state, p)
-
-                self.running.pop(p.id)
-                p.stop()
-
-    def _stop_byid_unlocked(self, pid):
-        """ stop a process bby id """
-        if pid not in self.running:
-            return
-
-        p = self.running.pop(pid)
-
-        self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid)
-
-        state = self.processes[p.name]
-
-        # garbage collect
-        self._collect_for_gc(state, p)
-
-        # remove the process from the running processes
-        state.remove(p)
-
-        # finally stop the process
-        p.stop()
-
     def _spawn_processes(self, state):
         """ spawn all processes for a state """
         num_to_start = state.numprocesses - len(state.running)
@@ -570,47 +608,32 @@ class Manager(object):
 
     def _reap_processes(self, state):
         diff = len(state.running) - state.numprocesses
-
         if diff > 0:
             for i in range(diff):
+                # remove the process from the running processes
                 p = state.dequeue()
+                if p.id in self.running:
+                    self.running.pop(p.id)
+
+                # stop the process
+                p.stop()
+
+                # notify others that the process is beeing reaped
                 self._publish("proc.%s.reap" % p.name, name=p.name,
                     pid=p.id)
-                p.stop()
 
     def _manage_processes(self, state):
         if len(state.running) < state.numprocesses:
             self._spawn_processes(state)
         self._reap_processes(state)
 
-
     def _restart_processes(self, state):
-        # disable automatic process management while we are stopping
-        # the processes
-        state.numprocesses = 0
+        # first launch new processes
+        for i in range(state.numprocesses):
+            self._spawn_process(state)
 
-        # stop the processes, we need to lock here
-        with self._lock:
-            while True:
-                try:
-                    p = state.dequeue()
-                except IndexError:
-                    break
-
-                # race condition, we need to remove the process from the
-                # running pid now.
-                if p.id in self.running:
-                    # garbage collect
-                    self._collect_for_gc(state, p)
-
-                    self.running.pop(p.id)
-                    p.stop()
-
-        # reset the number of processes
-        state.reset()
-
-        # start the processes the next time
-        self.manage_process(state.name)
+        # then reap useless one.
+        self._manage_processes(state)
 
     def _check_flapping(self, state):
         if not state.flapping:
@@ -650,69 +673,83 @@ class Manager(object):
     # ------------- events handler
 
     def _gc_handler(self, handle):
+        # this function check if a process that need to be stopped after
+        # a given graceful time is still in the stopped process. If yes
+        # the process is killed. It let the possibility to let the time
+        # to some worker to quit.
+        #
+        # The garbage collector run eveyry 0.1s .
         with self._lock:
             while True:
                 if not len(self._stopped):
-                    delta = -1
+                    # nothing in the queue, quit
                     break
 
+                # check the diff between the time it is now and the
+                # graceful time set when the worker was stopped
                 p = heapq.heappop(self._stopped)
                 now = nanotime()
                 delta = p.graceful_time - now
+
                 if delta > 0:
+                    # we have anything to do, put the process back in
+                    # the heap and return
                     heapq.heappush(self._stopped, p)
                     break
                 else:
+                    # a process need to be kill. Send a SIGKILL signal
                     try:
                         p.kill(signal.SIGKILL)
                     except:
                         pass
+                    # and close it. (maybe we should just close it)
+                    p.close()
 
     def _on_wakeup(self, handle):
-        sig = None
-        try:
-            sig = self._signals.popleft()
-        except IndexError:
-            pass
-        if sig is not None:
-            sig = sig.upper()
-            if sig == "STOP":
-                handle.close()
-                return self._stop()
-            elif sig == "RESTART":
-                return self._restart()
+        sig = self._signals.pop(0) if len(self._signals) else None
+        if not sig:
+            return
 
-        if not len(self._updates):
-            pass
-
-        to_update = self._updates.popleft()
-        self.manage_process(to_update)
+        if sig == "STOP":
+            handle.close()
+            self._stop()
+        elif sig == "RESTART":
+            self._restart()
 
     def _on_exit(self, process, exit_status, term_signal):
-        """ exit callback returned when a process exit """
+        # exit callback called when a process exit
 
+        # notify other that the process exited
         self._publish("proc.%s.exit" % process.name, name=process.name,
                 pid=process.id, exit_status=exit_status,
                 term_signal=term_signal)
 
         with self._lock:
-            # remove the process from the running processes
-            if process.id in self.running:
-                self.running.pop(process.id)
+            state = self.get_process_state(process.name)
 
             if process in self._stopped:
+                # this exit was expected. remove it from the garbage
+                # collection.
                 del self._stopped[operator.indexOf(self._stopped,
                     process)]
+            else:
+                # unexpected exit, remove the process from the list of
+                # running processes.
 
-            # remove the running process from the process state
-            state = self.get_process_state(process.name)
+                if process.id in self.running:
+                    self.running.pop(process.id)
+
+                if state is not None:
+                    state.remove(process)
+
+            # this remplate has been removed
             if not state:
                 return
-            state.remove(process)
-            # if not stopped we may need to restart a new process
-            if not state.stopped and self._check_flapping(state):
-                self._manage_processes(state)
 
+            if not state.stopped:
+                # manage the template, eventually restart a new one.
+                if self._check_flapping(state):
+                    self._manage_processes(state)
 
 class FlappingInfo(object):
     """ object to keep flapping infos """
@@ -774,7 +811,7 @@ class ProcessState(object):
 
     @property
     def graceful_timeout(self):
-        return nanotime(self.settings.get('graceful_timeout', 30.0))
+        return nanotime(self.settings.get('graceful_timeout', 10.0))
 
     def __str__(self):
         return "state: %s" % self.name
