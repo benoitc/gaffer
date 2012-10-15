@@ -403,7 +403,7 @@ class Process(object):
 
 
     def __lt__(self, other):
-        return (self.pid == other.pid and
+        return (self.pid != other.pid and
                 self.graceful_time < other.graceful_time)
 
     __cmp__ = __lt__
