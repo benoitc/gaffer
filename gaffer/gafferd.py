@@ -12,9 +12,10 @@ import os
 import sys
 
 from .http_handler import HttpHandler, HttpEndpoint
-from .manager import Manager, FlappingInfo
+from .manager import Manager
 from .pidfile import Pidfile
 from .sig_handler import SigHandler
+from .state import FlappingInfo
 from .util import daemonize
 from .webhooks import WebHooks
 

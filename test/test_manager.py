@@ -11,8 +11,9 @@ from tempfile import mkstemp
 
 import pyuv
 
-from gaffer.manager import Manager, FlappingInfo
+from gaffer.manager import Manager
 from gaffer.process import Process
+from gaffer.state import FlappingInfo
 
 class DummyProcess(object):
 

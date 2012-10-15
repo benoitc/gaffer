@@ -11,22 +11,15 @@ Classes
 
 """
 from collections import deque
-import heapq
 from threading import RLock
-import operator
-import os
-import signal
-import time
 
-import psutil
 import pyuv
 import six
 
 from .events import EventEmitter
 from .process import Process
-from .state import ProcessState
-from .sync import increment, add, sub, atomic_read, compare_and_swap
-from .util import nanotime
+from .state import ProcessState, ProcessTracker
+from .sync import increment
 
 class Manager(object):
     """ Manager - maintain process alive
@@ -83,9 +76,8 @@ class Manager(object):
         # initialize the emitter
         self._emitter = EventEmitter(self.loop)
 
-        # initialize the process garbage collector
-        self._stopped = []
-        self._gc_collector = pyuv.Timer(self.loop)
+        # initialize the process tracker
+        self._tracker = ProcessTracker(self.loop)
 
         # initialize some values
         self.apps = None
@@ -107,9 +99,8 @@ class Manager(object):
         """ start the manager. """
         self.apps = apps
 
-        # start the garbage collector
-        self._gc_collector.start(self._gc_handler, 1.0, 1.0)
-        self._gc_collector.unref()
+        # start the process tracker
+        self._tracker.start()
 
         # start contollers
         for ctl in self.apps:
@@ -456,32 +447,25 @@ class Manager(object):
 
     # ------------- private functions
 
-    def _maybe_shutdown(self, handle):
+    def _shutdown(self):
         with self._lock:
-            # still running processes, return.
-            if self._stopped or self.running:
-                return
-
-            # we can finally shutdown, stop the timer
-            handle.close()
-
-            # then stop the applications.
+            # stop the applications.
             for ctl in self.apps:
                 ctl.stop()
 
             # we are now stopped
             self.started = False
+
+            # close all handles
+            #def walk_cb(h):
+            #    if h.active:
+            #        h.close()
+            #self.loop.walk(walk_cb)
+
             # if there any stop callback, excute it
             if self.stop_cb is not None:
                 self.stop_cb(self)
                 self.stop_cb = None
-
-        # close all handles
-        def walk_cb(h):
-            if h.active:
-                h.close()
-        self.loop.walk(walk_cb)
-
 
     def _stop(self):
         # stop should be synchronous. We need to first stop the
@@ -491,15 +475,12 @@ class Manager(object):
 
         self.stopping = True
 
-        # start the waiting timer
-        self._shutdown_t = pyuv.Timer(self.loop)
-        self._shutdown_t.start(self._maybe_shutdown, 0.1, 0.1)
-
         # stop all processes
         with self._lock:
             for name in self.processes:
                 self._stop_processes(name)
 
+            self._tracker.on_done(self._shutdown)
 
     def _restart(self):
         with self._lock:
@@ -516,16 +497,11 @@ class Manager(object):
                 self.restart_cb(self)
                 self.restart_cb = None
 
-    def _collect_for_gc(self, state, p):
-        p.graceful_time = state.graceful_timeout + nanotime()
-        heapq.heappush(self._stopped, p)
-
     def _stop_processes(self, name):
         """ stop all processes in a template """
         if name not in self.processes:
             print("return")
             return
-
 
         # get the template
         state = self.processes[name]
@@ -559,9 +535,10 @@ class Manager(object):
 
             # stop the process
             p.stop()
-            # collect it for the garbage collection. We make sure a worker
-            # is killed after a gracefull tome
-            self._collect_for_gc(state, p)
+
+            # track this process to make sure it's killed after the
+            # graceful time
+            self._tracker.check(p, state.graceful_timeout)
 
     def _stop_process(self, pid):
         """ stop a process bby id """
@@ -576,9 +553,10 @@ class Manager(object):
 
         # stop the process
         p.stop()
-        # collect it for the garbage collection. We make sure a worker
-        # is killed after a gracefull tome
-        self._collect_for_gc(state, p)
+
+        # track this process to make sure it's killed after the
+        # graceful time
+        self._tracker.check(p, state.graceful_timeout)
 
         # notify  other that the process is beeing stopped
         self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid)
@@ -673,39 +651,6 @@ class Manager(object):
 
     # ------------- events handler
 
-    def _gc_handler(self, handle):
-        # this function check if a process that need to be stopped after
-        # a given graceful time is still in the stopped process. If yes
-        # the process is killed. It let the possibility to let the time
-        # to some worker to quit.
-        #
-        # The garbage collector run eveyry 0.1s .
-        with self._lock:
-            while True:
-                if not len(self._stopped):
-                    # nothing in the queue, quit
-                    break
-
-                # check the diff between the time it is now and the
-                # graceful time set when the worker was stopped
-                p = heapq.heappop(self._stopped)
-                now = nanotime()
-                delta = p.graceful_time - now
-
-                if delta > 0:
-                    # we have anything to do, put the process back in
-                    # the heap and return
-                    heapq.heappush(self._stopped, p)
-                    break
-                else:
-                    # a process need to be kill. Send a SIGKILL signal
-                    try:
-                        p.kill(signal.SIGKILL)
-                    except:
-                        pass
-                    # and close it. (maybe we should just close it)
-                    p.close()
-
     def _on_wakeup(self, handle):
         sig = self._signals.pop(0) if len(self._signals) else None
         if not sig:
@@ -726,30 +671,24 @@ class Manager(object):
                 term_signal=term_signal)
 
         with self._lock:
+            # maybe uncjeck this process from the tracker
+            self._tracker.uncheck(process)
+
             state = self.get_process_state(process.name)
 
-            if process in self._stopped:
-                # this exit was expected. remove it from the garbage
-                # collection.
-                del self._stopped[operator.indexOf(self._stopped,
-                    process)]
-            else:
-                # unexpected exit, remove the process from the list of
-                # running processes.
+            # unexpected exit, remove the process from the list of
+            # running processes.
 
-                if process.id in self.running:
-                    self.running.pop(process.id)
+            if process.id in self.running:
+                self.running.pop(process.id)
+            state.remove(process)
 
-                if state is not None:
-                    state.remove(process)
-
-            # this remplate has been removed
+            # this template has been removed, return
             if not state:
                 return
 
+            # eventually restart the process
             if not state.stopped:
                 # manage the template, eventually restart a new one.
                 if self._check_flapping(state):
                     self._manage_processes(state)
-
-

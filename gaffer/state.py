@@ -2,6 +2,89 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+from collections import deque
+import heapq
+import operator
+import os
+import signal
+from threading import RLock
+import time
+
+import pyuv
+
+from .process import Process
+from .sync import add, sub, increment, atomic_read, compare_and_swap
+from .util import nanotime
+
+class ProcessTracker(object):
+
+    def __init__(self, loop):
+        self.processes = []
+        self._done_cb = None
+        self._check_timer = pyuv.Timer(loop)
+        self._lock = RLock()
+
+    def start(self, interval=0.1):
+        self._check_timer.start(self._on_check, interval, interval)
+        self._check_timer.unref()
+
+    def on_done(self, callback):
+        self._done_cb = callback
+
+    def stop(self):
+        self._check_timer.stop()
+
+    def close(self):
+        self.processes = []
+        self._done_cb = None
+        self._check_timer.close()
+
+    def check(self, process, graceful_timeout=10000000000):
+        process.graceful_time = graceful_timeout + nanotime()
+        heapq.heappush(self.processes, process)
+
+    def uncheck(self, process):
+        if process in self.processes:
+            del self.processes[operator.indexOf(self.processes, process)]
+
+    def _on_check(self, handle):
+        # this function check if a process that need to be stopped after
+        # a given graceful time is still in the stopped process. If yes
+        # the process is killed. It let the possibility to let the time
+        # to some worker to quit.
+        #
+        # The garbage collector run eveyry 0.1s .
+        with self._lock:
+            while True:
+                if not len(self.processes):
+                    # done callback has been set, run it
+                    if self._done_cb is not None:
+                        self._done_cb()
+
+                    # nothing in the queue, quit
+                    break
+
+                # check the diff between the time it is now and the
+                # graceful time set when the worker was stopped
+                p = heapq.heappop(self.processes)
+                now = nanotime()
+                delta = p.graceful_time - now
+
+                if delta > 0:
+                    # we have anything to do, put the process back in
+                    # the heap and return
+                    if p.active:
+                        heapq.heappush(self.processes, p)
+                    break
+                else:
+                    # a process need to be kill. Send a SIGKILL signal
+                    try:
+                        p.kill(signal.SIGKILL)
+                    except:
+                        pass
+                    # and close it. (maybe we should just close it)
+                    p.close()
+
 class FlappingInfo(object):
     """ object to keep flapping infos """
 
