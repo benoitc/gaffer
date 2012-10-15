@@ -65,12 +65,18 @@ def test_manager_hooks():
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
     m.ttin("dummy", 1)
     m.remove_process("dummy")
-    time.sleep(0.2)
 
     def on_stop(manager):
         s.stop()
 
-    m.stop(on_stop)
+    def do_stop(handle):
+        handle.close()
+        m.stop(on_stop)
+
+
+    t = pyuv.Timer(loop)
+    t.start(do_stop, 0.2, 0.0)
+
     m.run()
     assert ('create', 'dummy') in emitted
     assert ('start', 'dummy') in emitted
