@@ -545,3 +545,27 @@ def test_monitor():
     assert res[0] == "stat"
     assert "cpu" in res[1]
     assert res[1]["pid"] == pid
+
+def test_priority():
+    m = Manager()
+    started = []
+    def cb(evtype, info):
+        started.append(info['name'])
+
+    m.start()
+    m.subscribe('start', cb)
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("a", cmd, args=args, cwd=wdir, start=False)
+    m.add_process("d", cmd, args=args, cwd=wdir, start=False)
+    m.add_process("b", cmd, args=args, cwd=wdir, start=False)
+    m.start_processes()
+    def stop(handle):
+        m.unsubscribe("start", cb)
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.4, 0.0)
+    m.run()
+
+    assert started == ["a", "d", "b"]

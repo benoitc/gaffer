@@ -131,13 +131,21 @@ class Manager(object):
         self._signals.append("STOP")
         self.wakeup()
 
-
     def restart(self, callback=None):
         """ restart all processes in the manager. This function is
         threadsafe """
         self.restart_cb = callback
         self._signals.append("RESTART")
         self.wakeup()
+
+    def start_processes(self):
+        """ start all processes """
+        self._lock.acquire()
+        for name in self.processes:
+            self._lock.release()
+            self.start_process(name)
+            self._lock.acquire()
+        self._lock.release()
 
     def stop_processes(self):
         """ stop all processes in the manager """
