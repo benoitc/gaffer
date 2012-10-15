@@ -8,6 +8,7 @@ from gaffer.commands import (
     add_process,
     del_process,
     get_process,
+    load_process,
     update_process,
     process_start,
     process_stop,

@@ -2,14 +2,21 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import json
+import os
+import sys
+
 from .base import Command
 
 class AddProcess(Command):
     """\
-        Add a process to monitor
-        ========================
+        Load a process from a file
+        ==========================
 
-        This command dynamically add a process to monitor in gafferd.
+        Like the command ``add``, his command dynamically add a process
+        to monitor in gafferd. Informations are gathered from a file or
+        stdin if the name of file is ``-``. The file sent is a json file
+        that have the same format described for the HTTP message.
 
 
         HTTP Message:
@@ -68,20 +75,56 @@ class AddProcess(Command):
 
         ::
 
-            gafferctl add_process [--start] name cmd
+            gafferctl load_process [--start] <file>
 
         Options
         +++++++
 
         - <name>: name of the process to create
-        - <cmd>: full command line to execute in a process
+        - <file>: path to a json file or stdin ``-``
         - --start: start the watcher immediately
+
+        Example of usage::
+
+            $ gafferctl load_process ../test.json
+            $ cat ../test.json | gafferctl load_process -
+            $ gafferctl load_process - < ../test.json
+
     """
 
-    name = "add_process"
+    name = "load_process"
 
     options = [('', 'start', False, "start immediately the watcher")]
     args = ['name', 'cmd']
 
     def run(self, server, args, options):
-        return server.add_process(*args, **options)
+        fname = args[0]
+
+        if fname == "-":
+            content = []
+            while True:
+                data = sys.stdin.readline()
+                if not data:
+                    break
+                content.append(data)
+            content = ''.join(content)
+        else:
+            if not os.path.isfile(fname):
+                raise RuntimeError("%r not found")
+
+            with open(fname, 'rb') as f:
+                content = f.read()
+
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+        obj = json.loads(content)
+
+        if not 'name' in obj or not 'cmd' in obj:
+            raise RuntimeError('name or cmd properties are missing')
+
+        name = obj.pop('name')
+        cmd = obj.pop('cmd')
+
+        obj['start'] = options.get('start', False)
+        return server.add_process(name, cmd, **obj)
+
