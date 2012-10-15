@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+Current
+-------
+
+- add priority feature: now processes can be launch in order
+- add ``Manager.start_processes`` method. Start all processes.
+
 2012/10/15 - version 0.2.0
 --------------------------
 
