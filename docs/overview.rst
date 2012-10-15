@@ -2,7 +2,7 @@ Overview
 ========
 
 Gaffer is a set of Python modules and tools to easily maintain and
-interract with your processes.
+interact with your processes.
 
 Depending on your needs you ca simply use the gaffer tools (eventually
 extend them) or embed the gaffer possibilities in your own apps.
@@ -12,7 +12,7 @@ Design
 
 Gaffer is internally based on an event loop using the `libuv <https://github.com/joyent/libuv/>`_ from Joyent via the `pyuv binding <https://pyuv.readthedocs.org>`_
 
-All gaffer events are added to the loop and processes asynchrnously wich
+All gaffer events are added to the loop and processes asynchronously wich
 make it pretty performant to handle multiple process and their control.
 
 At the lowest level you will find the manager. A manager is responsible
@@ -25,7 +25,7 @@ of maintaining process alive and manage actions on them:
 
 A process template describe the way a process will be launched and how
 many OS processes you want to handle for this template. This number can
-be changed dynamically. Current propertiers of this templates are:
+be changed dynamically. Current properties of this templates are:
 
 - **name**: name of the process
 - **cmd**: program command, string)
@@ -62,7 +62,7 @@ be changed dynamically. Current propertiers of this templates are:
   you want to be able to write to stdin.
 
 
-The manager is also responsible of starting and stopping contollers (e
+The manager is also responsible of starting and stopping controllers (e
 better wording need to be found) or rather gaffer applications that you add
 add to he manager to react on different events. A controller is
 responsible of fetching infos from the manager and handling actions.
@@ -82,10 +82,10 @@ Running a controller is done like this::
     manager.run() # run the event loop
 
 
-For now only 1 HTTP controller is proposed and allows you to interract
-with gaffer via HTTP.  It is used by the gafferd server which is abble
+For now only 1 HTTP controller is proposed and allows you to interact
+with gaffer via HTTP.  It is used by the gafferd server which is able
 for now to load process templates via an ini files and maintain an HTTP
-endoint which can be configured to be accessible on multiples interfaces
+endpoint which can be configured to be accessible on multiples interfaces
 and transports (tcp & unix sockets) .
 
 Building your own controller is easy, basically a contoller has the
@@ -112,7 +112,7 @@ To help you in your work a :doc:`pyuv implementation <tornado_pyuv>` of
 tornado is integrated and a powerfull :doc:`events <events>` modules
 will allows you to manage PUB/SUB events (or anything evented) inside
 your app. An EventEmitter is a threadsafe class to manage subscriber and
-publisher of events. It is interrnally used to broadcast processes and
+publisher of events. It is internally used to broadcast processes and
 manager events.
 
 
@@ -173,7 +173,7 @@ Subscribe to stdout/stderr process stream
 You can subscribe to stdout/stderr process stream and even write to
 stdin if you want.
 
-To be abble to receive the stdour/stderr streas in your application,
+To be able to receive the stdour/stderr streams in your application,
 you need to create a process with the *redirect_output* setting::
 
 
@@ -231,8 +231,8 @@ See the :doc:`HTTP api description <http>` for more informations.
 Tools
 -----
 
-Gaffer propose different tools (and more will come soon) to manage yoir
-process without have to code. It can be used like `supervisor
+Gaffer proposes different tools (and more will come soon) to manage your
+process without having to code. It can be used like `supervisor
 <http://supervisord.org/>`_, `god <http://godrb.com/>`_, `runit
 <http://smarden.org/runit/>`_  or other tools around. Speaking of runit
 a similar controlling will be available in 0.2 .
