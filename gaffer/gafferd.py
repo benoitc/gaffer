@@ -11,6 +11,8 @@ except ImportError:
 import os
 import sys
 
+import six
+
 from .http_handler import HttpHandler, HttpEndpoint
 from .manager import Manager
 from .pidfile import Pidfile
@@ -35,7 +37,8 @@ PROCESS_DEFAULTS = dict(
         shell = False,
         os_env = False,
         numprocesses = 1,
-        start = True)
+        start = True,
+        priority = six.MAXSIZE)
 
 class DefaultConfigParser(configparser.ConfigParser):
     """ object overriding ConfigParser to return defaults values instead
@@ -174,11 +177,17 @@ class Server(object):
                                     False)
                         elif key == "graceful_timeout":
                             params[key] = cfg.dgetint(section, key, 10)
+                        elif key == "priority":
+                            params[key] = cfg.dgetint(section, key,
+                                    six.MAXSIZE)
 
                     processes.append((name, cmd, params))
             elif section == "webhooks":
                 for key, val in cfg.items(section):
                     webhooks.append((key, val))
+
+        # sort processes by priority
+        processes = sorted(processes, key=lambda p: p[2]['priority'])
 
         if not endpoints:
             # we create a default endpoint

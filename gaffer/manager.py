@@ -16,6 +16,11 @@ from threading import RLock
 import pyuv
 import six
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    from .datastructures import OrderedDict
+
 from .events import EventEmitter
 from .process import Process
 from .state import ProcessState, ProcessTracker
@@ -84,8 +89,8 @@ class Manager(object):
         self.started = False
         self._stop_ev = None
         self.max_process_id = 0
-        self.processes = {}
-        self.running = {}
+        self.processes = OrderedDict()
+        self.running = OrderedDict()
         self.channel = deque()
         self._updates = deque()
         self._signals = []
