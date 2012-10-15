@@ -10,7 +10,7 @@ from setuptools import setup, find_packages, Extension
 py_version = sys.version_info[:2]
 
 if py_version < (2, 6):
-    raise RuntimeError('On Python 2, Flower requires Python 2.6 or better')
+    raise RuntimeError('On Python 2, Gaffer requires Python 2.6 or better')
 
 
 CLASSIFIERS = [
@@ -44,7 +44,7 @@ DATA_FILES = [
 
 
 setup(name='gaffer',
-      version="0.1.1",
+      version="0.2.0",
       description = 'simple system process manager',
       long_description = long_description,
       classifiers = CLASSIFIERS,
