@@ -46,13 +46,13 @@ Contents:
    :titlesonly:
 
    overview
+   news
    commands
    http
    webhooks
    processframework
    httpclient
    applications
-
 
 Indices and tables
 ==================
