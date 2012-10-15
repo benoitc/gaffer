@@ -178,6 +178,10 @@ class ProcessState(object):
             doc="""return the max numbers of processes that we keep
             alive for this command""")
 
+    @property
+    def pids(self):
+        return [p.id for p in self.running]
+
     def reset(self):
         """ reset this template to default values """
         self.numprocesses = self.settings.get('numprocesses', 1)

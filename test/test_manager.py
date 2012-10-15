@@ -314,12 +314,12 @@ def test_restart_process():
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
     state = m.get_process_state("dummy")
-    results.append(state.list_processes())
+    results.append(state.pids)
     m.restart_process("dummy")
 
     def cb(handle):
         state = m.get_process_state("dummy")
-        results.append(state.list_processes())
+        results.append(state.pids)
         m.stop()
 
     t = pyuv.Timer(m.loop)
@@ -335,11 +335,11 @@ def test_restart_manager():
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
     state = m.get_process_state("dummy")
-    results.append(state.list_processes())
+    results.append(state.pids)
 
     def cb(manager):
         state = m.get_process_state("dummy")
-        results.append(state.list_processes())
+        results.append(state.pids)
         m.stop()
 
     m.restart()

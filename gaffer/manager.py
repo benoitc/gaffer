@@ -274,7 +274,6 @@ class Manager(object):
         with self._lock:
             # stop all processes of the template name
             if isinstance(name_or_id, six.string_types):
-                print("here")
                 self._stop_processes(name_or_id)
             else:
                 # stop a process by its internal pid
@@ -590,12 +589,21 @@ class Manager(object):
         if diff > 0:
             for i in range(diff):
                 # remove the process from the running processes
-                p = state.dequeue()
+                try:
+                    p = state.dequeue()
+                except IndexError:
+                    return
+
+                # remove the pid from the running processes
                 if p.id in self.running:
                     self.running.pop(p.id)
 
                 # stop the process
                 p.stop()
+
+                # track this process to make sure it's killed after the
+                # graceful time
+                self._tracker.check(p, state.graceful_timeout)
 
                 # notify others that the process is beeing reaped
                 self._publish("proc.%s.reap" % p.name, name=p.name,
