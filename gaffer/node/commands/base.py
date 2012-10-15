@@ -14,7 +14,7 @@ try:
 except ImportError:
     pygments = False    # NOQA
 
-from ..httpclient import Server, Process
+from gaffer.httpclient import Server, Process
 
 KNOWN_COMMANDS = []
 

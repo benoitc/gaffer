@@ -13,13 +13,13 @@ import sys
 
 import six
 
-from .http_handler import HttpHandler, HttpEndpoint
-from .manager import Manager
-from .pidfile import Pidfile
-from .sig_handler import SigHandler
-from .state import FlappingInfo
-from .util import daemonize
-from .webhooks import WebHooks
+from ..http_handler import HttpHandler, HttpEndpoint
+from ..manager import Manager
+from ..pidfile import Pidfile
+from ..sig_handler import SigHandler
+from ..state import FlappingInfo
+from ..util import daemonize
+from ..webhooks import WebHooks
 
 ENDPOINT_DEFAULTS = dict(
         uri = None,

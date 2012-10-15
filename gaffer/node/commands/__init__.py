@@ -2,7 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-from gaffer.commands import (
+from gaffer.node.commands import (
     processes,
     kill,
     add_process,
@@ -19,4 +19,4 @@ from gaffer.commands import (
     process_running,
     process_pids)
 
-from gaffer.commands.base import get_commands
+from gaffer.node.commands.base import get_commands

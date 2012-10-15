@@ -2,8 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-# -*- coding: utf-8 -
-
 import getopt
 import sys
 import traceback
@@ -11,7 +9,7 @@ import traceback
 import pyuv
 
 from .commands import get_commands
-from .httpclient import Server, GafferNotFound, GafferConflict
+from ..httpclient import Server, GafferNotFound, GafferConflict
 
 globalopts = [
     ('', 'connect', "", "http endpoint"),
