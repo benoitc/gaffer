@@ -32,9 +32,6 @@ class SigHandler(object):
         # reload signal
         signal.signal(signal.SIGHUP, self.handle_reload)
 
-        # chld
-        signal.signal(signal.SIGCHLD, self.handle_chld)
-
         self._sig_handler.start()
         if need_unref:
             self._sig_handler.unref()
@@ -54,6 +51,3 @@ class SigHandler(object):
 
     def handle_reload(self, handle, *args):
         self.manager.restart()
-
-    def handle_chld(self, handle, *args):
-        pass
