@@ -28,7 +28,7 @@ manager. All :doc:`events` are supported.
 
 
 The :mod:`webhooks` Module
-------------------------
+--------------------------
 
 """
 from collections import deque
