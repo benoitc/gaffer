@@ -2,6 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import copy
 import socket
 
 # patch tornado IOLoop
@@ -15,6 +16,30 @@ from tornado.httpserver import HTTPServer
 
 from .util import parse_address, is_ipv6
 from . import http
+
+
+DEFAULT_HANDLERS = [
+        (r'/', http.WelcomeHandler),
+        (r'/processes', http.ProcessesHandler),
+        (r'/processes/([0-9^/]+)', http.ProcessIdHandler),
+        (r'/processes/([^/]+)', http.ProcessHandler),
+        (r'/processes/([0-9^/]+)/(_[^/]+)$', http.ProcessIdManageHandler),
+        (r'/processes/([^/]+)/(_[^/]+)$', http.ProcessManagerHandler),
+        (r'/processes/([0-9^/]+)/(_[^/]+)/(.*)$', http.ProcessIdManageHandler),
+        (r'/processes/([^/]+)/(_[^/]+)/(.*)$', http.ProcessManagerHandler),
+        (r'/status/([^/]+)', http.StatusHandler),
+        (r'/watch', http.WatcherHandler),
+        (r'/watch/([^/]+)$', http.WatcherHandler),
+        (r'/watch/([^/]+)/([^/]+)$', http.WatcherHandler),
+        (r'/watch/([^/]+)/([^/]+)/([^/]+)$', http.WatcherHandler),
+        (r'/stats', http.StatsHandler),
+        (r'/stats/([^/]+)', http.StatsHandler),
+        (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
+        (r'/streams/([0-9^/]+)/([^/]+)$', http.StreamHandler),
+        (r'/wstreams/([0-9^/]+)$', http.WStreamHandler)
+]
+
+
 
 class HttpEndpoint(object):
 
@@ -78,34 +103,13 @@ class HttpHandler(object):
     sockets) with different options. Each endpoint can also listen on
     different interfaces """
 
-    DEFAULT_HANDLERS = [
-            (r'/', http.WelcomeHandler),
-            (r'/processes', http.ProcessesHandler),
-            (r'/processes/([0-9^/]+)', http.ProcessIdHandler),
-            (r'/processes/([^/]+)', http.ProcessHandler),
-            (r'/processes/([0-9^/]+)/(_[^/]+)$', http.ProcessIdManageHandler),
-            (r'/processes/([^/]+)/(_[^/]+)$', http.ProcessManagerHandler),
-            (r'/processes/([0-9^/]+)/(_[^/]+)/(.*)$', http.ProcessIdManageHandler),
-            (r'/processes/([^/]+)/(_[^/]+)/(.*)$', http.ProcessManagerHandler),
-            (r'/status/([^/]+)', http.StatusHandler),
-            (r'/watch', http.WatcherHandler),
-            (r'/watch/([^/]+)$', http.WatcherHandler),
-            (r'/watch/([^/]+)/([^/]+)$', http.WatcherHandler),
-            (r'/watch/([^/]+)/([^/]+)/([^/]+)$', http.WatcherHandler),
-            (r'/stats', http.StatsHandler),
-            (r'/stats/([^/]+)', http.StatsHandler),
-            (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
-            (r'/streams/([0-9^/]+)/([^/]+)$', http.StreamHandler),
-            (r'/wstreams/([0-9^/]+)$', http.WStreamHandler)
-    ]
-
     def __init__(self, endpoints=[], handlers=None):
         self.endpoints = endpoints or []
         if not endpoints: # if no endpoints passed add a default
             self.endpoints.append(HttpEndpoint())
 
         # set http handlers
-        self.handlers = self.DEFAULT_HANDLERS
+        self.handlers = copy.copy(DEFAULT_HANDLERS)
         self.handlers.extend(handlers or [])
 
     def start(self, loop, manager):

@@ -133,8 +133,6 @@ class EchoProcess(object):
     def handle_chld(self, *args):
         pass
 
-
-
     def run(self):
         while self.alive:
             c = sys.stdin.readline()
