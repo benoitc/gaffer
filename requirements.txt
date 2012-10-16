@@ -2,3 +2,4 @@ pyuv
 six
 psutil
 tornado
+colorama

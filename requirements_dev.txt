@@ -2,4 +2,5 @@ pyuv
 six
 psutil
 tornado
+colorama
 pytest
