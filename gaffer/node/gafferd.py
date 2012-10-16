@@ -63,9 +63,38 @@ class DefaultConfigParser(configparser.ConfigParser):
 class Server(object):
     """ Server object used for gafferd """
 
-    def __init__(self, config_path):
-        self.apps, self.processes = self.get_config(config_path)
+    def __init__(self, args):
+        self.args = args
+
+        if not args.config:
+            self.apps, self.processes = self.defaults()
+        else:
+            self.apps, self.processes = self.get_config(args.config)
         self.manager = Manager()
+
+    def default_endpoint(self):
+        params = ENDPOINT_DEFAULTS.copy()
+
+        if self.args.backlog:
+            params['backlog'] = self.args.backlog
+
+        if self.args.certfile:
+            params['ssl_options']['certfile'] = self.args.certfile
+
+        if self.args.keyfile:
+            params['ssl_options']['keyfile'] = self.args.keyfile
+
+        if not params['ssl_options']:
+            del params['ssl_options']
+
+        params['uri'] = self.args.bind or '127.0.0.1:5000'
+        return HttpEndpoint(**params)
+
+    def defaults(self):
+        apps = [SigHandler(),
+                WebHooks(),
+                HttpHandler(endpoints=[self.default_endpoint()])]
+        return apps, []
 
     def run(self):
         self.manager.start(apps=self.apps)
@@ -191,7 +220,7 @@ class Server(object):
 
         if not endpoints:
             # we create a default endpoint
-            endpoints = [HttpEndpoint()]
+            endpoints = [self.default_endpoint()]
 
         apps = [SigHandler(),
                 WebHooks(hooks=webhooks),
@@ -201,11 +230,21 @@ class Server(object):
 
 def run():
     parser = argparse.ArgumentParser(description='Run some watchers.')
-    parser.add_argument('config', help='configuration file')
+    parser.add_argument('config', help='configuration file',
+            nargs='?')
 
     parser.add_argument('--daemon', dest='daemonize', action='store_true',
             help="Start gaffer in the background")
     parser.add_argument('--pidfile', dest='pidfile')
+    parser.add_argument('--bind', dest='bind',
+            default='127.0.0.1:5000', help="default HTTP binding"),
+    parser.add_argument('--certfile', dest='certfile',
+            help="SSL certificate file for the default binding"),
+    parser.add_argument('--keyfile', dest='keyfile',
+            help="SSL key file for the default binding"),
+    parser.add_argument('--backlog', dest='backlog', type=int,
+            default=128, help="default backlog"),
+
 
     args = parser.parse_args()
 
@@ -222,7 +261,7 @@ def run():
             print(str(e))
             sys.exit(1)
 
-    s = Server(args.config)
+    s = Server(args)
 
     try:
         s.run()
