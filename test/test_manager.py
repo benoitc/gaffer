@@ -473,7 +473,7 @@ def test_process_exit_event():
     m.run()
 
     assert len(emitted) == 1
-    assert len(emitted[0]) == 5
+    assert len(emitted[0]) == 6
 
     msg = emitted[0]
     assert "exit_status" in msg

@@ -324,6 +324,14 @@ class Manager(object):
             self._manage_processes(state)
 
 
+    def get_process(self, name_or_pid):
+        with self._lock:
+            if isinstance(name_or_pid, int):
+                return self.running[name_or_pid]
+            else:
+                return self.processes[name_or_pid]
+
+
     def get_process_info(self, name):
         """ get process info """
         with self._lock:
@@ -512,7 +520,6 @@ class Manager(object):
     def _stop_processes(self, name):
         """ stop all processes in a template """
         if name not in self.processes:
-            print("return")
             return
 
         # get the template
@@ -538,8 +545,9 @@ class Manager(object):
                 break
 
             # notify  other that the process is beeing stopped
+            self._publish("stop_pid", name=p.name, pid=p.id, os_pid=p.pid)
             self._publish("proc.%s.stop_pid" % p.name, name=p.name,
-                    pid=p.id)
+                    pid=p.id, os_pid=p.pid)
 
             # remove the pid from the running processes
             if p.id in self.running:
@@ -571,7 +579,9 @@ class Manager(object):
         self._tracker.check(p, state.graceful_timeout)
 
         # notify  other that the process is beeing stopped
-        self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid)
+        self._publish("stop_pid", name=p.name, pid=pid, os_pid=p.pid)
+        self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid,
+                os_pid=p.pid)
 
     def _spawn_process(self, state):
         """ spawn a new process and add it to the state """
@@ -588,8 +598,10 @@ class Manager(object):
         # we keep a list of all running process by id here
         self.running[pid] = p
 
+        self._publish("spawn", name=p.name, pid=pid,
+                detached=p.detach, os_pid=p.pid)
         self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid,
-                detached=p.detach)
+                detached=p.detach, os_pid=p.pid)
 
     def _spawn_processes(self, state):
         """ spawn all processes for a state """
@@ -619,8 +631,9 @@ class Manager(object):
                 self._tracker.check(p, state.graceful_timeout)
 
                 # notify others that the process is beeing reaped
+                self._publish("reap", name=p.name, pid=p.id, os_pid=p.pid)
                 self._publish("proc.%s.reap" % p.name, name=p.name,
-                    pid=p.id)
+                    pid=p.id, os_pid=p.pid)
 
     def _manage_processes(self, state):
         if len(state.running) < state.numprocesses:
@@ -684,12 +697,13 @@ class Manager(object):
             self._restart()
 
     def _on_exit(self, process, exit_status, term_signal):
-        # exit callback called when a process exit
-
         # notify other that the process exited
-        self._publish("proc.%s.exit" % process.name, name=process.name,
-                pid=process.id, exit_status=exit_status,
-                term_signal=term_signal)
+        ev_details = dict(name=process.name, pid=process.id,
+                exit_status=exit_status, term_signal=term_signal,
+                os_pid=process.pid)
+
+        self._publish("exit", **ev_details)
+        self._publish("proc.%s.exit" % process.name, **ev_details)
 
         with self._lock:
             # maybe uncjeck this process from the tracker
