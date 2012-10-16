@@ -569,3 +569,49 @@ def test_priority():
     m.run()
 
     assert started == ["a", "d", "b"]
+
+def test_group():
+    m = Manager()
+    started = []
+    stopped = []
+    def cb(evtype, info):
+        if evtype == "start":
+            started.append(info['name'])
+        elif evtype == "stop":
+            stopped.append(info['name'])
+
+    m.start()
+    m.subscribe('start', cb)
+    m.subscribe('stop', cb)
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("ga:a", cmd, args=args, cwd=wdir, start=False)
+    m.add_process("ga:b", cmd, args=args, cwd=wdir, start=False)
+    m.add_process("gb:a", cmd, args=args, cwd=wdir, start=False)
+    ga1 = m.get_group('ga')
+    gb1 = m.get_group('gb')
+    m.start_group("ga")
+    m.stop_group("ga")
+    time.sleep(0.2)
+    m.unsubscribe("stop", cb)
+
+
+    m.remove_process("ga:a")
+
+    time.sleep(0.2)
+    ga2 = m.get_group('ga')
+
+    def stop(handle):
+        m.unsubscribe("start", cb)
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.4, 0.0)
+    m.run()
+
+    assert ga1 == ['ga:a', 'ga:b']
+    assert gb1 == ['gb:a']
+
+    assert started == ['ga:a', 'ga:b']
+    assert stopped == ['ga:a', 'ga:b', 'gb:a']
+
+    assert ga2 == ['ga:b']

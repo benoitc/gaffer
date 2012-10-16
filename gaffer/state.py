@@ -147,6 +147,10 @@ class ProcessState(object):
     def graceful_timeout(self):
         return nanotime(self.settings.get('graceful_timeout', 10.0))
 
+    @property
+    def group(self):
+        return self.settings.get('group')
+
     def __str__(self):
         return "state: %s" % self.name
 

@@ -11,6 +11,8 @@ Classes
 
 """
 from collections import deque
+import copy
+import operator
 from threading import RLock
 
 import pyuv
@@ -91,6 +93,7 @@ class Manager(object):
         self.max_process_id = 0
         self.processes = OrderedDict()
         self.running = OrderedDict()
+        self.groups = {}
         self.channel = deque()
         self._updates = deque()
         self._signals = []
@@ -185,6 +188,37 @@ class Manager(object):
         """ unsubscribe from the event *eventype* """
         self._emitter.unsubscribe(evtype, listener)
 
+    def get_group(self, groupname):
+        """ return list of named process of this group """
+        with self._lock:
+            if groupname not in self.groups:
+                raise KeyError('%r not found')
+            return copy.copy(self.groups[groupname])
+
+    def remove_group(self, groupname):
+        """ remove a group and all its processes. All processes are
+        stopped """
+        self._apply_group_func(groupname, self.remove_process)
+
+        # finally remove the group
+        with self._lock:
+            del self.group[groupname]
+
+    def start_group(self, groupname):
+        """ start all process templates of the group """
+        self._apply_group_func(groupname, self.start_process)
+
+    def stop_group(self, groupname):
+        """ stop all processes templates of the group """
+        self._apply_group_func(groupname, self.stop_process)
+
+    def restart_group(self, groupname):
+        """ restart all processes in a group  """
+        self._apply_group_func(groupname, self.restart_process)
+
+
+
+
     # ------------- process functions
 
     def add_process(self, name, cmd, **kwargs):
@@ -238,8 +272,23 @@ class Manager(object):
             else:
                 start = True
 
+            # Grouped process are prefixed by the name of the group
+            # <grouname>:<name>
+            if ":" in name:
+                group = name.split(":", 1)[0]
+                kwargs['group'] = group
+            else:
+                group = None
+
             state = ProcessState(name, cmd, **kwargs)
             self.processes[name] = state
+
+            # register this name to the group
+            if group is not None:
+                try:
+                    self.groups[group].append(name)
+                except KeyError:
+                    self.groups[group] = [name]
 
             self._publish("create", name=name)
             if start:
@@ -311,8 +360,16 @@ class Manager(object):
 
             # stop all processes
             self._stop_processes(name)
-            # remove it the list
-            del self.processes[name]
+
+            # remove it the from the list
+            state = self.processes.pop(name)
+            # also remove it from the group if any.
+            if state.group is not None:
+                if state.group in self.groups:
+                    g = self.groups[state.group]
+                    del g[operator.indexOf(g, name)]
+                    self.groups[state.group] = g
+
             # notify other that this template has been deleted
             self._publish("delete", name=name)
 
@@ -681,6 +738,20 @@ class Manager(object):
         event = {"event": evtype }
         event.update(ev)
         self._emitter.publish(evtype, event)
+
+
+    def _apply_group_func(self, groupname, func):
+        self._lock.acquire()
+        if groupname not in self.groups:
+            raise KeyError('%r not found')
+
+        for name in self.groups[groupname]:
+            if name in self.processes:
+                self._lock.release()
+                func(name)
+                self._lock.acquire()
+
+        self._lock.release()
 
 
     # ------------- events handler

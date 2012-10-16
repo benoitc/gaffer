@@ -171,9 +171,7 @@ class Server(object):
                 if cmd:
                     params = PROCESS_DEFAULTS.copy()
                     for key, val in cfg.items(section):
-                        if key == "group":
-                            params[key] = val
-                        elif key == "args":
+                        if key == "args":
                             params[key] = val
                         elif key.startswith('env:'):
                             envname = key.split("env:", 1)[1]
