@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+"""
+module to parse and manage a Procfile
+"""
 
 try:
     import configparser
@@ -19,8 +22,18 @@ import shlex
 RE_LINE = re.compile(r'^([A-Za-z0-9_]+):\s*(.+)$')
 
 class Procfile(object):
+    """ Procfile object to parse a procfile and a list of given
+    environnment files. """
 
     def __init__(self, procfile, envs=None):
+        """ main constructor
+
+        Attrs:
+
+        - **procfile**: procfile path
+        - **evs**: list of .envs paths, each envs will be added tho the
+          global procfile environment"""
+
         self.procfile = procfile
         self.root = os.path.dirname(procfile) or "."
 
@@ -35,9 +48,11 @@ class Procfile(object):
         self.env = self.get_env(self.envs)
 
     def processes(self):
+        """ iterator over the configuration """
         return self.cfg.items()
 
     def parse(self, procfile):
+        """ main function to parse a procfile. It returns a dict """
         cfg = OrderedDict()
         with open(procfile) as f:
             lines = f.readlines()
@@ -48,6 +63,7 @@ class Procfile(object):
         return cfg
 
     def get_env(self, envs=[]):
+        """ build the procfile environment from a list of procfiles """
         env = {}
         for path in envs:
             if os.path.isfile(path):
@@ -63,12 +79,17 @@ class Procfile(object):
         return env
 
     def as_dict(self, name):
+        """ return a procfile line as a JSON object usable with
+        the command ``gafferctl load`` . """
+
         cmd, args = self.parse_cmd(self.cfg[name])
         return OrderedDict([("name", name),("cmd",  cmd), ("args", args),
                 ("env", self.env)])
 
     def as_configparser(self):
-        """ return a ConfigParser  """
+        """ return a ConfigParser object. It can be used to generate a
+        gafferd setting file or a configuration file that can be
+        included. """
 
         parser = configparser.ConfigParser()
 

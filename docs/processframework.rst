@@ -8,6 +8,7 @@ Core gaffer framework
    process
    events
    webhooks
+   procfile
    pidfile
    util
    tornado_pyuv
