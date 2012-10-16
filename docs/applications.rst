@@ -29,4 +29,5 @@ Following applications are provided by gaffer:
    :maxdepth: 2
 
    http_handler
+   console_output
    sig_handler

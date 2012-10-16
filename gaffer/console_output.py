@@ -1,6 +1,20 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+"""
+module to return all streams from the managed processes to the
+console. This application is subscribing to the manager to know when a
+process is created or killed and display the information. When an OS process
+is spawned it then subscribe to its streams if any are redirected and
+print the output on the console. This module is used by
+:doc:`gafferp <commands>` .
+
+
+.. note::
+
+    if colorize is set to true, each templates will have a different
+    colour
+"""
 
 import copy
 from datetime import datetime
@@ -16,6 +30,16 @@ GAFFER_COLORS = ['cyan', 'yellow', 'green', 'magenta', 'red', 'blue',
 
 
 class Color(object):
+    """ wrapper around colorama to ease the output creation. Don't use
+    it directly, instead, use the ``colored(name_of_color, lines)`` to
+    return the colored ouput.
+
+    Colors are: cyan, yellow, green, magenta, red, blue,
+    intense_cyan, intense_yellow, intense_green, intense_magenta,
+    intense_red, intense_blue.
+
+    lines can be a list or a string.
+    """
 
     def __init__(self):
         # intialize colors code
@@ -43,6 +67,7 @@ colored = _color.output
 
 
 class ConsoleOutput(object):
+    """ The application that need to be added to the gaffer manager """
     SUBSCRIBED_ACTIONS = ['spawn', 'reap', 'exit', 'stop_pid']
 
     def __init__(self, colorize=True):
