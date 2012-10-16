@@ -119,10 +119,10 @@ class RedirectIO(object):
                 self._channels.append(p)
                 self._stdio.append(io)
 
-
     def start(self):
         # start reading
-        [p.start_read(self._on_read) for p in self._channels]
+        for p in self._channels:
+            p.start_read(self._on_read)
 
     @property
     def stdio(self):
@@ -140,7 +140,7 @@ class RedirectIO(object):
                 p.close()
 
     def _on_read(self, handle, data, error):
-        if error:
+        if not data:
             return
 
         label = getattr(handle, 'label')
@@ -159,7 +159,7 @@ class RedirectStdin(object):
         self.stdio = pyuv.StdIO(stream=self.channel,
                 flags=pyuv.UV_CREATE_PIPE | \
                         pyuv.UV_READABLE_PIPE | \
-                        pyuv.UV_WRITABLE_PIPE)
+                        pyuv.UV_WRITABLE_PIPE )
         self._emitter = EventEmitter(loop)
 
     def start(self):
@@ -356,7 +356,6 @@ class Process(object):
             kwargs['gid'] = self.gid
             flags = flags | pyuv.UV_PROCESS_SETGID
 
-        #if self.detach:
         if self.detach:
             flags = flags | pyuv.UV_PROCESS_DETACHED
 
