@@ -275,6 +275,36 @@ class Server(object):
             signum))
         return True
 
+    def groups(self):
+        """ return the list of all groups """
+        resp = self.request("get", "/groups")
+        return self.json_body(resp)
+
+    def get_group(self, name):
+        """ return the list of all process templates of this group """
+        resp = self.request("get", "/groups/%s" % name)
+        return self.json_body(resp)
+
+    def start_group(self, name):
+        """ start all process templates of the group """
+        self.request("post", "/groups/%s/_start" % name)
+        return True
+
+    def stop_group(self, name):
+        """ stop all process templates of the group """
+        self.request("post", "/groups/%s/_stop" % name)
+        return True
+
+
+    def restart_group(self, name):
+        """ restart all process templates of the group """
+        self.request("post", "/groups/%s/_restart" % name)
+        return True
+
+    def remove_group(self, name):
+        """ remove the group and all process templates of the group """
+        self.request("delete", "/groups/%s" % name)
+        return True
 
 class ProcessId(object):
     """ Process Id object. It represent a pid """

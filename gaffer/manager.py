@@ -183,10 +183,14 @@ class Manager(object):
         self._emitter.subscribe_once(evtype, listener)
     once = subscribe
 
-
     def unsubscribe(self, evtype, listener):
         """ unsubscribe from the event *eventype* """
         self._emitter.unsubscribe(evtype, listener)
+
+    def get_groups(self):
+        """ return the groups list """
+        with self._lock:
+            return list(self.groups)
 
     def get_group(self, groupname):
         """ return list of named process of this group """

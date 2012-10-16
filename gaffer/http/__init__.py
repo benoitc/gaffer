@@ -8,3 +8,4 @@ from .processes import (ProcessesHandler, ProcessIdHandler,
 from .watcher import WatcherHandler
 from .stats import StatsHandler
 from .stream import StreamHandler, WStreamHandler
+from .groups import GroupsHandler, GroupHandler

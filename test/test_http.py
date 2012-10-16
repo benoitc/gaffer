@@ -6,6 +6,7 @@ import os
 import time
 
 import pytest
+import pyuv
 
 from gaffer import __version__
 from gaffer.manager import Manager
@@ -228,3 +229,46 @@ def test_pids():
 
     m.stop()
     m.run()
+
+
+def test_groups():
+    m, s = init()
+    started = []
+    stopped = []
+    def cb(evtype, info):
+        if evtype == "start":
+            started.append(info['name'])
+        elif evtype == "stop":
+            stopped.append(info['name'])
+
+    m.subscribe('start', cb)
+    m.subscribe('stop', cb)
+    testfile, cmd, args, wdir = dummy_cmd()
+    m.add_process("ga:a", cmd, args=args, cwd=wdir, start=False)
+    m.add_process("ga:b", cmd, args=args, cwd=wdir, start=False)
+    m.add_process("gb:a", cmd, args=args, cwd=wdir, start=False)
+    groups = sorted(s.groups())
+    ga1 = s.get_group('ga')
+    gb1 = s.get_group('gb')
+    s.start_group("ga")
+    s.stop_group("ga")
+    time.sleep(0.2)
+    m.unsubscribe("stop", cb)
+    m.remove_process("ga:a")
+    time.sleep(0.2)
+    ga2 = s.get_group('ga')
+
+    def stop(handle):
+        m.unsubscribe("start", cb)
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.4, 0.0)
+    m.run()
+
+    assert groups == ['ga', 'gb']
+    assert ga1 == ['ga:a', 'ga:b']
+    assert gb1 == ['gb:a']
+    assert started == ['ga:a', 'ga:b']
+    assert stopped == ['ga:a', 'ga:b', 'gb:a']
+    assert ga2 == ['ga:b']

@@ -36,10 +36,11 @@ DEFAULT_HANDLERS = [
         (r'/stats/([^/]+)', http.StatsHandler),
         (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
         (r'/streams/([0-9^/]+)/([^/]+)$', http.StreamHandler),
-        (r'/wstreams/([0-9^/]+)$', http.WStreamHandler)
+        (r'/wstreams/([0-9^/]+)$', http.WStreamHandler),
+        (r'/groups', http.GroupsHandler),
+        (r'/groups/([^/]+)$', http.GroupHandler),
+        (r'/groups/([^/]+)/(_[^/]+)$', http.GroupHandler),
 ]
-
-
 
 class HttpEndpoint(object):
 
