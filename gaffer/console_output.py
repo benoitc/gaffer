@@ -99,7 +99,7 @@ class ConsoleOutput(object):
     def _on_process(self, event, msg):
         if not 'os_pid' in msg:
             name = msg['name']
-            line = self._print(name, '%s %s' % name)
+            line = self._print(name, '%s %s' % (event, name))
             return
 
         os_pid = msg['os_pid']
