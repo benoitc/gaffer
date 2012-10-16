@@ -68,10 +68,15 @@ colored = _color.output
 
 class ConsoleOutput(object):
     """ The application that need to be added to the gaffer manager """
-    SUBSCRIBED_ACTIONS = ['spawn', 'reap', 'exit', 'stop_pid']
 
-    def __init__(self, colorize=True):
+    DEFAULT_ACTIONS = ['spawn', 'reap', 'exit', 'stop_pid']
+
+    def __init__(self, colorize=True, output_streams=True, actions=None):
+        self.output_streams = output_streams
         self.colorize = colorize
+
+        self.subscribed = actions or self.DEFAULT_ACTIONS
+
         self._balance = copy.copy(GAFFER_COLORS)
         self._process_colors = {}
 
@@ -79,20 +84,22 @@ class ConsoleOutput(object):
         self.loop = loop
         self.manager = manager
 
-        for action in self.SUBSCRIBED_ACTIONS:
+        for action in self.subscribed:
             self.manager.subscribe(action, self._on_process)
 
     def stop(self):
-        for action in self.SUBSCRIBED_ACTIONS:
+        for action in self.subscribed:
             self.manager.unsubscribe(".", self._on_process)
 
     def restart(self, start):
         self.stop()
-        for action in self.SUBSCRIBED_ACTIONS:
+        for action in self.subscribed:
             self.manager.subscribe(action, self._on_process)
 
     def _on_process(self, event, msg):
         if not 'os_pid' in msg:
+            name = msg['name']
+            line = self._print(name, '%s %s' % name)
             return
 
         os_pid = msg['os_pid']
@@ -101,11 +108,10 @@ class ConsoleOutput(object):
         if event == "spawn":
             p = self.manager.get_process(msg['pid'])
             line = self._print(name, 'spawn process with pid %s' % os_pid)
-            if not p.redirect_output:
-                return
 
-            for output in p.redirect_output:
-                p.monitor_io(output, self._on_output)
+            if p.redirect_output and self.output_streams:
+                for output in p.redirect_output:
+                    p.monitor_io(output, self._on_output)
         else:
             line = self._print(name,
                     '%s process with pid %s' % (event, os_pid))

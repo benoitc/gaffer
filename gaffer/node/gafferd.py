@@ -13,6 +13,7 @@ import sys
 
 import six
 
+from ..console_output import ConsoleOutput
 from ..http_handler import HttpHandler, HttpEndpoint
 from ..manager import Manager
 from ..pidfile import Pidfile
@@ -70,6 +71,13 @@ class Server(object):
             self.apps, self.processes = self.defaults()
         else:
             self.apps, self.processes = self.get_config(args.config)
+
+        if args.verboseful:
+            self.apps.append(ConsoleOutput(actions=['.']))
+        elif args.verbose:
+            self.apps.append(ConsoleOutput(output_streams=False,
+                actions=['.']))
+
         self.manager = Manager()
 
     def default_endpoint(self):
@@ -233,6 +241,10 @@ def run():
     parser.add_argument('config', help='configuration file',
             nargs='?')
 
+    parser.add_argument('-v', dest='verbose', action='store_true',
+            help="verbose mode")
+    parser.add_argument('-vv', dest='verboseful', action='store_true',
+            help="like verbose mode but output stream too")
     parser.add_argument('--daemon', dest='daemonize', action='store_true',
             help="Start gaffer in the background")
     parser.add_argument('--pidfile', dest='pidfile')
