@@ -1,3 +1,7 @@
+import os
+from gaffer.pm.commands import get_commands
+
+_HEADER = """\
 .. _cli:
 
 Gaffer
@@ -54,15 +58,37 @@ Command line usage
         export [format]	export
 
 
-gaffer commands
--------------------
+"""
 
-- **start**: :doc:`pm/start`
-- **export**: :doc:`pm/export`
-- **run**: :doc:`pm/run`
 
-.. toctree::
-   :hidden:
-   :glob:
+def generate_commands(app):
+    path = os.path.join(app.srcdir, "pm")
+    ext = app.config['source_suffix']
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-   pm/*
+    tocname = os.path.join(app.srcdir, "gaffer%s" % ext)
+
+    with open(tocname, "w") as toc:
+        toc.write(_HEADER)
+        toc.write("gaffer commands\n")
+        toc.write("-------------------\n\n")
+
+        commands = get_commands()
+        for name, cmd in commands.items():
+            toc.write("- **%s**: :doc:`pm/%s`\n" % (name, name))
+
+            # write the command file
+            refline = ".. _gaffer_%s:" % name
+            fname = os.path.join(path, "%s%s" % (name, ext))
+            with open(fname, "w") as f:
+                f.write("\n".join([refline, "\n", cmd.desc, ""]))
+
+        toc.write("\n")
+        toc.write(".. toctree::\n")
+        toc.write("   :hidden:\n")
+        toc.write("   :glob:\n\n")
+        toc.write("   pm/*\n")
+
+def setup(app):
+    app.connect('builder-inited', generate_commands)
