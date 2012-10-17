@@ -190,7 +190,7 @@ def test_running():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    s.add_process("dummy", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
 
     assert len(m.running) == 1

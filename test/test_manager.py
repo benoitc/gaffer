@@ -504,7 +504,6 @@ def test_processes_stats():
     m.add_process("a", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
     infos = list(m.processes_stats())
-    pid = m.running[1].pid
     m.add_process("b", cmd, args=args, cwd=wdir)
     infos2 = list(m.processes_stats())
     m.stop()
