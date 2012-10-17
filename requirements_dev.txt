@@ -3,4 +3,5 @@ six
 psutil
 tornado
 colorama
+setproctitle
 pytest

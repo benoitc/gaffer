@@ -19,8 +19,9 @@ from ..manager import Manager
 from ..pidfile import Pidfile
 from ..sig_handler import SigHandler
 from ..state import FlappingInfo
-from ..util import daemonize
+from ..util import daemonize, setproctitle_
 from ..webhooks import WebHooks
+
 
 ENDPOINT_DEFAULTS = dict(
         uri = None,
@@ -260,6 +261,8 @@ def run():
 
     if args.daemonize:
         daemonize()
+
+    setproctitle_("gafferd")
 
     pidfile = None
     if args.pidfile:

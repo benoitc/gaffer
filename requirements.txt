@@ -3,3 +3,4 @@ six
 psutil
 tornado
 colorama
+setproctitle

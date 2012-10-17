@@ -28,6 +28,14 @@ if hasattr(os, "devnull"):
 else:
     REDIRECT_TO = "/dev/null"
 
+try:
+    from setproctitle import setproctitle
+    def setproctitle_(title):
+        setproctitle(title)
+except ImportError:
+    def setproctitle(_title):
+        return
+
 def getcwd():
     """Returns current path, try to use PWD env first"""
     try:

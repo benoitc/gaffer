@@ -61,7 +61,8 @@ setup(name='gaffer',
           'six',
           'psutil',
           'tornado',
-          'colorama'
+          'colorama',
+          'setproctitle'
       ],
       data_files = DATA_FILES,
       entry_points="""
