@@ -86,21 +86,24 @@ class Procfile(object):
         print(path)
         return os.path.split(path)[1]
 
-    def as_dict(self, name):
+    def as_dict(self, name, concurrency_settings=None):
         """ return a procfile line as a JSON object usable with
         the command ``gafferctl load`` . """
 
         cmd, args = self.parse_cmd(self.cfg[name])
+        concurrency_settings = concurrency_settings or {}
 
-        return OrderedDict([("name", name),("cmd",  cmd), ("args", args),
-                ("env", self.env)])
+        return OrderedDict([("name", name),("cmd",  cmd),
+            ("args", args),("env", self.env),
+            ('numprocesses', concurrency_settings.get(name, 1))])
 
-    def as_configparser(self):
+    def as_configparser(self, concurrency_settings=None):
         """ return a ConfigParser object. It can be used to generate a
         gafferd setting file or a configuration file that can be
         included. """
 
         parser = configparser.ConfigParser()
+        concurrency_settings = concurrency_settings or {}
 
         ln = 0
         dconf = OrderedDict()
@@ -109,7 +112,8 @@ class Procfile(object):
             name = "%s:%s" % (self.get_groupname(), k)
 
             dconf["process:%s" % name] = OrderedDict([("cmd", cmd),
-                ("args", " ".join(args)), ("priority", ln)])
+                ("args", " ".join(args)), ("priority", ln),
+                ('numprocesses', concurrency_settings.get(k, 1))])
             ln += 1
 
         parser.read_dict(dconf)

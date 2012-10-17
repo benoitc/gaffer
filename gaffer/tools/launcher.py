@@ -109,7 +109,8 @@ class ProcfileManager(object):
             if len(args) < 2:
                 raise RuntimeError("procname is missing")
             try:
-                obj = self.procfile.as_dict(args[1])
+                obj = self.procfile.as_dict(args[1],
+                        self.concurrency_settings)
             except KeyError:
                 raise KeyError("%r is not found" % args[1])
 
@@ -120,7 +121,7 @@ class ProcfileManager(object):
             else:
                 print(json.dumps(obj, indent=True))
         else:
-            config = self.procfile.as_configparser()
+            config = self.procfile.as_configparser(self.concurrency_settings)
             if len(args) == 2:
                 with open(args[1], 'w') as f:
                     config.write(f, space_around_delimiters=True)
