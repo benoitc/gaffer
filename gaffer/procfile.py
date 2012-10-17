@@ -78,11 +78,20 @@ class Procfile(object):
                             env[k] = v
         return env
 
+    def get_groupname(self):
+        if self.root == ".":
+            path = os.getcwd()
+        else:
+            path = self.root
+        print(path)
+        return os.path.split(path)[1]
+
     def as_dict(self, name):
         """ return a procfile line as a JSON object usable with
         the command ``gafferctl load`` . """
 
         cmd, args = self.parse_cmd(self.cfg[name])
+
         return OrderedDict([("name", name),("cmd",  cmd), ("args", args),
                 ("env", self.env)])
 
@@ -97,7 +106,9 @@ class Procfile(object):
         dconf = OrderedDict()
         for k, v in self.cfg.items():
             cmd, args = self.parse_cmd(v)
-            dconf["process:%s" % k] = OrderedDict([("name", k), ("cmd", cmd),
+            name = "%s:%s" % (self.get_groupname(), k)
+
+            dconf["process:%s" % name] = OrderedDict([("cmd", cmd),
                 ("args", " ".join(args)), ("priority", ln)])
             ln += 1
 
