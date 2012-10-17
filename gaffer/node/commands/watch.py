@@ -36,7 +36,8 @@ class Watch(Command):
         Watch changes in gaffer
         =======================
 
-        This command allows you to watch changes in gaffer.
+        This command allows you to watch changes n a locla or remote
+        gaffer node.
 
 
         .. image:: ../_static/gaffer_watch.png
