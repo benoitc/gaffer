@@ -2,6 +2,8 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import os
+
 from .base import Command
 
 from ...manager import Manager
