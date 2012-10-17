@@ -72,6 +72,7 @@ class AsyncHandler(CorsHandler):
             self._heartbeat = pyuv.Timer(m.loop)
             self._heartbeat.start(self._on_heartbeat, heartbeat,
                     heartbeat)
+            self._heartbeat.unref()
 
     def write_chunk(self, data):
         chunk = "".join(("%X\r\n" % len(data), data, "\r\n"))

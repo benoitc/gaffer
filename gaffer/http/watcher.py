@@ -58,6 +58,7 @@ class WatcherHandler(CorsHandler):
             self._heartbeat = pyuv.Timer(m.loop)
             self._heartbeat.start(self._on_heartbeat, heartbeat,
                     heartbeat)
+            self._heartbeat.unref()
 
         if feed == "eventsource":
             self.set_header("Content-Type", "text/event-stream")
