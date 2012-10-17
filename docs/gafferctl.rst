@@ -1,7 +1,3 @@
-import os
-from gaffer.node.commands import get_commands
-
-_HEADER = """\
 .. _cli:
 
 Gafferctl
@@ -53,37 +49,28 @@ Usage
         update_process	Update a process description
 
 
-"""
+gafferctl commands
+-------------------
 
+- **status**: :doc:`commands/status`
+- **processes**: :doc:`commands/processes`
+- **sub**: :doc:`commands/sub`
+- **add_process**: :doc:`commands/add_process`
+- **get_process**: :doc:`commands/get_process`
+- **stop**: :doc:`commands/stop`
+- **running**: :doc:`commands/running`
+- **load_process**: :doc:`commands/load_process`
+- **watch**: :doc:`commands/watch`
+- **start**: :doc:`commands/start`
+- **add**: :doc:`commands/add`
+- **update_process**: :doc:`commands/update_process`
+- **kill**: :doc:`commands/kill`
+- **numprocesses**: :doc:`commands/numprocesses`
+- **del_process**: :doc:`commands/del_process`
+- **pids**: :doc:`commands/pids`
 
-def generate_commands(app):
-    path = os.path.join(app.srcdir, "commands")
-    ext = app.config['source_suffix']
-    if not os.path.exists(path):
-        os.makedirs(path)
+.. toctree::
+   :hidden:
+   :glob:
 
-    tocname = os.path.join(app.srcdir, "gafferctl%s" % ext)
-
-    with open(tocname, "w") as toc:
-        toc.write(_HEADER)
-        toc.write("gafferctl commands\n")
-        toc.write("-------------------\n\n")
-
-        commands = get_commands()
-        for name, cmd in commands.items():
-            toc.write("- **%s**: :doc:`commands/%s`\n" % (name, name))
-
-            # write the command file
-            refline = ".. _%s:" % name
-            fname = os.path.join(path, "%s%s" % (name, ext))
-            with open(fname, "w") as f:
-                f.write("\n".join([refline, "\n", cmd.desc, ""]))
-
-        toc.write("\n")
-        toc.write(".. toctree::\n")
-        toc.write("   :hidden:\n")
-        toc.write("   :glob:\n\n")
-        toc.write("   commands/*\n")
-
-def setup(app):
-    app.connect('builder-inited', generate_commands)
+   commands/*

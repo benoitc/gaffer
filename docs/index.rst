@@ -47,7 +47,7 @@ Contents:
 
    overview
    news
-   commands
+   command-line
    http
    webhooks
    processframework

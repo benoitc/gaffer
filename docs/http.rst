@@ -30,7 +30,7 @@ HTTP endpoints
 --------------
 
 Main http endpoints are described in the description of the gafferctl
-commands in :doc:`commands`:
+commands in :doc:`gafferctl`:
 
 .. toctree::
     :maxdepth: 1
