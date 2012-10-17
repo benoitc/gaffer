@@ -296,7 +296,10 @@ class Manager(object):
 
             self._publish("create", name=name)
             if start:
-                self.start_process(name)
+                self._publish("start", name=name)
+                self._publish("proc.%s.start" % name, name=name)
+                self._manage_processes(state)
+
 
     def update_process(self, name, cmd, **kwargs):
         """ update a process information.
