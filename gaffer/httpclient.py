@@ -401,9 +401,10 @@ class Server(object):
         self.request("delete", "/groups/%s" % name)
         return True
 
-    def get_watcher(self):
+    def get_watcher(self, heartbeat="true"):
         """ return a watcher to listen on /watch """
-        url =  make_uri(self.uri, '/watch', feed='eventsource')
+        url =  make_uri(self.uri, '/watch', feed='eventsource',
+                heartbeat=heartbeat)
         return Watcher(self.loop, url, **self.options)
 
 class ProcessId(object):
