@@ -720,23 +720,19 @@ class Manager(object):
         if not check_flapping:
             self._publish("flap", name=state.name)
             # stop the processes
-            self._stop_byname_unlocked(state.name)
+            self._stop_processes(state.name)
             if can_retry:
                 # if we can retry later then set a callback
                 def flapping_cb(handle):
-                    handle.stop()
-
                     # allows respawning
                     state.stopped = False
                     state._flapping_timer = None
 
                     # restart processes
                     self._restart_processes(state)
-
                 # set a callback
                 t = pyuv.Timer(self.loop)
-                t.start(flapping_cb, state.flapping.retry_in,
-                        state.flapping.retry_in)
+                t.start(flapping_cb, state.flapping.retry_in, 0.0)
                 state._flapping_timer = t
             return False
         return True

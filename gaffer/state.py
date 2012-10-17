@@ -268,17 +268,20 @@ class ProcessState(object):
     def check_flapping(self):
         """ main function used to check the flapping """
         f = self.flapping
-        if len(f.history) < f.attempts:
-            f.history.append(time.time())
-        else:
+
+        f.history.append(time.time())
+        if len(f.history) >= f.attempts:
             diff = f.history[-1] - f.history[0]
             if diff > f.window:
                 f.reset()
-                f.history.append(time.time())
+                self.flapping = f
             elif f.retries < f.max_retry:
-                increment(f.retries)
+                f.retries = increment(f.retries)
+                self.flapping = f
                 return False, True
             else:
                 f.reset()
+                self.flapping = f
                 return False, False
+        self.flapping = f
         return True, None

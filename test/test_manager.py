@@ -33,64 +33,17 @@ def dummy_cmd():
     return (testfile, cmd, args, wdir)
 
 
-class CrashProcess(object):
-
-    def __init__(self):
-        self.alive = True
-
-    def run(self):
-        while self.alive:
-            time.sleep(0.1)
-            break
-
-def run_crashprocess():
-    c = CrashProcess()
-    c.run()
-    return 1
-
-
 def crash_cmd():
-    cmd = sys.executable
-    args = ['generic.py', "test_manager.run_crashprocess"]
-    wdir = os.path.dirname(__file__)
-    return (cmd, args, wdir)
-
-class EchoProcess(object):
-
-    def __init__(self, *args):
-        self.alive = True
-        signal.signal(signal.SIGQUIT, self.handle_quit)
-        signal.signal(signal.SIGTERM, self.handle_quit)
-        signal.signal(signal.SIGINT, self.handle_quit)
-        signal.signal(signal.SIGCHLD, self.handle_chld)
-
-    def handle_quit(self, *args):
-        self.alive = False
-
-    def handle_chld(self, *args):
-        pass
-
-    def run(self):
-        while self.alive:
-            c = sys.stdin.readline()
-            print(c)
-            sys.stdout.flush()
-            if c == "exit\n":
-                break
-
-def run_echocmd():
-    c = EchoProcess()
-    c.run()
-    return 1
-
-def echo_cmd():
     fd, testfile = mkstemp()
     os.close(fd)
-    cmd = sys.executable
-    args = ['generic.py', "test_manager.run_echocmd", testfile]
+    if sys.platform == 'win32':
+        cmd = "cmd.exe"
+        args = args=["/c", "proc_crash.py"],
+    else:
+        cmd = sys.executable
+        args = ["-u", "./proc_crash.py"]
     wdir = os.path.dirname(__file__)
     return (cmd, args, wdir)
-
 
 def test_simple():
     m = Manager()
@@ -313,29 +266,26 @@ def test_send_signal():
 def test_flapping():
     m = Manager()
     m.start()
+    states = []
     cmd, args, wdir = crash_cmd()
-    flapping = FlappingInfo(attempts=1, window=1, retry_in=0.1, max_retry=2)
+    flapping = FlappingInfo(attempts=1, window=1., retry_in=0.1,
+            max_retry=1)
     m.add_process("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
-    state = m.get_process_state("crashing")
+    m.add_process("crashing2", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
 
     def cb(handle):
-        handle.stop()
-        assert state.stopped == True
+        state = m.get_process("crashing")
+        states.append(state.stopped)
+        state2 = m.get_process("crashing2")
+        states.append(state2.stopped)
+        m.stop()
 
     t = pyuv.Timer(m.loop)
-    t.start(cb, 0.8, 0.8)
-    m.add_process("crashing2", cmd, args=args, cwd=wdir)
-    state = m.get_process_state("crashing2")
-
-    def cb1(handle):
-        handle.stop()
-        assert state.stopped == False
-
-    t = pyuv.Timer(m.loop)
-    t.start(cb1, 0.8, 0.8)
-
-    m.stop()
+    t.start(cb, 0.8, 0.0)
     m.run()
+
+    assert states == [True, False]
 
 def test_events():
     emitted = []
