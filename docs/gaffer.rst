@@ -1,9 +1,9 @@
-.. _cli:
+.. _gaffer:
 
 Gaffer
 ======
 
-**gafferp** is a manager for Procfile-based applications similar to
+**gaffer** is a manager for Procfile-based applications similar to
 foreman but using the :doc:`gaffer framework <processframework>`. It is
 running your application directly using a Procfile or export it to a
 gafferd configuration file or simply to a JSON file that you could send
