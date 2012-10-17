@@ -791,11 +791,12 @@ class Manager(object):
 
             if process.id in self.running:
                 self.running.pop(process.id)
-            state.remove(process)
 
             # this template has been removed, return
             if not state:
                 return
+
+            state.remove(process)
 
             # eventually restart the process
             if not state.stopped:
