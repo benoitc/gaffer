@@ -15,73 +15,6 @@ from gaffer.manager import Manager
 from gaffer.process import Process
 from gaffer.state import FlappingInfo
 
-class DummyProcess(object):
-
-    QUIT_SIGNALS = (signal.SIGQUIT, signal.SIGTERM,)
-
-    def __init__(self, testfile):
-        self.alive = True
-        self.testfile = testfile
-        self.queue = deque()
-        signal.signal(signal.SIGHUP, self.handle)
-        signal.signal(signal.SIGQUIT, self.handle)
-        signal.signal(signal.SIGTERM, self.handle)
-        signal.signal(signal.SIGCHLD, self.handle_chld)
-        signal.signal(signal.SIGWINCH, self.handle_winch)
-
-    def _write(self, msg):
-        with open(self.testfile, 'a+') as f:
-            f.write(msg)
-            f.flush()
-
-    def handle(self, signum, frame):
-        self.queue.append(signum)
-
-    def handle_quit(self):
-        self._write('QUIT')
-        self.alive = False
-
-    def handle_chld(self, *args):
-        self._write('CHLD')
-
-    def handle_winch(self, *args):
-        return
-
-    def handle_hup(self):
-        self._write('HUP')
-
-    def run(self):
-        self._write('START')
-
-        # write to std
-        sys.stdout.write("hello out")
-        sys.stdout.flush()
-        sys.stderr.write("hello err")
-        sys.stderr.flush()
-
-        while self.alive:
-            sig = None
-            try:
-                sig = self.queue.popleft()
-            except IndexError:
-                pass
-
-            if sig is not None:
-                if sig in self.QUIT_SIGNALS:
-                    self.handle_quit()
-                elif sig == signal.SIGHUP:
-                    self.handle_hup()
-
-            time.sleep(0.001)
-
-        self._write('STOP')
-
-
-def run_dummy(test_file):
-    dummy = DummyProcess(test_file)
-    dummy.run()
-    return 1
-
 def tmpfile():
      fd, testfile = mkstemp()
      os.close(fd)
@@ -90,8 +23,12 @@ def tmpfile():
 def dummy_cmd():
     fd, testfile = mkstemp()
     os.close(fd)
-    cmd = sys.executable
-    args = ['generic.py', "test_manager.run_dummy", testfile]
+    if sys.platform == 'win32':
+        cmd = "cmd.exe"
+        args = args=["/c", "proc_dummy.py", testfile],
+    else:
+        cmd = sys.executable
+        args = ["-u", "./proc_dummy.py", testfile]
     wdir = os.path.dirname(__file__)
     return (testfile, cmd, args, wdir)
 
