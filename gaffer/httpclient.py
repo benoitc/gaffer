@@ -117,7 +117,7 @@ class Server(object):
     """ Server, main object to connect to a gaffer node. Most of the
     calls are blocking. (but running in the loop) """
 
-    def __init__(self, uri=None, loop=None, **options):
+    def __init__(self, uri, loop=None, **options):
         self.loop = loop or pyuv.Loop()
         self.uri = uri
         self.options = options
