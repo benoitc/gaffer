@@ -60,6 +60,7 @@ class ProcessTracker(object):
                     # done callback has been set, run it
                     if self._done_cb is not None:
                         self._done_cb()
+                        self._donc_cb = None
 
                     # nothing in the queue, quit
                     break
