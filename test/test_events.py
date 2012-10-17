@@ -8,6 +8,7 @@ from gaffer.events import EventEmitter
 
 
 def test_basic():
+    events = set()
     emitted = []
     loop = pyuv.Loop.default_loop()
 
@@ -16,13 +17,12 @@ def test_basic():
 
     emitter = EventEmitter(loop)
     emitter.subscribe("test", cb)
-
-    assert "test" in emitter._events
-    assert emitter._events["test"] == set([(False, cb)])
-
+    events = emitter._events.copy()
     emitter.publish("test")
     loop.run()
 
+    assert "test" in events
+    assert events["test"] == set([(False, cb)])
     assert emitted == [True]
     assert "test" in emitter._events
     assert emitter._events["test"] == set([(False, cb)])
@@ -144,3 +144,24 @@ def test_wildcard():
     assert emitted == [1]
     assert emitted2 == [1]
     assert emitted3 == [1]
+
+def test_unsubscribe():
+    emitted = []
+    loop = pyuv.Loop.default_loop()
+
+    def cb(ev, v):
+        emitted.append(v)
+
+    emitter = EventEmitter(loop)
+    emitter.subscribe("test", cb)
+    emitter.publish("test", "a")
+
+    def unsubscribe(handle):
+        emitter.unsubscribe("test", cb)
+        emitter.publish("test", "b")
+
+    t = pyuv.Timer(loop)
+    t.start(unsubscribe, 0.2, 0.0)
+    loop.run()
+
+    assert emitted == ["a"]

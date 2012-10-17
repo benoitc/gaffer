@@ -256,16 +256,19 @@ class EventEmitter(object):
 
         self.subscribe(evtype, listener, True)
 
-    def unsubscribe(self, evtype, listener):
+    def unsubscribe(self, evtype, listener, once=False):
         """ unsubscribe from an event"""
         if evtype not in self._events:
             return
 
         with self._lock:
             try:
-                self._events[evtype].remove(listener)
+                self._events[evtype].remove((once, listener))
             except KeyError:
                 pass
+
+    def unsubscribe_once(self, evtype, listener):
+        self.unsubscribe(evtype, listener, True)
 
     def unsubscribe_all(self, events=[]):
         """ unsubscribe all listeners from a list of events """
