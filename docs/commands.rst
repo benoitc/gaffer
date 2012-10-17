@@ -137,6 +137,8 @@ You can create your own client either by using the client API provided
 in the httpclient module or by reading the doc here and passing your own
 message to the gaffer node. All messages are encoded in JSON.
 
+.. image:: _static/gaffer_watch.png
+
 Usage
 +++++
 
@@ -178,6 +180,7 @@ gafferctl commands
 - **stop**: :doc:`commands/stop`
 - **running**: :doc:`commands/running`
 - **load_process**: :doc:`commands/load_process`
+- **watch**: :doc:`commands/watch`
 - **start**: :doc:`commands/start`
 - **add**: :doc:`commands/add`
 - **update_process**: :doc:`commands/update_process`

@@ -6,7 +6,7 @@ import signal
 
 import pyuv
 
-class SigHandler(object):
+class BaseSigHandler(object):
     """ A simple gaffer application to handle signals """
 
     QUIT_SIGNALS = (signal.SIGQUIT, signal.SIGTERM, signal.SIGINT)
@@ -14,9 +14,8 @@ class SigHandler(object):
     def __init__(self):
         self._sig_handler = None
 
-    def start(self, loop, manager):
+    def start(self, loop):
         self.loop = loop
-        self.manager = manager
 
         need_unref = False
         if hasattr(pyuv, "SignalChecker"):
@@ -45,6 +44,21 @@ class SigHandler(object):
     def restart(self):
         # we never restart, just return
         return
+
+    def handle_quit(self, handle, *args):
+        raise NotImplementedError
+
+    def handle_reload(self, handle, *args):
+        raise NotImplementedError
+
+
+
+class SigHandler(BaseSigHandler):
+    """ A simple gaffer application to handle signals """
+
+    def start(self, loop, manager):
+        self.manager = manager
+        super(SigHandler, self).start(loop)
 
     def handle_quit(self, handle, *args):
         self.manager.stop()

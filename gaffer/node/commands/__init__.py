@@ -17,6 +17,7 @@ from gaffer.node.commands import (
     process_status,
     process_numprocess,
     process_running,
-    process_pids)
+    process_pids,
+    watch)
 
 from gaffer.node.commands.base import get_commands

@@ -177,6 +177,9 @@ class EventsourceClient(object):
         self._io_loop.stop()
         self._io_loop.close(True)
 
+    def run(self):
+        self.loop.run()
+
     def _on_request(self, response):
         self.stop()
 
@@ -404,7 +407,7 @@ class Server(object):
     def get_watcher(self, heartbeat="true"):
         """ return a watcher to listen on /watch """
         url =  make_uri(self.uri, '/watch', feed='eventsource',
-                heartbeat=heartbeat)
+                heartbeat=str(heartbeat))
         return Watcher(self.loop, url, **self.options)
 
 class ProcessId(object):
