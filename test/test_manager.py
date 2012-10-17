@@ -591,17 +591,17 @@ def test_group():
     m.start_group("ga")
     m.stop_group("ga")
     time.sleep(0.2)
-    m.unsubscribe("stop", cb)
     m.remove_process("ga:a")
-    time.sleep(0.2)
     ga2 = m.get_group('ga')
+    m.stop_group("gb")
 
     def stop(handle):
         m.unsubscribe("start", cb)
+        m.unsubscribe("stop", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
-    t.start(stop, 0.4, 0.0)
+    t.start(stop, 0.6, 0.0)
     m.run()
 
     assert groups == ['ga', 'gb']
