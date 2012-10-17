@@ -85,9 +85,15 @@ class IOLoop(object):
                 pass
         self._loop.walk(cb)
 
-    def close(self, all_fds=False):
+    def close(self, all_fds=False, all_handlers=False):
         if all_fds:
+            for fd in self._handlers:
+                poll, stack = self._handlers[fd]
+                if not poll.closed:
+                    poll.close()
             self._handlers = {}
+
+        if all_handlers:
             self._close_loop_handles()
             # Run the loop so the close callbacks are fired and memory is freed
             # It will not block because all handles are closed
@@ -127,17 +133,18 @@ class IOLoop(object):
     def log_stack(self, signal, frame):
         raise NotImplementedError
 
-    def start(self):
+    def start(self, run_loop=True):
         if self._stopped:
             self._stopped = False
             return
         self._thread_ident = thread.get_ident()
         self._running = True
-        while self._running:
-            # We should use run() here, but we need to have break() for that
-            self._loop.run_once()
-        # reset the stopped flag so another start/stop pair can be issued
-        self._stopped = False
+        if run_loop:
+            while self._running:
+                # We should use run() here, but we need to have break() for that
+                self._loop.run_once()
+            # reset the stopped flag so another start/stop pair can be issued
+            self._stopped = False
 
     def stop(self):
         self._running = False

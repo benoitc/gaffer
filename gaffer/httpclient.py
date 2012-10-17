@@ -91,6 +91,7 @@ class HTTPClient(object):
         """Closes the HTTPClient, freeing any resources used."""
         if not self._closed:
             self._async_client.close()
+            self._io_loop.close(True)
             self._closed = True
 
     def fetch(self, request, **kwargs):

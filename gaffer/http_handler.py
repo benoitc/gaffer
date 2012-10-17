@@ -92,6 +92,7 @@ class HttpEndpoint(object):
 
     def stop(self):
         self.server.stop()
+        self.io_loop.close(True)
 
     def restart(self):
         self.server.stop()
