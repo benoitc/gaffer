@@ -74,17 +74,25 @@ Usage
 ::
 
     $ gafferd --help
-    usage: gafferd [-h] [--daemon] [--pidfile PIDFILE] config
+    usage: gafferd [-h] [-v] [-vv] [--daemon] [--pidfile PIDFILE] [--bind BIND]
+                   [--certfile CERTFILE] [--keyfile KEYFILE] [--backlog BACKLOG]
+                   [config]
 
     Run some watchers.
 
     positional arguments:
-      config             configuration file
+      config               configuration file
 
     optional arguments:
-      -h, --help         show this help message and exit
-      --daemon           Start gaffer in the background
+      -h, --help           show this help message and exit
+      -v                   verbose mode
+      -vv                  like verbose mode but output stream too
+      --daemon             Start gaffer in the background
       --pidfile PIDFILE
+      --bind BIND          default HTTP binding
+      --certfile CERTFILE  SSL certificate file for the default binding
+      --keyfile KEYFILE    SSL key file for the default binding
+      --backlog BACKLOG    default backlog
 
 Config file example
 +++++++++++++++++++
