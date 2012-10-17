@@ -56,7 +56,13 @@ setup(name='gaffer',
       ext_modules = [
             Extension("gaffer.sync", ["gaffer/sync.c"])
       ],
-      install_requires = ['pyuv', 'six', 'psutil', 'tornado', 'colorama'],
+      install_requires = [
+          'pyuv',
+          'six',
+          'psutil',
+          'tornado',
+          'colorama'
+      ],
       data_files = DATA_FILES,
       entry_points="""
 
