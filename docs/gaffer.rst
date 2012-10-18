@@ -45,6 +45,24 @@ and then scale them up and down::
 .. image:: _static/gaffer_ps.png
 
 
+gaffer commands
+-------------------
+
+- **start**: :doc:`pm/start`
+- **run**: :doc:`pm/run`
+- **export**: :doc:`pm/export`
+- **load**: :doc:`pm/load`
+- **unload**: :doc:`pm/unload`
+- **scale**: :doc:`pm/scale`
+- **ps**: :doc:`pm/ps`
+
+.. toctree::
+   :hidden:
+   :glob:
+
+   pm/*
+
+
 Command line usage
 ------------------
 
@@ -82,21 +100,3 @@ Command line usage
         scale 	Scaling your process
         ps    	List your process informations
         help  	Get help on a command
-
-
-gaffer commands
--------------------
-
-- **start**: :doc:`pm/start`
-- **run**: :doc:`pm/run`
-- **export**: :doc:`pm/export`
-- **load**: :doc:`pm/load`
-- **unload**: :doc:`pm/unload`
-- **scale**: :doc:`pm/scale`
-- **ps**: :doc:`pm/ps`
-
-.. toctree::
-   :hidden:
-   :glob:
-
-   pm/*

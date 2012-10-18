@@ -49,6 +49,11 @@ and then scale them up and down::
 .. image:: _static/gaffer_ps.png
 
 
+"""
+
+_BOTTOM = """\
+
+
 Command line usage
 ------------------
 
@@ -86,10 +91,7 @@ Command line usage
         scale 	Scaling your process
         ps    	List your process informations
         help  	Get help on a command
-
-
 """
-
 
 def generate_commands(app):
     path = os.path.join(app.srcdir, "pm")
@@ -119,6 +121,8 @@ def generate_commands(app):
         toc.write("   :hidden:\n")
         toc.write("   :glob:\n\n")
         toc.write("   pm/*\n")
+        toc.write(_BOTTOM)
+
 
 def setup(app):
     app.connect('builder-inited', generate_commands)
