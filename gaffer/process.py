@@ -19,7 +19,7 @@ import six
 
 from .events import EventEmitter
 from .util import (bytestring, getcwd, check_uid, check_gid,
-        bytes2human)
+        bytes2human, substitute_env)
 from .sync import atomic_read, increment, decrement
 
 pyuv.Process.disable_stdio_inheritance()
@@ -277,6 +277,7 @@ class Process(object):
         self.name = name
         self.group = group
         self.cmd = cmd
+        self.env = env or {}
 
         # set command
         self.cmd = bytestring(cmd)
@@ -294,6 +295,10 @@ class Process(object):
                 self.cmd = args_[0]
                 self.args = args_[1:]
 
+        # replace envirnonnement variable in args
+        # $PORT for example will become the given env variable.
+        self.args = [substitute_env(arg, self.env) for arg in self.args]
+
         if shell:
             self.args = ['-c', cmd] + args
             self.cmd = "sh"
@@ -307,7 +312,6 @@ class Process(object):
             self.gid = check_gid(gid)
 
         self.cwd = cwd or getcwd()
-        self.env = env or {}
         self.redirect_output = redirect_output
         self.redirect_input = redirect_input
 

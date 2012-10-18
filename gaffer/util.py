@@ -7,6 +7,7 @@ import os
 import pwd
 import resource
 import socket
+import string
 import time
 
 import six
@@ -190,3 +191,6 @@ def nanotime(s=None):
 def from_nanotime(n):
     """ convert from nanotime to seconds """
     return n / 1.0e9
+
+def substitute_env(s, env):
+    return string.Template(s).substitute(env)

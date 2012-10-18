@@ -191,7 +191,7 @@ def test_redirect_input():
 
     else:
         p = Process(loop, "someid", "echo", "./proc_stdin_stdout.py",
-            cwd= os.path.dirname(__file__),
+            cwd=os.path.dirname(__file__),
             redirect_output=["stdout"], redirect_input=True)
     p.spawn()
     time.sleep(0.2)
@@ -208,3 +208,24 @@ def test_redirect_input():
 
     assert len(monitored) == 1
     assert monitored == [b'ECHO\n\n']
+
+def test_substitue_env():
+    loop = pyuv.Loop.default_loop()
+
+    cmd = 'echo "test" > $NULL_PATH'
+    env = {"NULL_PATH": "/dev/null"}
+    p = Process(loop, "someid", "null", cmd, env=env,
+            cwd=os.path.dirname(__file__),
+            redirect_output=["stdout"], redirect_input=True)
+
+    cmd2 = "echo"
+    args = ["test", ">", "$NULL_PATH"]
+    p2 = Process(loop, "someid", "null", cmd2, args=args,
+            env=env, cwd=os.path.dirname(__file__),
+            redirect_output=["stdout"], redirect_input=True)
+
+
+    assert "/dev/null" in p.args
+    assert "$NULL_PATH" not in p.args
+    assert "/dev/null" in p2.args
+    assert "$NULL_PATH" not in p2.args
