@@ -19,7 +19,7 @@ Features
 
     - Framework to manage and interract your processes
     - Fully evented. Use the libuv event loop using the
-      `pyuv library <https://pyuv.readthedocs.com>`_
+      `pyuv library <http://pyuv.readthedocs.org>`_
     - Server and :doc:`command-line` tools to manage your
       processes
     - Procfile applications support (see :doc:`gaffer`)

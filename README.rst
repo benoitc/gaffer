@@ -11,12 +11,12 @@ Features
 
     - Framework to manage and interract your processes
     - Fully evented. Use the libuv event loop using the
-      `pyuv library <http://pyuv.readthedocs.com>`_
+      `pyuv library <http://pyuv.readthedocs.org>`_
     - Server and `command line
-      <http://gaffer.readthedocs.com/command-line>`_ tools to manage
+      <http://gaffer.readthedocs.org/en/latest/command-line.html>`_ tools to manage
       your processes
     - Procfile applications support (see `gaffer
-      <http://gaffer.readthedocs.com/gaffer>`_)
+      <http://gaffer.readthedocs.org/en/latest/gaffer.html>`_)
     - HTTP Api (multiple binding, unix sockets & HTTPS supported)
     - Flapping: handle cases where your processes crash too much
     - Possibility to interract with STDIO:
