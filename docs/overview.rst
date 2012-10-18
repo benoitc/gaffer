@@ -81,7 +81,7 @@ Running an application is done like this::
     manager.run() # run the event loop
 
 
-The HttpHandler applications allows you to interact with gaffer via
+The HttpHandler application allows you to interact with gaffer via
 HTTP.  It is used by the gafferd server which is able for now to load
 process templates via an ini files and maintain an HTTP endpoint which
 can be configured to be accessible on multiples interfaces and
