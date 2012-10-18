@@ -17,7 +17,7 @@ class Ps(Command):
         Ps allows you to retrieve some process informations
 
 
-        .. image:: ../_static/gafferp.png
+        .. image:: ../_static/gaffer_ps.png
 
         Command line
         ------------
