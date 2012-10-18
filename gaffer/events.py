@@ -22,6 +22,11 @@ Manager events have the following format::
 - **restart**: all processes of a process template are restarted
 - **update**: a process template is updated
 - **delete**: a process template is deleted
+- **spawn**: a new process is spawned
+- **reap**: a process is reaped
+- **exit**: a process exited
+- **stop_pid**: a process has been stopped
+
 
 Processes events
 ----------------

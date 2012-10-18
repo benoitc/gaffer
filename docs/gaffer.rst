@@ -4,7 +4,7 @@ Gaffer
 ======
 
 The **gaffer** command line tool is an interface to the :doc:`gaffer
-HTTP api <http>` and inclusde support for loading/unloadin apps, scaling
+HTTP api <http>` and include support for loading/unloading apps, scaling
 them up and down, ... .
 
 It can also be used as a manager for Procfile-based applications similar to

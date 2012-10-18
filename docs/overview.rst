@@ -62,19 +62,18 @@ be changed dynamically. Current properties of this templates are:
   you want to be able to write to stdin.
 
 
-The manager is also responsible of starting and stopping controllers (e
-better wording need to be found) or rather gaffer applications that you add
-add to he manager to react on different events. A controller is
-responsible of fetching infos from the manager and handling actions.
+The manager is also responsible of starting and stopping gaffer
+applications that you add to he manager to react on different events. A applicaton can
+fetch informations from the manager and interract with him.
 
-Running a controller is done like this::
+Running an application is done like this::
 
     # initialize the controller with the default loop
     loop = pyuv.Loop.default_loop()
     manager = Manager(loop=loop)
 
     # start the controller
-    manager.start(controllers=[HttpHandler])
+    manager.start(applications=[HttpHandler()])
 
     .... # do smth
 
@@ -82,16 +81,21 @@ Running a controller is done like this::
     manager.run() # run the event loop
 
 
-For now only 1 HTTP controller is proposed and allows you to interact
-with gaffer via HTTP.  It is used by the gafferd server which is able
-for now to load process templates via an ini files and maintain an HTTP
-endpoint which can be configured to be accessible on multiples interfaces
-and transports (tcp & unix sockets) .
+The HttpHandler applications allows you to interact with gaffer via
+HTTP.  It is used by the gafferd server which is able for now to load
+process templates via an ini files and maintain an HTTP endpoint which
+can be configured to be accessible on multiples interfaces and
+transports (tcp & unix sockets) .
 
-Building your own controller is easy, basically a contoller has the
+.. note::
+
+    Only applications instances are used by the manager. It allows you
+    to initialize them with your own settings.
+
+Building your own application is easy, basically an application has the
 following structure::
 
-    class Mycontroller(object):
+    class MyApplication(object):
 
         def __init__(self):
             # do inti
@@ -237,4 +241,4 @@ process without having to code. It can be used like `supervisor
 <http://smarden.org/runit/>`_  or other tools around. Speaking of runit
 a similar controlling will be available in 0.2 .
 
-See the :doc:`console tools <commands>` for more informations.
+See the :doc:`command-line` documentation for more informations.

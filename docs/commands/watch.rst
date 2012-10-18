@@ -52,6 +52,7 @@ start                  start all processes in a tpl
 stop                   all processes in a tpl are stopped
 restart                restart all processes in a tpl
 update                 update a tpl (can happen on add/sub)
+delete                 a template has been removed
 spawn                  a new process is spawned
 reap                   a process is reaped
 exit                   a process exited

@@ -7,7 +7,7 @@ console. This application is subscribing to the manager to know when a
 process is created or killed and display the information. When an OS process
 is spawned it then subscribe to its streams if any are redirected and
 print the output on the console. This module is used by
-:doc:`gafferp <commands>` .
+:doc:`gaffer` .
 
 
 .. note::
