@@ -8,8 +8,8 @@ Gaffer
 ======
 
 The **gaffer** command line tool is an interface to the :doc:`gaffer
-HTTP api <http>` and include support for loading/unloading apps, scaling
-them up and down, ... .
+HTTP api <http>` and include support for loading/unloading Procfile
+applications, scaling them up and down, ... .
 
 It can also be used as a manager for Procfile-based applications similar to
 foreman but using the :doc:`gaffer framework <processframework>`. It is

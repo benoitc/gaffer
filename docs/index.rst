@@ -20,9 +20,10 @@ Features
     - Framework to manage and interract your processes
     - Fully evented. Use the libuv event loop using the
       `pyuv library <https://pyuv.readthedocs.com>`_
-    - Server and console tool to manage your process via HTTP on TCP and
-      UNIX sockets.
-    - HTTPS supported
+    - Server and :doc:`command-line` tools to manage your
+      processes
+    - Procfile applications support (see :doc:`gaffer`)
+    - HTTP Api (multiple binding, unix sockets & HTTPS supported)
     - Flapping: handle cases where your processes crash too much
     - Possibility to interract with STDIO:
         - websocket stream to write to stdin and receive from stdout

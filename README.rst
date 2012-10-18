@@ -11,10 +11,14 @@ Features
 
     - Framework to manage and interract your processes
     - Fully evented. Use the libuv event loop using the
-      `pyuv library <https://pyuv.readthedocs.org>`_
-    - Server and console tool to manage your process via HTTP on TCP and
-      UNIX sockets.
-    - HTTPS supported
+      `pyuv library <http://pyuv.readthedocs.com>`_
+    - Server and `command line
+      <http://gaffer.readthedocs.com/command-line>`_ tools to manage
+      your processes
+    - Procfile applications support (see `gaffer
+      <http://gaffer.readthedocs.com/gaffer>`_)
+    - HTTP Api (multiple binding, unix sockets & HTTPS supported)
+    - Flapping: handle cases where your processes crash too much
     - Possibility to interract with STDIO:
         - websocket stream to write to stdin and receive from stdout
           (muliple clients can read and write at the same time)
@@ -50,6 +54,12 @@ To install from source, run the following command::
 
     $ git clone https://github.com/benoitc/gaffer.git
     $ cd gaffer && pip install -r requirements.txt
+
+
+From pypi::
+
+    $ pip install gaffer
+
 
 License
 -------
