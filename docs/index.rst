@@ -14,6 +14,12 @@ Simple process management
 Gaffer is a set of Python modules and tools to easily maintain and
 interract with your processes.
 
+.. raw:: html
+
+    <iframe src="http://player.vimeo.com/video/51674172" width="500"
+    height="163" frameborder="0" webkitAllowFullScreen
+    mozallowfullscreen allowFullScreen></iframe>
+
 Features
 --------
 
