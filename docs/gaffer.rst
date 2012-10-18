@@ -35,7 +35,7 @@ Or load them on a gaffer node::
 
     $ gaffer load
 
-and then scale them up and down:
+and then scale them up and down::
 
     $ gaffer scale dummy=3 dummy1+2
     Scaling dummy processes... done, now running 3
