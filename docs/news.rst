@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+
+2012/10/18 - version 0.3.1
+--------------------------
+
+- add environment variables substitution in the process command line.
+
 2012/10/18 - version 0.3.0
 --------------------------
 
