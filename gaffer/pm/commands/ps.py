@@ -68,7 +68,7 @@ class Ps(Command):
             stats = p.stats()
 
             lines = ["=== %s: `%s`" % (name, cmd_str),
-                     "Total CPU: %2f Total MEM: %.2f" % (stats['cpu'],
+                     "Total CPU: %.2f Total MEM: %.2f" % (stats['cpu'],
                          stats['mem']),
                      ""]
 
