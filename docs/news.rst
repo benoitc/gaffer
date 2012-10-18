@@ -1,8 +1,8 @@
 CHANGES
 =======
 
-2012/10/18
-----------
+2012/10/18 - version 0.3.0
+--------------------------
 
 - add the :doc:`gaffer` command line tool: load, unload your procfile
   applications to gaffer, scale them up and down. Or just use it as a
