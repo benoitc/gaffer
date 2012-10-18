@@ -28,6 +28,7 @@ Command line
 ------------
 
 ::
+
     $ gaffer scale [group] process[=|-|+]3
 
 

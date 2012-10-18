@@ -36,6 +36,7 @@ class Scale(Command):
         ------------
 
         ::
+
             $ gaffer scale [group] process[=|-|+]3
 
 
