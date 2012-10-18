@@ -3,6 +3,8 @@ from gaffer.pm.commands import (
         run,
         export,
         load,
-        unload)
+        unload,
+        scale,
+        ps)
 
 from gaffer.pm.commands.base import get_commands

@@ -561,6 +561,12 @@ class Process(object):
         obj = self.server.json_body(resp)
         return obj['numprocesses']
 
+    def stats(self):
+        resp = self.server.request("get", "/stats/%s" % self.process['name'])
+        return self.server.json_body(resp)
+
+
+
     def signal(self, num_or_str):
         """ send a signal to all processes of this template """
         if isinstance(num_or_str, six.string_types):

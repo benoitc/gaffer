@@ -231,6 +231,7 @@ class ProcessState(object):
         lcpu = []
         for p in self.running:
             info = p.info
+            info['id'] = p.id
             infos.append(info)
             lmem.append(info['mem'])
             lcpu.append(info['cpu'])

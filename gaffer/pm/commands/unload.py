@@ -10,7 +10,7 @@ from ...httpclient import Server
 class UnLoad(Command):
     """\
         Unload a Procfile application to gafferd
-        ----------------------------------------
+        ========================================
 
         This command allows you to unload your Procfile application
         in gafferd.
@@ -30,6 +30,14 @@ class UnLoad(Command):
         *uri*  is the url to connect to a gaffer node. By default
         'http://127.0.0.1:5000'
 
+        Options
+        +++++++
+
+        **--endpoint**
+
+            Gaffer node URL to connect.
+
+
     """
 
     name = "unload"
@@ -46,6 +54,9 @@ class UnLoad(Command):
             group = args[0]
         else:
             group = "."
+
+        if pargs.endpoint:
+            uri = pargs.endpoint
 
         if not uri:
             uri = "http://127.0.0.1:5000"

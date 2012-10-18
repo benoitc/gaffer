@@ -83,7 +83,6 @@ class Procfile(object):
             path = os.getcwd()
         else:
             path = self.root
-        print(path)
         return os.path.split(path)[1]
 
     def as_dict(self, name, concurrency_settings=None):

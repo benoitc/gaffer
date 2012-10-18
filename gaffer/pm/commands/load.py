@@ -10,7 +10,7 @@ from ...httpclient import Server
 class Load(Command):
     """\
         Load a Procfile application to gafferd
-        --------------------------------------
+        ======================================
 
         This command allows you to load your Procfile application
         in gafferd.
@@ -30,6 +30,13 @@ class Load(Command):
         *uri*  is the url to connect to a gaffer node. By default
         'http://127.0.0.1:5000'
 
+        Options
+        +++++++
+
+        **--endpoint**
+
+            Gaffer node URL to connect.
+
     """
 
     name = "load"
@@ -46,6 +53,9 @@ class Load(Command):
             group = args[0]
         else:
             group = "."
+
+        if pargs.endpoint:
+            uri = pargs.endpoint
 
         if not uri:
             uri = "http://127.0.0.1:5000"

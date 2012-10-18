@@ -62,6 +62,8 @@ gaffer commands
 - **export**: :doc:`pm/export`
 - **load**: :doc:`pm/load`
 - **unload**: :doc:`pm/unload`
+- **scale**: :doc:`pm/scale`
+- **ps**: :doc:`pm/ps`
 
 .. toctree::
    :hidden:

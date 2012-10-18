@@ -107,6 +107,10 @@ class ProcfileManager(object):
                 defaults to the  directory containing the
                 Procfile""")
 
+        parser.add_argument('--endpoint', dest='endpoint',
+                default='http://127.0.0.1:5000',
+                help="Gaffer node URL to connect")
+
         parser.add_argument('--version', action="version",
                 version=self.display_version())
         return parser
