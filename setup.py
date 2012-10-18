@@ -44,7 +44,7 @@ DATA_FILES = [
 
 
 setup(name='gaffer',
-      version="0.2.0",
+      version="0.3.0",
       description = 'simple system process manager',
       long_description = long_description,
       classifiers = CLASSIFIERS,
