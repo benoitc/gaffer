@@ -1,6 +1,8 @@
 from gaffer.pm.commands import (
         start,
         run,
-        export)
+        export,
+        load,
+        unload)
 
 from gaffer.pm.commands.base import get_commands

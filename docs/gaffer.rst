@@ -58,8 +58,10 @@ gaffer commands
 -------------------
 
 - **start**: :doc:`pm/start`
-- **export**: :doc:`pm/export`
 - **run**: :doc:`pm/run`
+- **export**: :doc:`pm/export`
+- **load**: :doc:`pm/load`
+- **unload**: :doc:`pm/unload`
 
 .. toctree::
    :hidden:

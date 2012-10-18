@@ -321,6 +321,7 @@ class Server(object):
         process.update(kwargs)
 
         body = json.dumps(process)
+
         headers = {"Content-Type": "application/json" }
 
         if force:

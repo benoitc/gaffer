@@ -42,11 +42,8 @@ class ProcfileManager(object):
                 cmd = self.commands[args.args[0]]
                 print(cmd.desc)
         else:
-
             self._init_procfile()
-
             cmd = self.commands[args.command]
-
             try:
                 return cmd.run(self.procfile, args)
             except Exception as e:
@@ -115,9 +112,11 @@ class ProcfileManager(object):
         return parser
 
     def _commands_help(self):
-        commands = sorted([name for name in self.commands] + ["help"])
+        commands = [name for name in self.commands] + ["help"]
         max_len = len(max(commands, key=len))
-        output = []
+        output = ["Commands:",
+                  "---------",
+                  " "]
         for name in commands:
             if name == "help":
                 desc = "Get help on a command"

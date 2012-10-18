@@ -5,9 +5,14 @@
 import copy
 import textwrap
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ...datastructures import OrderedDict
+
 KNOWN_COMMANDS = []
 def get_commands():
-    commands = {}
+    commands = OrderedDict()
     for c in KNOWN_COMMANDS:
         cmd = c()
         commands[c.name] = cmd.copy()
@@ -36,6 +41,7 @@ class Command(object):
     name = None
     options = []
     properties = []
+    order = 0
 
     def copy(self):
         return copy.copy(self)

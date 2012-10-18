@@ -206,7 +206,7 @@ class Manager(object):
 
         # finally remove the group
         with self._lock:
-            del self.group[groupname]
+            del self.groups[groupname]
 
     def start_group(self, groupname):
         """ start all process templates of the group """
