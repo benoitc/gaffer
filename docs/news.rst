@@ -5,7 +5,8 @@ CHANGES
 2012/10/18 - version 0.3.1
 --------------------------
 
-- add environment variables substitution in the process command line.
+- add environment variables substitution in the process command line and
+  arguments.
 
 2012/10/18 - version 0.3.0
 --------------------------
