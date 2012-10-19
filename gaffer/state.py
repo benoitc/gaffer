@@ -236,14 +236,14 @@ class ProcessState(object):
             lmem.append(info['mem'])
             lcpu.append(info['cpu'])
 
-        if 'N/A' in lmem:
+        if 'N/A' in lmem or not lmem:
             mem, max_mem, min_mem = "N/A"
         else:
             max_mem = max(lmem)
             min_mem = min(lmem)
             mem = sum(lmem)
 
-        if 'N/A' in lcpu:
+        if 'N/A' in lcpu or not lcpu:
             cpu, max_cpu, min_cpu = "N/A"
         else:
             max_cpu = max(lcpu)
