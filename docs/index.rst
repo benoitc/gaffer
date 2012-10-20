@@ -12,7 +12,7 @@ Gaffer
 Simple process management
 
 Gaffer is a set of Python modules and tools to easily maintain and
-interract with your processes.
+interact with your processes.
 
 .. raw:: html
 
@@ -23,7 +23,7 @@ interract with your processes.
 Features
 --------
 
-    - Framework to manage and interract your processes
+    - Framework to manage and interact your processes
     - Fully evented. Use the libuv event loop using the
       `pyuv library <http://pyuv.readthedocs.org>`_
     - Server and :doc:`command-line` tools to manage your
@@ -31,7 +31,7 @@ Features
     - Procfile applications support (see :doc:`gaffer`)
     - HTTP Api (multiple binding, unix sockets & HTTPS supported)
     - Flapping: handle cases where your processes crash too much
-    - Possibility to interract with STDIO:
+    - Possibility to interact with STDIO:
         - websocket stream to write to stdin and receive from stdout
           (muliple clients can read and write at the same time)
         - subscribe on stdout/stderr feed via longpolling, continuous
