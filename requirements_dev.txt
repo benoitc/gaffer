@@ -1,7 +1,7 @@
-pyuv
+pyuv>=0.8.3
 six
 psutil
-tornado
+tornado==2.4.0
 colorama
 setproctitle
 pytest

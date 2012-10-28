@@ -57,10 +57,10 @@ setup(name='gaffer',
             Extension("gaffer.sync", ["gaffer/sync.c"])
       ],
       install_requires = [
-          'pyuv',
+          'pyuv>=0.8.3',
           'six',
           'psutil',
-          'tornado',
+          'tornado==0.2.4',
           'colorama',
           'setproctitle'
       ],
