@@ -56,7 +56,7 @@ def check_uid(val):
 
     If the user value is unknown, raises a ValueError.
     """
-    if isinstance(val, int):
+    if isinstance(val, six.integer_types):
         try:
             pwd.getpwuid(val)
             return val
