@@ -95,7 +95,7 @@ def check_gid(val):
 def bytes2human(n):
     """Translates bytes into a human repr.
     """
-    if not isinstance(n, int):
+    if not isinstance(n, six.integer_types):
         raise TypeError(n)
 
     prefix = {}
