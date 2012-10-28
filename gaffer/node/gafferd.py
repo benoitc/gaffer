@@ -146,6 +146,7 @@ class Server(object):
         endpoints = []
         processes = []
         webhooks = []
+        envs = {}
         for section in cfg.sections():
             if section.startswith('endpoint:'):
                 name = section.split("endpoint:", 1)[1]
@@ -221,6 +222,15 @@ class Server(object):
             elif section == "webhooks":
                 for key, val in cfg.items(section):
                     webhooks.append((key, val))
+            elif section.startswith('env:'):
+                pname = section.split("env:", 1)[1]
+                kvs = [(key.upper(), val) for key, val in cfg.items(section)]
+                envs[pname] = dict(kvs)
+
+        # add environment variables
+        for name, cmd, params in processes:
+            if name in envs:
+                params['env'] = envs[name]
 
         # sort processes by priority
         processes = sorted(processes, key=lambda p: p[2]['priority'])

@@ -110,6 +110,7 @@ class ProcessState(object):
     DEFAULT_PARAMS = {
             "group": None,
             "args": None,
+            "env": None,
             "uid": None,
             "gid": None,
             "cwd": None,
