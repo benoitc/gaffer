@@ -22,6 +22,8 @@ from ..state import FlappingInfo
 from ..util import daemonize, setproctitle_
 from ..webhooks import WebHooks
 
+from .plugins import PluginManager
+from .util import user_path
 
 ENDPOINT_DEFAULTS = dict(
         uri = None,
@@ -67,19 +69,16 @@ class Server(object):
 
     def __init__(self, args):
         self.args = args
+        self.cfg = None
 
-        if not args.config:
-            self.apps, self.processes = self.defaults()
+        config_file = args.config or args.config_file
+        if not config_file:
+            self.set_defaults()
         else:
-            self.apps, self.processes = self.get_config(args.config)
-
-        if args.verboseful:
-            self.apps.append(ConsoleOutput(actions=['.']))
-        elif args.verbose:
-            self.apps.append(ConsoleOutput(output_streams=False,
-                actions=['.']))
+            self.parse_config(config_file)
 
         self.manager = Manager()
+        self.plugin_manager = PluginManager(self.plugins_dir)
 
     def default_endpoint(self):
         params = ENDPOINT_DEFAULTS.copy()
@@ -99,14 +98,38 @@ class Server(object):
         params['uri'] = self.args.bind or '127.0.0.1:5000'
         return HttpEndpoint(**params)
 
-    def defaults(self):
-        apps = [SigHandler(),
-                WebHooks(),
-                HttpHandler(endpoints=[self.default_endpoint()])]
-        return apps, []
+    def set_defaults(self):
+        self.plugins_dir = self.args.plugins_dir
+        self.webhooks = []
+        self.endpoints = [self.default_endpoint()]
+        self.processes = []
 
     def run(self):
-        self.manager.start(apps=self.apps)
+        # check if any plugin dependancy is missing
+        self.plugin_manager.check_mandatory()
+
+        # setup the http api
+        static_sites = self.plugin_manager.get_sites()
+        http_handler = HttpHandler(endpoints=self.endpoints,
+                handlers=static_sites)
+
+        # setup gaffer apps
+        apps = [SigHandler(),
+                WebHooks(hooks=self.webhooks),
+                http_handler]
+
+        # extend with plugin apps
+        plugin_apps = self.plugin_manager.get_apps(self.cfg)
+        apps.extend(plugin_apps)
+
+        # verbose mode
+        if self.args.verboseful:
+            apps.append(ConsoleOutput(actions=['.']))
+        elif self.args.verbose:
+            apps.append(ConsoleOutput(output_streams=False,
+                actions=['.']))
+
+        self.manager.start(apps=apps)
 
         # add processes
         for name, cmd, params in self.processes:
@@ -136,8 +159,12 @@ class Server(object):
 
         return cfg, cfg_files_read
 
-    def get_config(self, config_file):
+    def parse_config(self, config_file):
         cfg, cfg_files_read = self.read_config(config_file)
+        self.cfg = cfg
+
+        self.plugins_dir = cfg.dget('gaffer', 'plugins_dir',
+                self.args.plugins_dir)
 
         # you can setup multiple endpoints in the config
         endpoints_str = cfg.dget('gaffer', 'http_endpoints', '')
@@ -239,16 +266,23 @@ class Server(object):
             # we create a default endpoint
             endpoints = [self.default_endpoint()]
 
-        apps = [SigHandler(),
-                WebHooks(hooks=webhooks),
-                HttpHandler(endpoints=endpoints)]
-
-        return apps, processes
+        self.endpoints = endpoints
+        self.webhooks = webhooks
+        self.processes = processes
 
 def run():
+    # default plugins dir
+    plugins_dir = os.path.join(user_path(), "plugins")
+
+    # define the argument parser
     parser = argparse.ArgumentParser(description='Run some watchers.')
     parser.add_argument('config', help='configuration file',
             nargs='?')
+
+    parser.add_argument('-c', '--config', dest='config_file',
+            help='configuration file')
+    parser.add_argument('-p', '--plugins-dir', dest='plugins_dir',
+            help="default plugin dir", default=plugins_dir),
 
     parser.add_argument('-v', dest='verbose', action='store_true',
             help="verbose mode")
@@ -265,7 +299,6 @@ def run():
             help="SSL key file for the default binding"),
     parser.add_argument('--backlog', dest='backlog', type=int,
             default=128, help="default backlog"),
-
 
     args = parser.parse_args()
 

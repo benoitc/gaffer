@@ -105,7 +105,7 @@ class HttpHandler(object):
     sockets) with different options. Each endpoint can also listen on
     different interfaces """
 
-    def __init__(self, endpoints=[], handlers=None):
+    def __init__(self, endpoints=[], handlers=None, **settings):
         self.endpoints = endpoints or []
         if not endpoints: # if no endpoints passed add a default
             self.endpoints.append(HttpEndpoint())
@@ -114,10 +114,16 @@ class HttpHandler(object):
         self.handlers = copy.copy(DEFAULT_HANDLERS)
         self.handlers.extend(handlers or [])
 
+        # custom settings
+        if 'manager' in settings:
+            del settings['manager']
+        self.settings = settings
+
     def start(self, loop, manager):
         self.loop = loop
         self.manager = manager
-        self.app = Application(self.handlers, manager=self.manager)
+        self.app = Application(self.handlers, manager=self.manager,
+                **self.settings)
 
         # start endpoints
         for endpoint in self.endpoints:
