@@ -51,12 +51,12 @@ gafferd you can also set the path to them::
 
     $ gafferd -c /path/to/gaffer.ini -p /path/to/plugun
 
-.. note:
+.. note::
 
     default plugin path is relative to the user launching gaffer and is
     set to `~/.gaffer/plugins`.
 
-.. note:
+.. note::
 
     To launch it in daemon mode use the ``--daemon`` option.
 
@@ -70,7 +70,7 @@ The configuration file
 The configuration file can be used to set the global configuration of
 gafferd, setup some processes and webhooks.
 
-.. note:
+.. note::
 
     Since the configuration is passed to the plugin you can also use
     this configuration file to setup your plugins.
@@ -83,7 +83,7 @@ example folder::
     numprocesses = 1
     redirect_output = stdout, stderr
 
-.. note:
+.. note::
 
     Process can be grouped. You can then start and stop all processes of
     a group and see if a process is member of a group using the HTTP
