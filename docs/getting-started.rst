@@ -8,7 +8,7 @@ overview or how to integrate it in your application you should read the
 Introduction
 ------------
 
-Gaffer allows you to launch OS processes and supervize them. 3
+Gaffer allows you to launch OS processes and supervise them. 3
 :doc:`command line <command-line>` tools allows you to use it for now:
 
 - :doc:`gafferd` is the process supervisor and should be launched first
@@ -87,7 +87,7 @@ example folder::
 
     Process can be grouped. You can then start and stop all processes of
     a group and see if a process is member of a group using the HTTP
-    api. (dadly this is not yet possible to do it using the command
+    api. (sadly this is not yet possible to do it using the command
     line).
 
     For example if you want dummy be part of the group test, then
