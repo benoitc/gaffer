@@ -37,6 +37,11 @@ Documentation
 
 http://gaffer.readthedocs.org
 
+Getting Started
+---------------
+
+http://gaffer.readthedocs.org/en/latest/getting-started.html
+
 Installation
 ------------
 

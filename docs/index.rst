@@ -52,6 +52,7 @@ Contents:
 .. toctree::
    :titlesonly:
 
+   getting-started
    overview
    news
    command-line
