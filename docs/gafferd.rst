@@ -116,14 +116,14 @@ The dummy app here only print some info when started or stopped::
 
     class DummyApp(object):
 
-    def start(self, loop, manager):
-        print("start dummy app")
+        def start(self, loop, manager):
+            print("start dummy app")
 
-    def stop(sef):
-        print("stop dummy")
+        def stop(sef):
+            print("stop dummy")
 
-    def rester(self):
-        print("restart dummy")
+        def rester(self):
+            print("restart dummy")
 
 
 See the :doc:`overview` for more infos. You can try it in the example
