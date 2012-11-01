@@ -166,7 +166,7 @@ class ProcessState(object):
         os_env = self.settings.get('os_env', False)
         if os_env:
             env = params.get('env', {})
-            env.update(os.environ())
+            env.update(os.environ)
             params['env'] = env
 
         params['on_exit_cb'] = on_exit
