@@ -300,7 +300,7 @@ class Process(object):
         self.args = [substitute_env(arg, self.env) for arg in self.args]
 
         if shell:
-            self.args = ['-c', cmd] + args
+            self.args = ['-c', self.cmd] + self.args
             self.cmd = "sh"
 
         self.uid = uid
@@ -328,7 +328,6 @@ class Process(object):
         self.graceful_time = 0
 
         self._setup_stdio()
-
 
     def _setup_stdio(self):
         # for now we ignore all stdin

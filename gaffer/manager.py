@@ -590,6 +590,7 @@ class Manager(object):
         state = self.processes[name]
         if state.stopped:
             return
+
         state.stopped = True
 
         # notify others that all processes of the templates are beeing
@@ -674,6 +675,9 @@ class Manager(object):
             self._spawn_process(state)
 
     def _reap_processes(self, state):
+        if state.stopped:
+            return
+
         diff = len(state.running) - state.numprocesses
         if diff > 0:
             for i in range(diff):
