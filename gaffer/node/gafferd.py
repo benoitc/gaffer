@@ -39,7 +39,7 @@ PROCESS_DEFAULTS = dict(
         cwd = None,
         detach = False,
         shell = False,
-        os_env = False,
+        os_env = True,
         numprocesses = 1,
         start = True,
         priority = six.MAXSIZE)
@@ -219,7 +219,7 @@ class Server(object):
                                     False)
                         elif key == 'os_env':
                             params[key] = cfg.dgetboolean(section, key,
-                                    False)
+                                    True)
                         elif key == 'numprocesses':
                             params[key] = cfg.dgetint(section, key, 1)
                         elif key == 'start':

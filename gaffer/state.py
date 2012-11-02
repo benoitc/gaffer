@@ -163,9 +163,9 @@ class ProcessState(object):
         for name, default in self.DEFAULT_PARAMS.items():
             params[name] = self.settings.get(name, default)
 
-        os_env = self.settings.get('os_env', False)
+        os_env = self.settings.get('os_env', True)
         if os_env:
-            env = params.get('env', {})
+            env = params.get('env') or {}
             env.update(os.environ)
             params['env'] = env
 
