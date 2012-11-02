@@ -4,7 +4,7 @@ CHANGES
 2012/11/02 - version 0.4.3
 --------------------------
 
-- process os environment now inherit from the gafferd environment
+- process os environment now inherits from the gafferd environment
 - fix autorestart feature: now handled asynchronously which allows us to
   still handle "stop command when a process fails"
 
