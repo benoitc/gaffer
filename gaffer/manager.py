@@ -748,7 +748,7 @@ class Manager(object):
         event = {"event": evtype }
         event.update(ev)
         self._emitter.publish(evtype, event)
-
+        self.wakeup()
 
     def _apply_group_func(self, groupname, func):
         self._lock.acquire()
@@ -796,24 +796,20 @@ class Manager(object):
             # maybe uncjeck this process from the tracker
             self._tracker.uncheck(process)
 
-            state = self.get_process_state(process.name)
-
             # unexpected exit, remove the process from the list of
             # running processes.
-
             if process.id in self.running:
                 self.running.pop(process.id)
 
-            # this template has been removed, return
-            if not state:
-                return
+            state = self.get_process_state(process.name)
+            if state and state is not None:
+                # remove the process from the state
+                state.remove(process)
 
-            state.remove(process)
+            # notify other that the process exited
+            ev_details = dict(name=process.name, pid=process.id,
+                    exit_status=exit_status, term_signal=term_signal,
+                    os_pid=process.pid)
 
-        # notify other that the process exited
-        ev_details = dict(name=process.name, pid=process.id,
-                exit_status=exit_status, term_signal=term_signal,
-                os_pid=process.pid)
-
-        self._publish("exit", **ev_details)
-        self._publish("proc.%s.exit" % process.name, **ev_details)
+            self._publish("exit", **ev_details)
+            self._publish("proc.%s.exit" % process.name, **ev_details)
