@@ -707,6 +707,9 @@ class Manager(object):
                     pid=p.id, os_pid=p.pid)
 
     def _manage_processes(self, state):
+        if state.stopped:
+            return
+
         if len(state.running) < state.numprocesses:
             self._spawn_processes(state)
         self._reap_processes(state)
@@ -748,7 +751,6 @@ class Manager(object):
         event = {"event": evtype }
         event.update(ev)
         self._emitter.publish(evtype, event)
-        self.wakeup()
 
     def _apply_group_func(self, groupname, func):
         self._lock.acquire()
