@@ -110,6 +110,9 @@ class Manager(object):
         # start the process tracker
         self._tracker.start()
 
+        # manage processes
+        self.subscribe('exit', self._on_exit)
+
         # start contollers
         for ctl in self.apps:
             ctl.start(self.loop, self)
@@ -654,7 +657,7 @@ class Manager(object):
         pid = self.get_process_id()
 
         # start process
-        p = state.make_process(self.loop, pid, self._on_exit)
+        p = state.make_process(self.loop, pid, self._on_process_exit)
         p.spawn()
 
         # add the process to the running state
@@ -774,15 +777,21 @@ class Manager(object):
         elif sig == "RESTART":
             self._restart()
 
-    def _on_exit(self, process, exit_status, term_signal):
-        # notify other that the process exited
-        ev_details = dict(name=process.name, pid=process.id,
-                exit_status=exit_status, term_signal=term_signal,
-                os_pid=process.pid)
 
-        self._publish("exit", **ev_details)
-        self._publish("proc.%s.exit" % process.name, **ev_details)
+    def _on_exit(self, evtype, msg):
+        with self._lock:
+            state = self.get_process_state(msg['name'])
+            if not state:
+                return
 
+            # eventually restart the process
+            if not state.stopped:
+                # manage the template, eventually restart a new one.
+
+                if self._check_flapping(state):
+                    self._manage_processes(state)
+
+    def _on_process_exit(self, process, exit_status, term_signal):
         with self._lock:
             # maybe uncjeck this process from the tracker
             self._tracker.uncheck(process)
@@ -801,8 +810,10 @@ class Manager(object):
 
             state.remove(process)
 
-            # eventually restart the process
-            if not state.stopped:
-                # manage the template, eventually restart a new one.
-                if self._check_flapping(state):
-                    self._manage_processes(state)
+        # notify other that the process exited
+        ev_details = dict(name=process.name, pid=process.id,
+                exit_status=exit_status, term_signal=term_signal,
+                os_pid=process.pid)
+
+        self._publish("exit", **ev_details)
+        self._publish("proc.%s.exit" % process.name, **ev_details)

@@ -268,7 +268,7 @@ def test_flapping():
     m.start()
     states = []
     cmd, args, wdir = crash_cmd()
-    flapping = FlappingInfo(attempts=1, window=1., retry_in=0.1,
+    flapping = FlappingInfo(attempts=1., window=1, retry_in=0.1,
             max_retry=1)
     m.add_process("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
     m.add_process("crashing2", cmd, args=args, cwd=wdir)
