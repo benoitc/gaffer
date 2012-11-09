@@ -82,11 +82,8 @@ class Load(Command):
                     numprocesses=concurrency.get(name, 1),
                     redirect_output=['out', 'err'],
                     cwd=os.path.abspath(procfile.root))
-
-
-
             s.add_process(pname, cmd, **params)
-        return "%r has been loaded in %s" % (group, uri)
+        print("%r has been loaded in %s" % (group, uri))
 
     def find_groupname(self, g, s):
         tries = 0
