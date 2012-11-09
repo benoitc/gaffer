@@ -138,11 +138,6 @@ class EventEmitter(object):
         self._queue = deque(maxlen=max_size)
         self._wqueue = deque(maxlen=max_size)
 
-        # initialize waker
-        self._waker = pyuv.Idle(loop)
-        self._waker.start(lambda x: None)
-        self._waker.unref()
-
     def close(self):
         """ close the event
 
@@ -156,7 +151,6 @@ class EventEmitter(object):
 
             # it will be garbage collected later
             self._triggered = []
-            self._waker.close()
 
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**
@@ -179,17 +173,18 @@ class EventEmitter(object):
     def _publish(self, pattern, evtype, *args, **kwargs):
         if pattern in self._events:
             self._queue.append((pattern, evtype, args, kwargs))
-            self._new_event(self._send)
+
+            idle = pyuv.Idle(self.loop)
+            idle.start(self._send)
+            self._triggered.append(idle)
 
     def _publish_wildcards(self, evtype, *args, **kwargs):
         if self._wildcards:
             self._wqueue.append((evtype, args, kwargs))
-            self._new_event(self._send_wildcards)
 
-    def _new_event(self, fun):
-        p = pyuv.Prepare(self.loop)
-        p.start(fun)
-        self._triggered.append(p)
+            idle = pyuv.Idle(self.loop)
+            idle.start(self._send_wildcards)
+            self._triggered.append(idle)
 
     def _send_wildcards(self, handle):
         # find an event to send
