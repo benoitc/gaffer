@@ -132,9 +132,12 @@ class EventEmitter(object):
         self._events = {}
         self._wildcards = set()
 
-        self._triggered = []
         self._queue = deque(maxlen=max_size)
         self._wqueue = deque(maxlen=max_size)
+
+        self._event_dispatcher = pyuv.Prepare(self.loop)
+        self._wevent_dispatcher = pyuv.Prepare(self.loop)
+        self._spinner = pyuv.Idle(self.loop)
 
     def close(self):
         """ close the event
@@ -146,8 +149,9 @@ class EventEmitter(object):
         self._events = {}
         self._wildcards = set()
 
-        # it will be garbage collected later
-        self._triggered = []
+        self._event_dispatcher.close()
+        self._wevent_dispatcher.close()
+        self._spinner.close()
 
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**
@@ -171,49 +175,36 @@ class EventEmitter(object):
         if pattern in self._events:
             self._queue.append((pattern, evtype, args, kwargs))
 
-            idle = pyuv.Idle(self.loop)
-            idle.start(self._send)
-            self._triggered.append(idle)
+            if not self._event_dispatcher.active:
+                self._event_dispatcher.start(self._send)
+                self._spinner.start(lambda h: h.stop())
 
     def _publish_wildcards(self, evtype, *args, **kwargs):
         if self._wildcards:
             self._wqueue.append((evtype, args, kwargs))
 
-            idle = pyuv.Idle(self.loop)
-            idle.start(self._send_wildcards)
-            self._triggered.append(idle)
+            if not self._wevent_dispatcher.active:
+                self._wevent_dispatcher.start(self._send_wildcards)
+                self._spinner.start(lambda h: h.stop())
 
     def _send_wildcards(self, handle):
-        # find an event to send
-        try:
-            evtype, args, kwargs = self._wqueue.popleft()
-        except IndexError:
-            return
+        queue, self._wqueue = self._wqueue, deque(maxlen=self._wqueue.maxlen)
+        for evtype, args, kwargs in queue:
+            if self._wildcards:
+                self._wildcards = self._send_listeners(evtype,
+                        self._wildcards.copy(), *args, **kwargs)
 
-        if self._wildcards:
-            self._wildcards = self._send_listeners(evtype,
-                    self._wildcards.copy(), *args, **kwargs)
-
-        # close the handle and removed it from the list of triggered
-        self._triggered.remove(handle)
-        handle.close()
-
+        self._wevent_dispatcher.stop()
 
     def _send(self, handle):
-        # find an event to send
-        try:
-            pattern, evtype, args, kwargs = self._queue.popleft()
-        except IndexError:
-            return
+        queue, self._queue = self._queue, deque(maxlen=self._queue.maxlen)
+        for pattern, evtype, args, kwargs in queue:
+            # emit the event to all listeners
+            if pattern in self._events:
+                self._events[pattern] = self._send_listeners(evtype,
+                    self._events[pattern].copy(), *args, **kwargs)
 
-        # emit the event to all listeners
-        if pattern in self._events:
-            self._events[pattern] = self._send_listeners(evtype,
-                self._events[pattern].copy(), *args, **kwargs)
-
-        # close the handle and removed it from the list of triggered
-        self._triggered.remove(handle)
-        handle.close()
+        self._event_dispatcher.stop()
 
     def _send_listeners(self, evtype, listeners, *args, **kwargs):
         to_remove = []
