@@ -118,7 +118,6 @@ Classes
 """
 
 from collections import deque
-from threading import RLock
 
 import pyuv
 
@@ -132,7 +131,6 @@ class EventEmitter(object):
         self.loop = loop
         self._events = {}
         self._wildcards = set()
-        self._lock = RLock()
 
         self._triggered = []
         self._queue = deque(maxlen=max_size)
@@ -143,14 +141,13 @@ class EventEmitter(object):
 
         This function clear the list of listeners and stop all idle
         callback """
-        with self._lock:
-            self._wqueue.clear()
-            self._queue.clear()
-            self._events = {}
-            self._wildcards = set()
+        self._wqueue.clear()
+        self._queue.clear()
+        self._events = {}
+        self._wildcards = set()
 
-            # it will be garbage collected later
-            self._triggered = []
+        # it will be garbage collected later
+        self._triggered = []
 
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**
@@ -266,11 +263,10 @@ class EventEmitter(object):
         if evtype not in self._events:
             return
 
-        with self._lock:
-            try:
-                self._events[evtype].remove((once, listener))
-            except KeyError:
-                pass
+        try:
+            self._events[evtype].remove((once, listener))
+        except KeyError:
+            pass
 
     def unsubscribe_once(self, evtype, listener):
         self.unsubscribe(evtype, listener, True)
