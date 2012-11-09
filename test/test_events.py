@@ -26,7 +26,6 @@ def test_basic():
     assert emitted == [True]
     assert "test" in emitter._events
     assert emitter._events["test"] == set([(False, cb)])
-    assert emitter._triggered == []
 
 
 def test_publish_value():
