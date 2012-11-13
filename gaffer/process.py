@@ -94,6 +94,8 @@ def get_process_info(process=None, interval=0):
 
 class RedirectIO(object):
 
+    pipes_count = 2
+
     def __init__(self, loop, process, stdio=[]):
         self.loop = loop
         self.process = process
@@ -102,22 +104,21 @@ class RedirectIO(object):
         self._stdio = []
         self._channels = []
 
-        if not stdio:
-            self._stdio = [pyuv.StdIO(flags=pyuv.UV_IGNORE),
-                    pyuv.StdIO(flags=pyuv.UV_IGNORE)]
+        # create (channel, stdio) pairs
+        for label in stdio[:self.pipes_count]:
+            # io registered can any label, so it's easy to redirect
+            # stderr to stdout, just use the same label.
+            p = pyuv.Pipe(loop)
+            io = pyuv.StdIO(stream=p, flags=pyuv.UV_CREATE_PIPE | \
+                                            pyuv.UV_READABLE_PIPE | \
+                                            pyuv.UV_WRITABLE_PIPE)
+            setattr(p, 'label', label)
+            self._channels.append(p)
+            self._stdio.append(io)
 
-        else:
-            # create (channel, stdio) pairs
-            for label in stdio[:2]:
-                # io registered can any label, so it's easy to redirect
-                # stderr to stdout, just use the same label.
-                p = pyuv.Pipe(loop)
-                io = pyuv.StdIO(stream=p, flags=pyuv.UV_CREATE_PIPE | \
-                                                pyuv.UV_READABLE_PIPE | \
-                                                pyuv.UV_WRITABLE_PIPE)
-                setattr(p, 'label', label)
-                self._channels.append(p)
-                self._stdio.append(io)
+        # create remaining pipes
+        for _ in range(self.pipes_count - len(self._stdio)):
+            self._stdio.append(pyuv.StdIO(flags=pyuv.UV_IGNORE))
 
     def start(self):
         # start reading
@@ -134,10 +135,13 @@ class RedirectIO(object):
     def unsubscribe(self, label, listener):
         self._emitter.unsubscribe(label, listener)
 
-    def stop(self):
+    def stop(self, all_events=False):
         for p in self._channels:
             if p.active:
                 p.close()
+
+        if all_events:
+            self._emitter.close()
 
     def _on_read(self, handle, data, error):
         if not data:
@@ -154,7 +158,7 @@ class RedirectStdin(object):
 
     def __init__(self, loop, process):
         self.loop = loop
-        self.process = process,
+        self.process = process
         self.channel = pyuv.Pipe(loop)
         self.stdio = pyuv.StdIO(stream=self.channel,
                 flags=pyuv.UV_CREATE_PIPE | \
@@ -172,15 +176,53 @@ class RedirectStdin(object):
     def writelines(self, data):
         self._emitter.publish("WRITELINES", data)
 
-    def stop(self):
+    def stop(self, all_events=False):
         if self.channel.active:
             self.channel.close()
+
+        if all_events:
+            self._emitter.close()
 
     def _on_write(self, evtype, data):
         self.channel.write(data)
 
     def _on_writelines(self, evtype, data):
         self.channel.writelines(data)
+
+    def _on_read(self, handle, data, error):
+        if not data:
+            return
+
+        label = getattr(handle, 'label')
+        msg = dict(event=label, name=self.process.name,
+                pid=self.process.id, data=data)
+        self._emitter.publish(label, msg)
+
+
+class Stream(RedirectStdin):
+    """ create custom stdio """
+
+    def __init__(self, loop, process, id):
+        super(Stream, self).__init__(loop, process)
+        self.id = id
+
+    def start(self):
+        super(Stream, self).start()
+        self.channel.start_read(self._on_read)
+
+    def subscribe(self, listener):
+        self._emitter.subscribe('READ', listener)
+
+    def unsubscribe(self, listener):
+        self._emitter.unsubscribe('READ', listener)
+
+    def _on_read(self, handle, data, error):
+        if not data:
+            return
+
+        msg = dict(event='READ', name=self.process.name,
+                pid=self.process.id, data=data)
+        self._emitter.publish('READ', msg)
 
 
 class ProcessWatcher(object):
@@ -265,13 +307,19 @@ class Process(object):
       redirect stdoutt & stderr and stdout events will be labeled "a"
     - **redirect_input**: Boolean (False is the default). Set it if
       you want to be able to write to stdin.
+    - **custom_streams**: list of additional streams that should be created
+      and passed to process. This is a list of streams labels. They become
+      available through :attr:`streams` attribute.
+    - **custom_channels**: list of additional channels that should be passed to
+      process.
 
     """
 
 
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
-            redirect_output=[], redirect_input=False, on_exit_cb=None):
+            redirect_output=[], redirect_input=False, custom_streams=[],
+            custom_channels=[], on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -314,10 +362,12 @@ class Process(object):
         self.cwd = cwd or getcwd()
         self.redirect_output = redirect_output
         self.redirect_input = redirect_input
-
+        self.custom_streams = custom_streams
+        self.custom_channels = custom_channels
 
         self._redirect_io = None
         self._redirect_in = None
+        self.streams = {}
         self.detach = detach
         self.on_exit_cb = on_exit_cb
         self._process = None
@@ -339,6 +389,15 @@ class Process(object):
         self._redirect_io = RedirectIO(self.loop, self,
                 self.redirect_output)
         self._stdio.extend(self._redirect_io.stdio)
+        # create custom streams,
+        for label in self.custom_streams:
+            stream = self.streams[label] = Stream(self.loop, self,
+                len(self._stdio))
+            self._stdio.append(stream.stdio)
+        # create containers for custom channels.
+        for channel in self.custom_channels:
+            self._stdio.append(pyuv.StdIO(stream=channel,
+                flags=pyuv.UV_INHERIT_STREAM))
 
     def spawn(self):
         """ spawn the process """
@@ -375,6 +434,9 @@ class Process(object):
 
         if self._redirect_in is not None:
             self._redirect_in.start()
+
+        for stream in self.streams.values():
+            stream.start()
 
     @property
     def active(self):
@@ -477,10 +539,16 @@ class Process(object):
 
     def _exit_cb(self, handle, exit_status, term_signal):
         if self._redirect_io is not None:
-            self._redirect_io.stop()
+            self._redirect_io.stop(all_events=True)
 
         if self._redirect_in is not None:
-            self._redirect_in.stop()
+            self._redirect_in.stop(all_events=True)
+
+        for custom_io in self.streams.values():
+            custom_io.stop(all_events=True)
+
+        if self._process_watcher is not None:
+            self._process_watcher.stop(all_events=True)
 
         self._running = False
         handle.close()

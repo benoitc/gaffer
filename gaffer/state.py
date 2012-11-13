@@ -117,7 +117,9 @@ class ProcessState(object):
             "detach": False,
             "shell": False,
             "redirect_output": [],
-            "redirect_input": False}
+            "redirect_input": False,
+            "custom_streams": [],
+            "custom_channels": []}
 
     def __init__(self, name, cmd, **settings):
         self.running = deque()
