@@ -262,7 +262,7 @@ class Manager(object):
             and stop the process.
         - **redirect_output**: list of io to redict (max 2) this is a list of custom
           labels to use for the redirection. Ex: ["a", "b"] will
-          redirect stdoutt & stderr and stdout events will be labeled "a"
+          redirect stdout & stderr and stdout events will be labeled "a"
         - **redirect_input**: Boolean (False is the default). Set it if
           you want to be able to write to stdin.
         - **graceful_timeout**: graceful time before we send a  SIGKILL
