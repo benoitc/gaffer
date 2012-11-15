@@ -135,10 +135,13 @@ class RedirectIO(object):
     def unsubscribe(self, label, listener):
         self._emitter.unsubscribe(label, listener)
 
-    def stop(self):
+    def stop(self, all_events=False):
         for p in self._channels:
             if p.active:
                 p.close()
+
+        if all_events:
+            self._emitter.close()
 
     def _on_read(self, handle, data, error):
         if not data:
@@ -173,9 +176,12 @@ class RedirectStdin(object):
     def writelines(self, data):
         self._emitter.publish("WRITELINES", data)
 
-    def stop(self):
+    def stop(self, all_events=False):
         if self.channel.active:
             self.channel.close()
+
+        if all_events:
+            self._emitter.close()
 
     def _on_write(self, evtype, data):
         self.channel.write(data)
@@ -540,13 +546,16 @@ class Process(object):
 
     def _exit_cb(self, handle, exit_status, term_signal):
         if self._redirect_io is not None:
-            self._redirect_io.stop()
+            self._redirect_io.stop(all_events=True)
 
         if self._redirect_in is not None:
-            self._redirect_in.stop()
+            self._redirect_in.stop(all_events=True)
 
         for custom_io in self.streams.values():
-            custom_io.stop()
+            custom_io.stop(all_events=True)
+
+        if self._process_watcher is not None:
+            self._process_watcher.stop(all_events=True)
 
         self._running = False
         handle.close()
