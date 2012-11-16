@@ -199,15 +199,15 @@ class RedirectStdin(object):
         self._emitter.publish(label, msg)
 
 
-class CustomIO(RedirectStdin):
+class Stream(RedirectStdin):
     """ create custom stdio """
 
     def __init__(self, loop, process, id):
-        super(CustomIO, self).__init__(loop, process)
+        super(Stream, self).__init__(loop, process)
         self.id = id
 
     def start(self):
-        super(CustomIO, self).start()
+        super(Stream, self).start()
         self.channel.start_read(self._on_read)
 
     def subscribe(self, listener):
@@ -319,7 +319,10 @@ class Process(object):
       redirect stdoutt & stderr and stdout events will be labeled "a"
     - **redirect_input**: Boolean (False is the default). Set it if
       you want to be able to write to stdin.
-    - **custom_streams**: list of additional streams that should be passed to
+    - **custom_streams**: list of additional streams that should be created
+      and passed to process. This is a list of streams labels. They become
+      available through :attr:`streams` attribute.
+    - **custom_channels**: list of additional channels that should be passed to
       process.
 
     """
@@ -328,7 +331,7 @@ class Process(object):
     def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
-            channels=[], on_exit_cb=None):
+            custom_channels=[], on_exit_cb=None):
         self.loop = loop
         self.id = id
         self.name = name
@@ -372,7 +375,7 @@ class Process(object):
         self.redirect_output = redirect_output
         self.redirect_input = redirect_input
         self.custom_streams = custom_streams
-        self.channels = channels
+        self.custom_channels = custom_channels
 
         self._redirect_io = None
         self._redirect_in = None
@@ -398,13 +401,15 @@ class Process(object):
         self._redirect_io = RedirectIO(self.loop, self,
                 self.redirect_output)
         self._stdio.extend(self._redirect_io.stdio)
-        for name in self.custom_streams:
-            custom_io = self.streams[name] = CustomIO(self.loop, self,
-                                                      len(self._stdio))
-            self._stdio.append(custom_io.stdio)
-        for channel in self.channels:
+        # create custom streams,
+        for label in self.custom_streams:
+            stream = self.streams[label] = Stream(self.loop, self,
+                len(self._stdio))
+            self._stdio.append(stream.stdio)
+        # create containers for custom channels.
+        for channel in self.custom_channels:
             self._stdio.append(pyuv.StdIO(stream=channel,
-                                          flags=pyuv.UV_INHERIT_STREAM))
+                flags=pyuv.UV_INHERIT_STREAM))
 
     def spawn(self):
         """ spawn the process """
@@ -442,8 +447,8 @@ class Process(object):
         if self._redirect_in is not None:
             self._redirect_in.start()
 
-        for custom_io in self.streams.values():
-            custom_io.start()
+        for stream in self.streams.values():
+            stream.start()
 
     @property
     def active(self):
