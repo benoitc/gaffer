@@ -8,7 +8,7 @@ interact with your processes.
 
 .. image::
     https://secure.travis-ci.org/benoitc/gaffer.png?branch=master
-        :alt: Build Status
+    :alt: Build Status
         :target: https://secure.travis-ci.org/benoitc/gaffer
 
 Features
