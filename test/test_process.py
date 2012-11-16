@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 import time
+import socket
 
 import pyuv
 from gaffer.process import Process
@@ -200,6 +201,77 @@ def test_redirect_input():
 
     def stop(handle):
         p.unmonitor_io("stdout", cb)
+        p.stop()
+
+    t = pyuv.Timer(loop)
+    t.start(stop, 0.3, 0.0)
+    loop.run()
+
+    assert len(monitored) == 1
+    assert monitored == [b'ECHO\n\n']
+
+def test_custom_stream():
+    loop = pyuv.Loop.default_loop()
+    monitored = []
+    def cb(evtype, info):
+        monitored.append(info['data'])
+
+    if sys.platform == 'win32':
+        p = Process(loop, "someid", "echo", "cmd.exe",
+                args=["/c", "proc_custom_stream.py"],
+                custom_streams=['ctrl'])
+
+    else:
+        p = Process(loop, "someid", "echo", "./proc_custom_stream.py",
+                cwd=os.path.dirname(__file__),
+                custom_streams=['ctrl'])
+    p.spawn()
+    time.sleep(0.2)
+    stream = p.streams['ctrl']
+    assert stream.id == 3
+    stream.subscribe(cb)
+    stream.write(b"ECHO" + linesep)
+
+    def stop(handle):
+        stream.unsubscribe(cb)
+        p.stop()
+
+    t = pyuv.Timer(loop)
+    t.start(stop, 0.3, 0.0)
+    loop.run()
+
+    assert len(monitored) == 1
+    assert monitored == [b'ECHO\n\n']
+
+def test_custom_channel():
+    if sys.platform == 'win32':
+        return
+
+    loop = pyuv.Loop.default_loop()
+    sockets = socket.socketpair(socket.AF_UNIX)
+    pipes = []
+    for sock in sockets:
+        pipe = pyuv.Pipe(loop)
+        pipe.open(sock.fileno())
+        pipes.append(pipe)
+    channel = pipes[0]
+    monitored = []
+    def cb(handle, data, error):
+        if not data:
+            return
+        monitored.append(data)
+
+    p = Process(loop, "someid", "echo", "./proc_custom_stream.py",
+            cwd=os.path.dirname(__file__),
+            custom_channels=[pipes[1]])
+
+    p.spawn()
+    channel.start_read(cb)
+    time.sleep(0.2)
+    channel.write(b"ECHO" + linesep)
+
+    def stop(handle):
+        channel.stop_read()
         p.stop()
 
     t = pyuv.Timer(loop)
