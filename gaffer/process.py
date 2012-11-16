@@ -117,7 +117,7 @@ class RedirectIO(object):
             self._stdio.append(io)
 
         # create remaining pipes
-        for _ in xrange(self.pipes_count - len(self._stdio)):
+        for _ in range(self.pipes_count - len(self._stdio)):
             self._stdio.append(pyuv.StdIO(flags=pyuv.UV_IGNORE))
 
     def start(self):
@@ -215,18 +215,6 @@ class Stream(RedirectStdin):
 
     def unsubscribe(self, listener):
         self._emitter.unsubscribe('READ', listener)
-
-    def write(self, data):
-        self._emitter.publish("WRITE", data)
-
-    def writelines(self, data):
-        self._emitter.publish("WRITELINES", data)
-
-    def _on_write(self, evtype, data):
-        self.channel.write(data)
-
-    def _on_writelines(self, evtype, data):
-        self.channel.writelines(data)
 
     def _on_read(self, handle, data, error):
         if not data:
