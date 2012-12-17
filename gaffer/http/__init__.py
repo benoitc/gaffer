@@ -2,7 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-from .misc import WelcomeHandler, StatusHandler
+from .misc import WelcomeHandler, StatusHandler, PingHandler
 from .processes import (ProcessesHandler, ProcessIdHandler,
         ProcessIdManageHandler, ProcessHandler, ProcessManagerHandler)
 from .watcher import WatcherHandler

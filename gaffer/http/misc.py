@@ -28,3 +28,10 @@ class StatusHandler(CorsHandler):
             return
 
         self.write(ret)
+
+class PingHandler(CorsHandler):
+
+    def get(self):
+        self.preflight()
+        self.set_status(200)
+        self.write("OK")
