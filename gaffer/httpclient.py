@@ -11,7 +11,7 @@ Example of usage::
     from gaffer.httpclient import Server
 
     # initialize a loop
-    loop = pyuv.Loop.defaul_loop()
+    loop = pyuv.Loop.default_loop()
 
     s = Server("http://localhost:5000", loop=loop)
 
