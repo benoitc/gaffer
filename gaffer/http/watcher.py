@@ -35,13 +35,13 @@ class WatcherHandler(CorsHandler):
         if len(args) == 1:
             if args[0].lower() not in self.MANAGER_EVENTS:
                 self.set_status(404)
-                self.write_error({"error": "bad_event_type"})
+                self.write({"error": "bad_event_type"})
                 self.finish()
                 return
         elif len(args) == 3:
             if args[0].lower() not in self.PROC_EVENTS:
                 self.set_status(404)
-                self.write_error({"error": "bad_event_type"})
+                self.write({"error": "bad_event_type"})
                 self.finish()
                 return
 

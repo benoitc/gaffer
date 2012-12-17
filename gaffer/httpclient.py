@@ -11,7 +11,7 @@ Example of usage::
     from gaffer.httpclient import Server
 
     # initialize a loop
-    loop = pyuv.Loop.defaul_loop()
+    loop = pyuv.Loop.default_loop()
 
     s = Server("http://localhost:5000", loop=loop)
 
@@ -429,7 +429,7 @@ class ProcessId(object):
     @property
     def active(self):
         """ return True if the process is active """
-        resp = self.server.head("get", "/processes/%s" % self.pid)
+        resp = self.server.request("get", "/processes/%s" % self.pid)
         if resp.code == 200:
             return True
         return False
