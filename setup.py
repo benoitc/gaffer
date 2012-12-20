@@ -39,12 +39,12 @@ with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
 
 DATA_FILES = [
         ('gaffer', ["LICENSE", "MANIFEST.in", "NOTICE", "README.rst",
-                        "THANKS", "UNLICENSE"])
+                        "THANKS", "UNLICENSE", "TODO.rst"])
         ]
 
 
 setup(name='gaffer',
-      version="0.4.3",
+      version="0.4.4",
       description = 'simple system process manager',
       long_description = long_description,
       classifiers = CLASSIFIERS,

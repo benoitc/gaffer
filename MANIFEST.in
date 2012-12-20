@@ -3,6 +3,7 @@ include LICENSE
 include README.rst
 include THANKS
 include UNLICENSE
+include TODO.rst
 recursive-include docs *
 recursive-include examples *
 recursive-include tests *

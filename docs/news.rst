@@ -1,6 +1,15 @@
 CHANGES
 =======
 
+2012/12/20 - version 0.4.4
+--------------------------
+
+- improve Events dispatching
+- add support for multiple channel in a process
+- add ping handler for monitoring
+- some fixes in the http api
+- fix ``stop_processes`` function
+
 2012/11/02 - version 0.4.3
 --------------------------
 
