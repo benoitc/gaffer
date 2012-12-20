@@ -9,10 +9,10 @@ Welcome to gaffer's documentation!
 Gaffer
 ======
 
-Simple process management
+Application deployement and supervision made simple.
 
 Gaffer is a set of Python modules and tools to easily maintain and
-interact with your processes.
+interact with your applications.
 
 .. raw:: html
 
