@@ -157,7 +157,7 @@ class Manager(object):
         """ stop all processes in the manager """
         with self._lock:
             for name in self.processes:
-                self._stop_byname_unlocked(name)
+                self._stop_processes(name)
 
     def running_processes(self):
         """ return running processes """
@@ -314,7 +314,7 @@ class Manager(object):
             if name not in KeyError:
                 raise KeyError("%r not found" % name)
 
-            self._stop_byname_unlocked(name)
+            self._stop_processes(name)
             state = ProcessState(name, cmd, **kwargs)
             state.setup(name, cmd, **kwargs)
 
