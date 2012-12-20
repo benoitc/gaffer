@@ -429,7 +429,7 @@ class ProcessId(object):
     @property
     def active(self):
         """ return True if the process is active """
-        resp = self.server.request("get", "/processes/%s" % self.pid)
+        resp = self.server.request("head", "/processes/%s" % self.pid)
         if resp.code == 200:
             return True
         return False
