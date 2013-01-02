@@ -269,6 +269,12 @@ class Server(object):
         resp = self.request("get", "/processes", running="true")
         return self.json_body(resp)
 
+
+    def ping(self):
+        resp = self.request("get", "/ping")
+        return resp.body == b'OK'
+
+
     def get_process(self, name_or_id):
         """ get a process by name or id.
 
