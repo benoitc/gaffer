@@ -408,6 +408,8 @@ class Manager(object):
             state = self.processes[name]
             info = {"name": state.name, "cmd": state.cmd}
             info.update(state.settings)
+            # remove custom channels because they can't be serialized
+            info.pop('custom_channels', None)
             return info
 
     def get_process_status(self, name):
