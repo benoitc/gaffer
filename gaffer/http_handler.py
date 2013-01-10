@@ -21,6 +21,8 @@ from . import http
 DEFAULT_HANDLERS = [
         (r'/', http.WelcomeHandler),
         (r'/ping', http.PingHandler),
+        (r'/version', http.VersionHandler),
+
         (r'/processes', http.ProcessesHandler),
         (r'/processes/([0-9^/]+)', http.ProcessIdHandler),
         (r'/processes/([^/]+)', http.ProcessHandler),
