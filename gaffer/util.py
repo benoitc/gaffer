@@ -16,6 +16,9 @@ if six.PY3:
     def bytestring(s):
         return s
 
+    def ord_(c):
+        return c
+
     import urllib.parse
     urlparse = urllib.parse.urlparse
     quote = urllib.parse.quote
@@ -27,6 +30,9 @@ else:
         if isinstance(s, unicode):
             return s.encode('utf-8')
         return s
+
+    def ord_(c):
+        return ord(c)
 
     import urlparse
     urlparse = urlparse.urlparse
