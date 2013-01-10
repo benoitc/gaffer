@@ -41,27 +41,13 @@ from tornado import httpclient
 
 from .events import EventEmitter
 from .tornado_pyuv import IOLoop
-
-if six.PY3:
-    import urllib.parse
-    quote = urllib.parse.quote
-    quote_plus = urllib.parse.quote_plus
-    unquote = urllib.parse.unquote
-    urlencode = urllib.parse.urlencode
-else:
-    import urllib
-    quote = urllib.quote
-    quote_plus = urllib.quote_plus
-    unquote = urllib.unquote
-    urlencode = urllib.urlencode
-
+from .util import quote, quote_plus, unquote, urlencode
 
 class GafferNotFound(Exception):
     """ exception raised on HTTP 404 """
 
 class GafferConflict(Exception):
     """ exption raised on HTTP 409 """
-
 
 class HTTPClient(object):
     """A blocking HTTP client.
