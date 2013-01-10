@@ -38,7 +38,8 @@ class ChatReader(WebSocket):
 
 loop = pyuv.Loop.default_loop()
 
-ws = ChatReader(loop, "http://localhost:8080/chat/websocket")
+ws = ChatReader(loop, "ws://localhost:8080/chat/websocket")
+ws.start()
 
 try:
     while True:
