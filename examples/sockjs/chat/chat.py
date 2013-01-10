@@ -41,8 +41,14 @@ if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.DEBUG)
 
+    import pyuv
+    from gaffer.tornado_pyuv import IOLoop
+
+    loop = pyuv.Loop.default_loop()
+
     # 1. Create chat router
-    ChatRouter = sockjs.SockJSRouter(ChatConnection, '/chat')
+    ChatRouter = sockjs.SockJSRouter(ChatConnection, '/chat',
+            io_loop=IOLoop(_loop=loop))
 
     # 2. Create Tornado application
     app = tornado.web.Application(
@@ -50,8 +56,12 @@ if __name__ == "__main__":
     )
 
     # 3. Make Tornado app listen on port 8080
-    app.listen(8080)
+    app.listen(8080, io_loop=IOLoop(_loop=loop))
 
     # 4. Start IOLoop
-    assert issubclass(ioloop.IOLoop, tornado_pyuv.IOLoop)
-    ioloop.IOLoop.instance().start()
+    while True:
+        try:
+            if not loop.run_once():
+                break
+        except KeyboardInterrupt:
+            break
