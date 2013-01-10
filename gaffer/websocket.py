@@ -90,7 +90,7 @@ class WebSocket(object):
         self._waiting = None
 
         self.key = base64.b64encode(os.urandom(16))
-            
+
         # initialize the stream 
         if 'ssl_options' in kwargs:
             self.stream = iostream.SSLIOStream(socket.socket(),
@@ -98,6 +98,9 @@ class WebSocket(object):
         else:
             self.stream = iostream.IOStream(socket.socket(),
                     io_loop=self._io_loop)
+
+    def start(self):
+        # start the stream
         self.stream.connect((self.host, self.port), self._on_connect)
 
     def on_open(self):
@@ -153,7 +156,6 @@ class WebSocket(object):
                 key = tornado.escape.native_str(self.key), 
                 port = self.port)
         request = '\r\n'.join(WS_INIT.splitlines()) % req_params + '\r\n\r\n'
-
         self.stream.write(tornado.escape.utf8(request))
         self.stream.read_until(b'\r\n\r\n', self._on_headers)
 

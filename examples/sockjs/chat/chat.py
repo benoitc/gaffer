@@ -45,10 +45,11 @@ if __name__ == "__main__":
     from gaffer.tornado_pyuv import IOLoop
 
     loop = pyuv.Loop.default_loop()
+    ioloop = IOLoop(_loop=loop)
 
     # 1. Create chat router
     ChatRouter = sockjs.SockJSRouter(ChatConnection, '/chat',
-            io_loop=IOLoop(_loop=loop))
+            io_loop=ioloop)
 
     # 2. Create Tornado application
     app = tornado.web.Application(
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     )
 
     # 3. Make Tornado app listen on port 8080
-    app.listen(8080, io_loop=IOLoop(_loop=loop))
+    app.listen(8080, io_loop=ioloop)
 
     # 4. Start IOLoop
     while True:
