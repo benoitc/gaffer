@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sockjs.tornado.transports.pollingbase
+import gaffer.http.sockjs.transports.pollingbase
 
 from .xhr import XhrPollingTransport, XhrSendHandler
 from .jsonp import JSONPTransport, JSONPSendHandler
