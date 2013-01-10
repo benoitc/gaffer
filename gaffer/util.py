@@ -15,11 +15,28 @@ import six
 if six.PY3:
     def bytestring(s):
         return s
+
+    import urllib.parse
+    urlparse = urllib.parse.urlparse
+    quote = urllib.parse.quote
+    quote_plus = urllib.parse.quote_plus
+    unquote = urllib.parse.unquote
+    urlencode = urllib.parse.urlencode
 else:
     def bytestring(s):
         if isinstance(s, unicode):
             return s.encode('utf-8')
         return s
+
+    import urlparse
+    urlparse = urlparse.urlparse
+
+    import urllib
+    quote = urllib.quote
+    quote_plus = urllib.quote_plus
+    unquote = urllib.unquote
+    urlencode = urllib.urlencode
+
 
 _SYMBOLS = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
 
