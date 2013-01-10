@@ -108,6 +108,7 @@ class SockJSRouter(object):
                                                          check_interval,
                                                          self.io_loop)
         self._sessions_cleanup.start()
+        self._sessions_cleanup._timer.unref()
 
         # Stats
         self.stats = stats.StatsCollector(self.io_loop)
