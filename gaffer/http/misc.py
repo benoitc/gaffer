@@ -12,6 +12,12 @@ class WelcomeHandler(CorsHandler):
         self.preflight()
         self.write({"welcome": "gaffer", "version": __version__})
 
+class VersionHandler(CorsHandler):
+
+    def get(self):
+        self.preflight()
+        self.write({"name": "gaffer", "version": __version__})
+
 
 class StatusHandler(CorsHandler):
 
