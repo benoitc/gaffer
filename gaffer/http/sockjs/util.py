@@ -28,6 +28,7 @@ if PY3:
     import urllib.parse
     unquote_plus = urllib.parse.unquote_plus
 else:
+    import types
     string_types = basestring,
     integer_types = (int, long)
     class_types = (type, types.ClassType)
