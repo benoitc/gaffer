@@ -99,6 +99,8 @@ class WebSocket(object):
             self.stream = iostream.IOStream(socket.socket(),
                     io_loop=self._io_loop)
 
+        self.graceful_shutdown = kwargs.get('graceful_shutdown', 0)
+
     def start(self):
         # start the stream
         self.stream.connect((self.host, self.port), self._on_connect)
@@ -133,20 +135,36 @@ class WebSocket(object):
 
     def close(self):
         """Closes the WebSocket connection."""
+
         if not self.server_terminated:
             if not self.stream.closed():
-                self._write_frame(True, 0x8, b"")
+                self._write_frame(True, 0x8, b'')
             self.server_terminated = True
-        if self.client_terminated:
-            if self._waiting is not None:
-                self.stream.io_loop.remove_timeout(self._waiting)
-                self._waiting = None
-            self.stream.close()
-        elif self._waiting is None:
-            # Give the client a few seconds to complete a clean shutdown,
-            # otherwise just close the connection.
-            self._waiting = self.stream.io_loop.add_timeout(
-                time.time() + 5, self._abort)
+
+        if self.graceful_shutdown:
+            if self.client_terminated:
+                if self._waiting is not None:
+                    try:
+                        self.stream.io_loop.remove_timeout(self._waiting)
+                    except KeyError:
+                        pass
+                    self._waiting = None
+                self._terminate()
+            elif self._waiting is None:
+                # Give the client a few seconds to complete a clean shutdown,
+                # otherwise just close the connection.
+                self._waiting = self.stream.io_loop.add_timeout(
+                    time.time() + 5, self._abort)
+        else:
+            if self.client_terminated:
+                return
+
+            self._terminate()
+
+    def _terminate(self):
+        self.client_terminated = True
+        self.stream.close()
+        self.stream.io_loop.close(True)
 
     def _write_frame(self, fin, opcode, data):
         self.stream.write(frame(data, opcode))
@@ -156,7 +174,7 @@ class WebSocket(object):
                 key = tornado.escape.native_str(self.key), 
                 port = self.port)
         request = '\r\n'.join(WS_INIT.splitlines()) % req_params + '\r\n\r\n'
-        self.stream.write(tornado.escape.utf8(request))
+        self.stream.write(request.encode('latin1'))
         self.stream.read_until(b'\r\n\r\n', self._on_headers)
 
     def _on_headers(self, data):

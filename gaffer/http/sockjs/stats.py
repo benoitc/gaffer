@@ -74,6 +74,7 @@ class StatsCollector(object):
                                                  1000,
                                                  io_loop)
         self._callback.start()
+        self._callback._timer.unref()
 
     def _update(self):
         self.conn_ps.flush()

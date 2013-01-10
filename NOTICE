@@ -68,6 +68,7 @@ Based and couchapp and placed in the domain public by Benoît Chesneau.
 gaffer.http.sockjs
 ------------------
 
+Based on tornado_sockjs
 Copyright (C) 2011 Serge S. Koval
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -91,6 +92,7 @@ SOFTWARE.
 gaffer.websocket
 ----------------
 
+based on tornado_websocket
 Copyright (c) 2012 Jeff Balogh
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
