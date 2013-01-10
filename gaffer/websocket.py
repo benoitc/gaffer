@@ -22,7 +22,7 @@ from tornado.util import bytes_type, b
 from .tornado_pyuv import IOLoop, install
 install()
 
-from .util import urlparse
+from .util import urlparse, ord_
 
 # The initial handshake over HTTP.
 WS_INIT = """\
@@ -58,10 +58,10 @@ def frame(data, opcode=0x01):
         frame += struct.pack('!BQ', 0x80 | 127, length)
 
     # Clients must apply a 32-bit mask to all data sent.
-    mask = [c for c in os.urandom(4)]
+    mask = [ord_(c) for c in os.urandom(4)]
     frame += struct.pack('!BBBB', *mask)
     # Mask each byte of data using a byte from the mask.
-    msg = [c ^ mask[i % 4] for i, c in enumerate(data)]
+    msg = [ord_(c) ^ mask[i % 4] for i, c in enumerate(data)]
     frame += struct.pack('!' + 'B' * length, *msg)
     return frame
 
