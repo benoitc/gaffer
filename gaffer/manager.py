@@ -94,7 +94,6 @@ class Manager(object):
         self.processes = OrderedDict()
         self.running = OrderedDict()
         self.groups = {}
-        self.channel = deque()
         self._updates = deque()
         self._signals = []
 
