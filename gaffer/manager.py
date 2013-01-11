@@ -12,6 +12,7 @@ Classes
 """
 from collections import deque
 import copy
+from functools import partial
 import operator
 from threading import RLock
 
@@ -24,6 +25,7 @@ except ImportError:
     from .datastructures import OrderedDict
 
 from .events import EventEmitter
+from .queue import AsyncQueue
 from .process import Process
 from .state import ProcessState, ProcessTracker
 from .sync import increment
@@ -77,9 +79,6 @@ class Manager(object):
         # by default we run on the default loop
         self.loop = loop or pyuv.Loop.default_loop()
 
-        # wakeup ev for internal signaling
-        self._wakeup_ev = pyuv.Async(self.loop, self._on_wakeup)
-
         # initialize the emitter
         self._emitter = EventEmitter(self.loop)
 
@@ -105,6 +104,8 @@ class Manager(object):
     def start(self, apps=[]):
         """ start the manager. """
         self.apps = apps
+
+        self._mq = AsyncQueue(self.loop, self._handle_messages)
 
         # start the process tracker
         self._tracker.start()
@@ -133,15 +134,12 @@ class Manager(object):
     def stop(self, callback=None):
         """ stop the manager. This function is threadsafe """
         self.stop_cb = callback
-        self._signals.append("STOP")
-        self.wakeup()
+        self._mq.send(self._stop)
 
     def restart(self, callback=None):
         """ restart all processes in the manager. This function is
         threadsafe """
-        self.restart_cb = callback
-        self._signals.append("RESTART")
-        self.wakeup()
+        self._mq.send(partial(self._restart, callback))
 
     def start_processes(self):
         """ start all processes """
@@ -520,7 +518,7 @@ class Manager(object):
     # ------------- general purpose utilities
 
     def wakeup(self):
-        self._wakeup_ev.send()
+        self._mq.send(None)
 
     def get_process_state(self, name):
         if name not in self.processes:
@@ -537,6 +535,8 @@ class Manager(object):
 
     def _shutdown(self):
         with self._lock:
+            self._mq.close()
+
             # stop the applications.
             for ctl in self.apps:
                 ctl.stop()
@@ -570,7 +570,7 @@ class Manager(object):
 
             self._tracker.on_done(self._shutdown)
 
-    def _restart(self):
+    def _restart(self, callback):
         with self._lock:
             # on restart we first restart the applications
             for app in self.apps:
@@ -581,9 +581,8 @@ class Manager(object):
                 self._restart_processes(state)
 
             # if any callback has been set, run it
-            if self.restart_cb is not None:
-                self.restart_cb(self)
-                self.restart_cb = None
+            if callback is not None:
+                callback(self)
 
     def _stop_processes(self, name):
         """ stop all processes in a template """
@@ -769,17 +768,15 @@ class Manager(object):
 
     # ------------- events handler
 
-    def _on_wakeup(self, handle):
-        sig = self._signals.pop(0) if len(self._signals) else None
-        if not sig:
+    def _handle_messages(self, msg, err):
+        if not msg:
             return
 
-        if sig == "STOP":
-            handle.close()
-            self._stop()
-        elif sig == "RESTART":
-            self._restart()
+        if msg == "STOP":
+            self.stop()
 
+        elif six.callable(msg):
+            msg()
 
     def _on_exit(self, evtype, msg):
         with self._lock:
