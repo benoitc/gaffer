@@ -273,3 +273,6 @@ def test_groups():
     assert started == ['ga:a', 'ga:b']
     assert stopped == ['ga:a', 'ga:b', 'gb:a']
     assert ga2 == ['ga:b']
+
+if __name__ == "__main__":
+    test_basic()
