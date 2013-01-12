@@ -121,6 +121,8 @@ from collections import deque
 
 import pyuv
 
+from .loop import patch_loop
+
 class EventEmitter(object):
     """ Many events happend in gaffer. For example a process will emist
     the events "start", "stop", "exit".
@@ -128,7 +130,7 @@ class EventEmitter(object):
     This object offer a common interface to all events emitters """
 
     def __init__(self, loop, max_size=200):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self._events = {}
         self._wildcards = set()
 

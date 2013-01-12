@@ -18,6 +18,7 @@ from psutil.error import AccessDenied, NoSuchProcess
 import six
 
 from .events import EventEmitter
+from .loop import patch_loop
 from .util import (bytestring, getcwd, check_uid, check_gid,
         bytes2human, substitute_env)
 from .sync import atomic_read, increment, decrement
@@ -320,7 +321,7 @@ class Process(object):
             uid=None, gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self.id = id
         self.name = name
         self.group = group

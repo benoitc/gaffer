@@ -6,6 +6,8 @@ import signal
 
 import pyuv
 
+from .loop import patch_loop
+
 class BaseSigHandler(object):
     """ A simple gaffer application to handle signals """
 
@@ -15,14 +17,14 @@ class BaseSigHandler(object):
         self._sig_handler = None
 
     def start(self, loop):
-        self.loop = loop
+        self.loop = patch_loop(loop)
 
         need_unref = False
         if hasattr(pyuv, "SignalChecker"):
             self._sig_handler = pyuv.SignalChecker(self.loop)
         else:
             self._sig_handler = pyuv.Signal(self.loop)
-            need_unref = True
+            need_unref = True)
 
         # quit signals handling
         for signum in self.QUIT_SIGNALS:

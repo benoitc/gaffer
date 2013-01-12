@@ -40,6 +40,7 @@ import six
 from tornado import httpclient
 
 from .events import EventEmitter
+from .loop import patch_loop, get_loop
 from .tornado_pyuv import IOLoop
 from .util import quote, quote_plus, unquote, urlencode
 
@@ -64,6 +65,7 @@ class HTTPClient(object):
             print("Error: %s" % e)
     """
     def __init__(self, async_client_class=None, loop=None, **kwargs):
+        self.loop = patch_loop(loop)
         self._io_loop = IOLoop(_loop=loop)
         if async_client_class is None:
             async_client_class = httpclient.AsyncHTTPClient
@@ -124,7 +126,7 @@ class EventsourceClient(object):
     """
 
     def __init__(self, loop, url, **kwargs):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self._io_loop = IOLoop(_loop=loop)
         self.url = url
         self._emitter = EventEmitter(self.loop)
@@ -201,7 +203,11 @@ class Server(object):
     calls are blocking. (but running in the loop) """
 
     def __init__(self, uri, loop=None, **options):
-        self.loop = loop or pyuv.Loop()
+        if loop is not None:
+            self.loop = patch_loop(loop)
+        else:
+            self.loop = get_loop()
+
         self.uri = uri
         self.options = options
         self.client = HTTPClient(loop=loop)
