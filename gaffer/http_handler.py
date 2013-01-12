@@ -14,6 +14,7 @@ from tornado import netutil
 from tornado.web import Application
 from tornado.httpserver import HTTPServer
 
+from .loop import patch_loop
 from .util import parse_address, is_ipv6
 from . import http
 
@@ -64,7 +65,7 @@ class HttpEndpoint(object):
         return ",".join(self.uri)
 
     def start(self, loop, app):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self.app = app
         self.io_loop = IOLoop(_loop=loop)
         self._start_server()
@@ -123,7 +124,7 @@ class HttpHandler(object):
         self.settings = settings
 
     def start(self, loop, manager):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self.manager = manager
         self.app = Application(self.handlers, manager=self.manager,
                 **self.settings)

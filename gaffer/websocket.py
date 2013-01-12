@@ -22,6 +22,7 @@ from tornado.util import bytes_type, b
 from .tornado_pyuv import IOLoop, install
 install()
 
+from .loop import patch_loop
 from .util import urlparse, ord_
 
 # The initial handshake over HTTP.
@@ -72,7 +73,7 @@ class WebSocket(object):
     def __init__(self, loop, url, **kwargs):
         ports = {'ws': 80, 'wss': 443}
 
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self._io_loop = IOLoop(_loop=loop)
 
         self.url = urlparse(url)

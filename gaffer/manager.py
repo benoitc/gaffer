@@ -24,6 +24,8 @@ try:
 except ImportError:
     from .datastructures import OrderedDict
 
+
+from .loop import patch_loop, get_loop
 from .events import EventEmitter
 from .queue import AsyncQueue
 from .process import Process
@@ -73,11 +75,13 @@ class Manager(object):
 
 
     """
-
     def __init__(self, loop=None):
-
         # by default we run on the default loop
-        self.loop = loop or pyuv.Loop.default_loop()
+
+        if loop is not None:
+            self.loop = patch_loop(loop)
+        else:
+            self.loop = get_loop(True)
 
         # initialize the emitter
         self._emitter = EventEmitter(self.loop)
