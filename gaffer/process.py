@@ -430,6 +430,10 @@ class Process(object):
         self._running = True
         self._os_pid = self._process.pid
 
+        # initialize the process info
+        self._pprocess = psutil.Process(self.os_pid)
+        get_process_info(self._pprocess, 0.0)
+
         # start redirecting IO
         self._redirect_io.start()
 
@@ -461,7 +465,7 @@ class Process(object):
 
         if not self._pprocess:
             self._pprocess = psutil.Process(self.os_pid)
-        return get_process_info(self._pprocess, 0.1)
+        return get_process_info(self._pprocess, 0.0)
 
     @property
     def status(self):
