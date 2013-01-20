@@ -73,7 +73,7 @@ class Ps(Command):
                      ""]
 
             for info in stats['stats']:
-                lines.append("%s.%s: up for %s" % (name, info['id'],
+                lines.append("%s.%s: up for %s" % (name, info['pid'],
                     info['ctime']))
 
             print(colored(color, '\n'.join(lines)))
