@@ -280,6 +280,9 @@ class Server(object):
 
         return Process(server=self, process=process)
 
+    def get_pid(self, pid):
+        return ProcessId(server=self, pid=pid)
+
     def is_process(self, name):
         """ is the process exists ? """
         resp = self.request("head", "/processes/%s" % name)
@@ -412,14 +415,14 @@ class Server(object):
 class ProcessId(object):
     """ Process Id object. It represent a pid """
 
-    def __init__(self, server, pid, process):
+    def __init__(self, server, pid):
         self.server = server
         self.pid = pid
 
-        if isinstance(process, dict):
-            self.process = process
-        else:
-            self.process = server.get_process(process)
+        # get info
+        resp = server.request("get", "/%s" % pid)
+        self.process = self.server.json_body(resp)
+
 
     def __str__(self):
         return str(self.pid)
@@ -427,31 +430,30 @@ class ProcessId(object):
     @property
     def active(self):
         """ return True if the process is active """
-        resp = self.server.request("head", "/processes/%s" % self.pid)
+        resp = self.server.request("head", "/%s" % self.pid)
         if resp.code == 200:
             return True
         return False
 
+    @property
+    def stats(self):
+        resp = self.server.request("get", "/%s/stats" % self.pid)
+        print(resp)
+        obj = self.server.json_body(resp)
+        return obj['stats']
+
     def stop(self):
         """ stop the process """
-        self.server.request("post", "/processes/%s/_stop" % self.pid)
+        self.server.request("delete", "/%s" % self.pid)
         return True
 
-    def signal(self, num_or_str):
+    def signal(self, sig):
         """ Send a signal to the pid """
-        if isinstance(num_or_str, six.string_types):
-            signame = num_or_str.upper()
-            if not signame.startswith('SIG'):
-                signame = "SIG%s" % signame
-            try:
-                signum = getattr(signal, signame)
-            except AttributeError:
-                raise ValueError("invalid signal name")
-        else:
-            signum = num_or_str
+        path = "/%s/signal" % (self.pid, signum)
+        body = json.dumps({"signal", sig})
+        headers = {"Content-Type": "application/json"}
 
-        self.server.request("post", "/processes/%s/_signal/%s" %
-                (self.pid, signum))
+        self.server.request("post", path, body=body, headers=headers)
         return True
 
 class Process(object):

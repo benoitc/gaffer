@@ -60,7 +60,6 @@ def test_signal():
         res = f.read()
         assert res == 'STARTHUPQUITSTOP'
 
-
 def test_info():
     loop = pyuv.Loop.default_loop()
     testfile, cmd, args, cwd = dummy_cmd()
@@ -73,8 +72,27 @@ def test_info():
     p.stop()
     loop.run()
 
-    assert "cpu" in info
     assert info['os_pid'] == os_pid
+    assert info['name'] == "dummy"
+    assert info['pid'] == "someid"
+
+
+
+def test_stats():
+    loop = pyuv.Loop.default_loop()
+    testfile, cmd, args, cwd = dummy_cmd()
+    p = Process(loop, "someid", "dummy", cmd, args=args,
+        cwd=cwd)
+    p.spawn()
+    time.sleep(0.2)
+    stats = p.stats
+    os_pid = p.os_pid
+    p.stop()
+    loop.run()
+
+    assert "cpu" in stats
+    assert "mem_info1" in stats
+
 
 def test_stat_events():
     loop = pyuv.Loop.default_loop()
@@ -103,7 +121,8 @@ def test_stat_events():
     res = monitored[0]
     assert res[0] == "stat"
     assert "cpu" in res[1]
-    assert res[1]["os_pid"] == os_pid
+    assert "mem_info1" in res[1]
+    assert res[1]['os_pid'] == os_pid
 
 
 def test_stat_events_refcount():
@@ -139,7 +158,6 @@ def test_stat_events_refcount():
     res = monitored[0]
     assert res[0] == "stat"
     assert "cpu" in res[1]
-    assert res[1]["os_pid"] == os_pid
 
 
 def test_redirect_output():
