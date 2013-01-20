@@ -399,6 +399,40 @@ class Manager(object):
             else:
                 return self.processes[name_or_pid]
 
+    def get_pid(self, pid):
+        """ get a process by ID.
+
+        return a ``gaffer.Process`` instance that you can use.
+        """
+        with self._lock:
+            try:
+                return self.running[pid]
+            except KeyError:
+                raise ProcessError(404, "not_found")
+
+    def stop_pid(self, pid):
+        """ Stop a process by pid """
+
+        with self._lock:
+            if pid not in self.running:
+                return
+
+            # remove the process from the running processes
+            p = self.running.pop(pid)
+            state = self.processes[p.name]
+            state.remove(p)
+
+            # signal to the process to stop
+            p.stop()
+
+            # track this process to make sure it's killed after the
+            # graceful time
+            self._tracker.check(p, state.graceful_timeout)
+
+            # notify  other that the process is beeing stopped
+            self._publish("stop_pid", name=p.name, pid=pid, os_pid=p.os_pid)
+            self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid,
+                    os_pid=p.os_pid)
 
     def get_process_info(self, name):
         """ get process info """

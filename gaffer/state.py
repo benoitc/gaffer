@@ -230,15 +230,16 @@ class ProcessState(object):
     def stats(self):
         """ return stats from alll running process using this template
         """
-        infos = []
+        stats = []
         lmem = []
         lcpu = []
         for p in self.running:
-            info = p.info
-            info['pid'] = p.pid
-            infos.append(info)
-            lmem.append(info['mem'])
-            lcpu.append(info['cpu'])
+            pstats = p.stats
+            pstats['pid'] = p.pid
+            pstats['os_pid'] = p.os_pid
+            stats.append(pstats)
+            lmem.append(pstats['mem'])
+            lcpu.append(pstats['cpu'])
 
         if 'N/A' in lmem or not lmem:
             mem, max_mem, min_mem = "N/A"
@@ -254,7 +255,7 @@ class ProcessState(object):
             min_cpu = min(lcpu)
             cpu = sum(lcpu)
 
-        ret = dict(name=self.name, stats=infos, mem=mem, max_mem=max_mem,
+        ret = dict(name=self.name, stats=stats, mem=mem, max_mem=max_mem,
                 min_mem=min_mem, cpu=cpu, max_cpu=max_cpu,
                 min_cpu=min_cpu)
         return ret

@@ -4,7 +4,8 @@
 
 from .misc import WelcomeHandler, StatusHandler, PingHandler, VersionHandler
 from .process import ProcessesHandler, ProcessHandler, ProcessManagerHandler
-from .pid import ProcessIdHandler, ProcessIdManageHandler
+from .pid import (ProcessIdHandler, ProcessIdSignalHandler,
+        ProcessIdStatsHandler)
 from .watcher import WatcherHandler
 from .stats import StatsHandler
 from .stream import StreamHandler, WStreamHandler

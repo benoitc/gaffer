@@ -25,7 +25,7 @@ from .sync import atomic_read, increment, decrement
 
 pyuv.Process.disable_stdio_inheritance()
 
-def get_process_info(process=None, interval=0):
+def get_process_stats(process=None, interval=0):
 
     """Return information about a process. (can be an pid or a Process object)
 
@@ -33,23 +33,24 @@ def get_process_info(process=None, interval=0):
     """
     if process is None:
         process = psutil.Process(os.getpid())
-    info = {}
+
+    stats = {}
     try:
         mem_info = process.get_memory_info()
-        info['mem_info1'] = bytes2human(mem_info[0])
-        info['mem_info2'] = bytes2human(mem_info[1])
+        stats['mem_info1'] = bytes2human(mem_info[0])
+        stats['mem_info2'] = bytes2human(mem_info[1])
     except AccessDenied:
-        info['mem_info1'] = info['mem_info2'] = "N/A"
+        stats['mem_info1'] = info['mem_info2'] = "N/A"
 
     try:
-        info['cpu'] = process.get_cpu_percent(interval=interval)
+        stats['cpu'] = process.get_cpu_percent(interval=interval)
     except AccessDenied:
-        info['cpu'] = "N/A"
+        stats['cpu'] = "N/A"
 
     try:
-        info['mem'] = round(process.get_memory_percent(), 1)
+        stats['mem'] = round(process.get_memory_percent(), 1)
     except AccessDenied:
-        info['mem'] = "N/A"
+        stats['mem'] = "N/A"
 
     try:
         cpu_times = process.get_cpu_times()
@@ -60,38 +61,9 @@ def get_process_info(process=None, interval=0):
     except AccessDenied:
         ctime = "N/A"
 
-    info['ctime'] = ctime
+    stats['ctime'] = ctime
+    return stats
 
-    try:
-        info['os_pid'] = process.pid
-    except AccessDenied:
-        info['os_pid'] = 'N/A'
-
-    try:
-        info['username'] = process.username
-    except AccessDenied:
-        info['username'] = 'N/A'
-
-    try:
-        info['nice'] = process.nice
-    except AccessDenied:
-        info['nice'] = 'N/A'
-    except NoSuchProcess:
-        info['nice'] = 'Zombie'
-
-    try:
-        cmdline = os.path.basename(shlex.split(process.cmdline[0])[0])
-    except (AccessDenied, IndexError):
-        cmdline = "N/A"
-
-    info['cmdline'] = cmdline
-
-    info['children'] = []
-    for child in process.get_children():
-        info['children'].append(get_process_info(psutil.Process(child),
-            interval=interval))
-
-    return info
 
 class RedirectIO(object):
 
@@ -229,11 +201,9 @@ class Stream(RedirectStdin):
 class ProcessWatcher(object):
     """ object to retrieve process stats """
 
-    def __init__(self, loop, pid):
+    def __init__(self, loop, process):
         self.loop = loop
-        self.pid = pid
-        self._process = psutil.Process(pid)
-
+        self.process = process
         self._last_info = None
         self.on_refresh_cb = None
         self._active = 0
@@ -269,10 +239,16 @@ class ProcessWatcher(object):
 
     def _async_refresh(self, handle):
         self._last_info = self.refresh()
-        self._emitter.publish("stat", self._last_info)
+
+        # create the message
+        msg = self._last_info.copy()
+        msg.update({'pid': self.process.pid, 'os_pid': self.process.os_pid})
+
+        # publish it
+        self._emitter.publish("stat", msg)
 
     def refresh(self, interval=0):
-        return get_process_info(self._process, interval=interval)
+        return get_process_stats(self.process._pprocess, interval=interval)
 
     def _start(self):
         if not self.active:
@@ -433,10 +409,6 @@ class Process(object):
         self._running = True
         self._os_pid = self._process.pid
 
-        # initialize the process info
-        self._pprocess = psutil.Process(self.os_pid)
-        get_process_info(self._pprocess, 0.0)
-
         # start redirecting IO
         self._redirect_io.start()
 
@@ -468,7 +440,21 @@ class Process(object):
 
         if not self._pprocess:
             self._pprocess = psutil.Process(self.os_pid)
-        return get_process_info(self._pprocess, 0.0)
+
+        # info we have on this process
+        info = dict(pid=self.pid, name=self.name, cmd=self.cmd,
+                args=self.args, env=self.env, uid=self.uid, gid=self.gid,
+                os_pid=self.os_pid)
+
+        # create time
+        info['create_time'] = self._pprocess.create_time
+        return info
+
+    @property
+    def stats(self):
+        if not self._pprocess:
+            self._pprocess = psutil.Process(self.os_pid)
+        return get_process_stats(self._pprocess, 0.0)
 
     @property
     def status(self):
@@ -491,7 +477,7 @@ class Process(object):
         """
 
         if not self._process_watcher:
-            self._process_watcher = ProcessWatcher(self.loop, self.os_pid)
+            self._process_watcher = ProcessWatcher(self.loop, self)
 
         self._process_watcher.subscribe(listener)
 

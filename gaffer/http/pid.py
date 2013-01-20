@@ -3,8 +3,13 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import json
+import signal
+
+import six
+from tornado import escape
 
 from .util import CorsHandler
+from ..error import ProcessError
 
 
 class ProcessIdHandler(CorsHandler):
@@ -20,11 +25,13 @@ class ProcessIdHandler(CorsHandler):
             self.write({"error": "bad_value"})
             return
 
-        if pid in m.running:
-            self.set_status(200)
-        else:
+        try:
+            m.get_pid(pid)
+        except ProcessError:
             self.set_status(404)
+            return
 
+        self.set_status(200)
 
     def get(self, *args):
         self.preflight()
@@ -37,18 +44,13 @@ class ProcessIdHandler(CorsHandler):
             self.write({"error": "bad_value"})
             return
 
-        if pid in m.running:
-            p = m.running[pid]
-            try:
-                info = m.get_process_info(p.name)
-            except KeyError:
-                self.set_status(404)
-                self.write({"error": "not_found"})
-                return
-            self.write(info)
-        else:
-            self.set_status(404)
-            self.write({"error": "not_found"})
+        try:
+            p = m.get_pid(pid)
+        except ProcesssError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
+
+        self.write(p.info)
 
     def delete(self, *args):
         self.preflight()
@@ -61,44 +63,91 @@ class ProcessIdHandler(CorsHandler):
             self.write({"error": "bad_value"})
             return
 
-        if pid in m.running:
-            m.stop_process(pid)
-            self.write({"ok": True})
-        else:
-            self.set_status(404)
-            self.write({"error": "not_found"})
+        try:
+            p = m.get_pid(pid)
+        except ProcesssError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
 
-class ProcessIdManageHandler(CorsHandler):
+        # stop the pid
+        m.stop_pid(pid)
+
+        # return the response, we set the status to accepted since the result
+        # is async.
+        self.set_status(202)
+        self.write({"ok": True})
+
+
+class ProcessIdSignalHandler(CorsHandler):
 
     def post(self, *args):
         self.preflight()
         m = self.settings.get('manager')
+
         try:
             pid = int(args[0])
         except ValueError:
             self.set_status(400)
             self.write({"error": "bad_value"})
             return
-        if pid in m.running:
-            p = m.running[pid]
-            action = args[1]
-            if action == "_stop":
-                m.stop_process(pid)
-            elif action == "_signal":
-                if len(args) < 2:
-                    self.set_status(400)
-                    self.write({"error": "no_signal_number"})
-                    return
-                else:
-                    try:
-                        signum = int(args[2])
-                    except ValueError:
-                        self.set_status(400)
-                        self.write({"error": "bad_value"})
-                        return
-                    m.send_signal(pid, signum)
 
-            self.write({"ok": True})
+        # get pidnum
+        try:
+            p = m.get_pid(pid)
+        except ProcesssError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
+
+        # decode object
+        obj = escape.json_decode(self.request.body)
+
+        try:
+            signum = self._get_signal(obj)
+        except (KeyError, AttributeError):
+            self.set_status(400)
+            return self.write({"error": "bad_signal"})
+
+
+        p.kill(signum)
+        self.set_status(202)
+        self.write({"ok": True})
+
+    def _get_signal(self, obj):
+        sig = obj['signal']
+
+        if isinstance(sig, six.string_types):
+            signame = sig.upper()
+            if not signame.startswith('SIG'):
+                signame = "SIG%s" % signame
+            try:
+                signum = getattr(signal, signame)
+            except AttributeError:
+                raise ValueError("invalid signal name")
         else:
-            self.set_status(404)
-            self.write({"error": "not_found"})
+            signum = sig
+
+        return signum
+
+
+class ProcessIdStatsHandler(CorsHandler):
+
+    def get(self, *args):
+        self.preflight()
+        m = self.settings.get('manager')
+
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            return
+
+        # get pidnum
+        try:
+            p = m.get_pid(pid)
+        except ProcesssError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
+
+        self.set_status(200)
+        self.write({"stats": p.stats})

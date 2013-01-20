@@ -213,7 +213,7 @@ def test_pids():
     p = s.get_process("dummy")
     assert isinstance(p, Process) == True
 
-    pid = s.get_process(1)
+    pid = s.get_pid(1)
     assert isinstance(pid, ProcessId) == True
     assert pid.pid == 1
     assert pid.process.get('name') == "dummy"
@@ -225,11 +225,30 @@ def test_pids():
 
     time.sleep(0.2)
     assert p.pids == [2]
-
+    m.stop()
 
     m.stop()
     m.run()
 
+
+def test_stats():
+    m, s = init()
+    testfile, cmd, args, wdir = dummy_cmd()
+    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    time.sleep(0.2)
+
+    pid = s.get_pid(1)
+    assert isinstance(pid, ProcessId) == True
+    assert pid.pid == 1
+
+    stats = pid.stats
+    assert isinstance(stats, dict) == True
+    assert "cpu" in stats
+    assert "mem_info1" in stats
+
+    pid.stop()
+    m.stop()
+    m.run()
 
 def test_groups():
     m, s = init()
