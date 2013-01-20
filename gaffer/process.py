@@ -374,7 +374,7 @@ class Process(object):
         self._process = None
         self._pprocess = None
         self._process_watcher = None
-        self._cached_pid = None
+        self._os_pid = None
         self.stopped = False
         self.graceful_time = 0
 
@@ -431,7 +431,7 @@ class Process(object):
         # spawn the process
         self._process.spawn(**kwargs)
         self._running = True
-        self._cached_pid = self._process.pid
+        self._os_pid = self._process.pid
 
         # start redirecting IO
         self._redirect_io.start()
@@ -453,9 +453,9 @@ class Process(object):
     @property
     def os_pid(self):
         """ return the process pid """
-        if self._cached_pid is None:
-            self._cached_pid = self._process.pid
-        return self._cached_pid
+        if self._os_pid is None:
+            self._os_pid = self._process.pid
+        return self._os_pid
 
     @property
     def info(self):
