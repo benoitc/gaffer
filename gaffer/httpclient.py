@@ -421,11 +421,17 @@ class ProcessId(object):
 
         # get info
         resp = server.request("get", "/%s" % pid)
-        self.process = self.server.json_body(resp)
+        self.info = self.server.json_body(resp)
 
 
     def __str__(self):
         return str(self.pid)
+
+    def __getattr__(self, key):
+        if key in self.info:
+            return self.info[key]
+
+        return object.__getattribute__(self, key)
 
     @property
     def active(self):

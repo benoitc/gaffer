@@ -216,8 +216,9 @@ def test_pids():
     pid = s.get_pid(1)
     assert isinstance(pid, ProcessId) == True
     assert pid.pid == 1
-    assert pid.process.get('name') == "dummy"
-
+    assert pid.info.get('name') == "dummy"
+    assert pid.name == "dummy"
+    assert pid.os_pid == pid.info.get('os_pid')
     assert p.pids == [1]
 
     pid.stop()
