@@ -63,9 +63,9 @@ def get_process_info(process=None, interval=0):
     info['ctime'] = ctime
 
     try:
-        info['pid'] = process.pid
+        info['os_pid'] = process.pid
     except AccessDenied:
-        info['pid'] = 'N/A'
+        info['os_pid'] = 'N/A'
 
     try:
         info['username'] = process.username
@@ -150,7 +150,7 @@ class RedirectIO(object):
 
         label = getattr(handle, 'label')
         msg = dict(event=label, name=self.process.name,
-                pid=self.process.id, data=data)
+                pid=self.process.pid, data=data)
         self._emitter.publish(label, msg)
 
 
@@ -222,7 +222,7 @@ class Stream(RedirectStdin):
             return
 
         msg = dict(event='READ', name=self.process.name,
-                pid=self.process.id, data=data)
+                pid=self.process.pid, data=data)
         self._emitter.publish('READ', msg)
 
 
@@ -317,12 +317,12 @@ class Process(object):
     """
 
 
-    def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
+    def __init__(self, loop, pid, name, cmd, group=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
         self.loop = patch_loop(loop)
-        self.id = id
+        self.pid = pid
         self.name = name
         self.group = group
         self.cmd = cmd
@@ -451,7 +451,7 @@ class Process(object):
         return self._process.closed
 
     @property
-    def pid(self):
+    def os_pid(self):
         """ return the process pid """
         if self._cached_pid is None:
             self._cached_pid = self._process.pid
@@ -463,14 +463,14 @@ class Process(object):
         return the last informations stored asynchronously by the watcher"""
 
         if not self._pprocess:
-            self._pprocess = psutil.Process(self.pid)
+            self._pprocess = psutil.Process(self.os_pid)
         return get_process_info(self._pprocess, 0.1)
 
     @property
     def status(self):
         """ return the process status """
         if not self._pprocess:
-            self._pprocess = psutil.Process(self.pid)
+            self._pprocess = psutil.Process(self.os_pid)
         return self._pprocess.status
 
 
@@ -487,7 +487,7 @@ class Process(object):
         """
 
         if not self._process_watcher:
-            self._process_watcher = ProcessWatcher(self.loop, self.pid)
+            self._process_watcher = ProcessWatcher(self.loop, self.os_pid)
 
         self._process_watcher.subscribe(listener)
 

@@ -28,7 +28,7 @@ def test_simple():
     p = Process(loop, "someid", "dummy", cmd, args=args,
         cwd=cwd, on_exit_cb=exit_cb)
 
-    assert p.id == "someid"
+    assert p.pid == "someid"
     assert p.name == "dummy"
     assert p.cmd == cmd
     assert p.args == args
@@ -69,12 +69,12 @@ def test_info():
     p.spawn()
     time.sleep(0.2)
     info = p.info
-    pid = p.pid
+    os_pid = p.os_pid
     p.stop()
     loop.run()
 
     assert "cpu" in info
-    assert info['pid'] == pid
+    assert info['os_pid'] == os_pid
 
 def test_stat_events():
     loop = pyuv.Loop.default_loop()
@@ -87,7 +87,7 @@ def test_stat_events():
         cwd=cwd)
     p.spawn()
     time.sleep(0.2)
-    pid = p.pid
+    os_pid = p.os_pid
     p.monitor(cb)
 
     def stop(handle):
@@ -103,7 +103,7 @@ def test_stat_events():
     res = monitored[0]
     assert res[0] == "stat"
     assert "cpu" in res[1]
-    assert res[1]["pid"] == pid
+    assert res[1]["os_pid"] == os_pid
 
 
 def test_stat_events_refcount():
@@ -120,7 +120,7 @@ def test_stat_events_refcount():
         cwd=cwd)
     p.spawn()
     time.sleep(0.2)
-    pid = p.pid
+    os_pid = p.os_pid
     p.monitor(cb)
     p.monitor(cb2)
     def stop(handle):
@@ -139,7 +139,7 @@ def test_stat_events_refcount():
     res = monitored[0]
     assert res[0] == "stat"
     assert "cpu" in res[1]
-    assert res[1]["pid"] == pid
+    assert res[1]["os_pid"] == os_pid
 
 
 def test_redirect_output():
@@ -157,7 +157,7 @@ def test_redirect_output():
         cwd=cwd, redirect_output=["stdout", "stderr"])
     p.spawn()
     time.sleep(0.2)
-    pid = p.pid
+    os_pid = p.os_pid
 
     p.monitor_io("stdout", cb)
     p.monitor_io("stderr", cb2)

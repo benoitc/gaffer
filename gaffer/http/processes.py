@@ -230,7 +230,7 @@ class ProcessManagerHandler(CorsHandler):
         extra = {}
         if action == "_pids":
             state = m.processes[name]
-            pids = [p.id for p in state.running]
+            pids = [p.pid for p in state.running]
             extra = {"pids": pids}
         else:
             self.set_status(404)
