@@ -351,6 +351,7 @@ class Process(object):
         self._pprocess = None
         self._process_watcher = None
         self._os_pid = None
+        self._info = None
         self.stopped = False
         self.graceful_time = 0
 
@@ -405,6 +406,7 @@ class Process(object):
         self._process.spawn(**kwargs)
         self._running = True
         self._os_pid = self._process.pid
+        self._pprocess = psutil.Process(self._process.pid)
 
         # start redirecting IO
         self._redirect_io.start()
@@ -435,29 +437,32 @@ class Process(object):
         """ return the process info. If the process is monitored it
         return the last informations stored asynchronously by the watcher"""
 
-        if not self._pprocess:
-            self._pprocess = psutil.Process(self.os_pid)
-
         # info we have on this process
-        info = dict(pid=self.pid, name=self.name, cmd=self.cmd,
-                args=self.args, env=self.env, uid=self.uid, gid=self.gid,
-                os_pid=self.os_pid)
+        if self._info is None:
+            self._info = dict(pid=self.pid, name=self.name, cmd=self.cmd,
+                    args=self.args, env=self.env, uid=self.uid, gid=self.gid,
+                    os_pid=None, create_time=None)
 
-        # create time
-        info['create_time'] = self._pprocess.create_time
-        return info
+        if (self._info.get('create_time') is None and
+                self._pprocess is not None):
+
+            self._info.update({'os_pid': self.os_pid,
+                'create_time':self._pprocess.create_time})
+
+        return self._info
 
     @property
     def stats(self):
         if not self._pprocess:
-            self._pprocess = psutil.Process(self.os_pid)
+            return
+
         return get_process_stats(self._pprocess, 0.0)
 
     @property
     def status(self):
         """ return the process status """
         if not self._pprocess:
-            self._pprocess = psutil.Process(self.os_pid)
+            return
         return self._pprocess.status
 
 
