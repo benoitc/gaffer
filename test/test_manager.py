@@ -187,10 +187,10 @@ def test_process_id():
 
     p = processes[0]
     assert isinstance(p, Process)
-    assert p.id == 1
+    assert p.pid == 1
 
     p = processes[2]
-    assert p.id == 3
+    assert p.pid == 3
 
     m.stop()
     m.run()
@@ -248,7 +248,7 @@ def test_send_signal():
     m.send_signal("dummy", signal.SIGHUP)
     time.sleep(0.2)
 
-    m.send_signal(processes[0].id, signal.SIGHUP)
+    m.send_signal(processes[0].pid, signal.SIGHUP)
     m.stop_process("dummy")
 
     def stop(handle):
@@ -371,17 +371,17 @@ def test_process_stats():
     time.sleep(0.2)
     info = m.get_process_stats("dummy")
     info_by_id = m.get_process_stats(1)
-    pid = m.running[1].pid
+    os_pid = m.running[1].os_pid
     m.stop()
     m.run()
 
     assert isinstance(info, dict)
     assert isinstance(info_by_id, dict)
-    assert "pid" in info_by_id
-    assert info_by_id["pid"] == pid
+    assert "os_pid" in info_by_id
+    assert info_by_id["os_pid"] == os_pid
     assert info['name'] == "dummy"
     assert len(info['stats']) == 1
-    assert info['stats'][0]['pid'] == info_by_id['pid']
+    assert info['stats'][0]['os_pid'] == info_by_id['os_pid']
 
 def test_processes_stats():
     m = Manager()
@@ -413,7 +413,7 @@ def test_monitor():
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_process("a", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
-    pid = m.running[1].pid
+    os_pid = m.running[1].os_pid
     m.monitor("a", cb)
 
     def stop(handle):
@@ -428,7 +428,7 @@ def test_monitor():
     res = monitored[0]
     assert res[0] == "stat"
     assert "cpu" in res[1]
-    assert res[1]["pid"] == pid
+    assert res[1]["os_pid"] == os_pid
 
 def test_priority():
     m = Manager()

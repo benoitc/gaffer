@@ -617,13 +617,13 @@ class Manager(object):
                 break
 
             # notify  other that the process is beeing stopped
-            self._publish("stop_pid", name=p.name, pid=p.id, os_pid=p.pid)
+            self._publish("stop_pid", name=p.name, pid=p.pid, os_pid=p.os_pid)
             self._publish("proc.%s.stop_pid" % p.name, name=p.name,
-                    pid=p.id, os_pid=p.pid)
+                    pid=p.pid, os_pid=p.os_pid)
 
             # remove the pid from the running processes
-            if p.id in self.running:
-                self.running.pop(p.id)
+            if p.pid in self.running:
+                self.running.pop(p.pid)
 
             # stop the process
             p.stop()
@@ -651,9 +651,9 @@ class Manager(object):
         self._tracker.check(p, state.graceful_timeout)
 
         # notify  other that the process is beeing stopped
-        self._publish("stop_pid", name=p.name, pid=pid, os_pid=p.pid)
+        self._publish("stop_pid", name=p.name, pid=pid, os_pid=p.os_pid)
         self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid,
-                os_pid=p.pid)
+                os_pid=p.os_pid)
 
     def _spawn_process(self, state):
         """ spawn a new process and add it to the state """
@@ -671,9 +671,9 @@ class Manager(object):
         self.running[pid] = p
 
         self._publish("spawn", name=p.name, pid=pid,
-                detached=p.detach, os_pid=p.pid)
+                detached=p.detach, os_pid=p.os_pid)
         self._publish("proc.%s.spawn" % p.name, name=p.name, pid=pid,
-                detached=p.detach, os_pid=p.pid)
+                detached=p.detach, os_pid=p.os_pid)
 
     def _spawn_processes(self, state):
         """ spawn all processes for a state """
@@ -695,8 +695,8 @@ class Manager(object):
                     return
 
                 # remove the pid from the running processes
-                if p.id in self.running:
-                    self.running.pop(p.id)
+                if p.pid in self.running:
+                    self.running.pop(p.pid)
 
                 # stop the process
                 p.stop()
@@ -706,9 +706,9 @@ class Manager(object):
                 self._tracker.check(p, state.graceful_timeout)
 
                 # notify others that the process is beeing reaped
-                self._publish("reap", name=p.name, pid=p.id, os_pid=p.pid)
+                self._publish("reap", name=p.name, pid=p.pid, os_pid=p.os_pid)
                 self._publish("proc.%s.reap" % p.name, name=p.name,
-                    pid=p.id, os_pid=p.pid)
+                    pid=p.pid, os_pid=p.os_pid)
 
     def _manage_processes(self, state):
         if state.stopped:
@@ -802,8 +802,8 @@ class Manager(object):
 
             # unexpected exit, remove the process from the list of
             # running processes.
-            if process.id in self.running:
-                self.running.pop(process.id)
+            if process.pid in self.running:
+                self.running.pop(process.pid)
 
             state = self.get_process_state(process.name)
             if state and state is not None:
@@ -811,9 +811,9 @@ class Manager(object):
                 state.remove(process)
 
             # notify other that the process exited
-            ev_details = dict(name=process.name, pid=process.id,
+            ev_details = dict(name=process.name, pid=process.pid,
                     exit_status=exit_status, term_signal=term_signal,
-                    os_pid=process.pid)
+                    os_pid=process.os_pid)
 
             self._publish("exit", **ev_details)
             self._publish("proc.%s.exit" % process.name, **ev_details)

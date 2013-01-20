@@ -189,7 +189,7 @@ class ProcessState(object):
 
     @property
     def pids(self):
-        return [p.id for p in self.running]
+        return [p.pid for p in self.running]
 
     def reset(self):
         """ reset this template to default values """
@@ -235,7 +235,7 @@ class ProcessState(object):
         lcpu = []
         for p in self.running:
             info = p.info
-            info['id'] = p.id
+            info['pid'] = p.pid
             infos.append(info)
             lmem.append(info['mem'])
             lcpu.append(info['cpu'])
