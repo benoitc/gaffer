@@ -24,7 +24,7 @@ class BaseSigHandler(object):
             self._sig_handler = pyuv.SignalChecker(self.loop)
         else:
             self._sig_handler = pyuv.Signal(self.loop)
-            need_unref = True)
+            need_unref = True
 
         # quit signals handling
         for signum in self.QUIT_SIGNALS:
