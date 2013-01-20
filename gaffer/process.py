@@ -8,6 +8,7 @@ The process module wrap a process and IO redirection
 
 
 from datetime import timedelta
+from functools import partial
 import os
 import signal
 import shlex
@@ -407,6 +408,10 @@ class Process(object):
         self._running = True
         self._os_pid = self._process.pid
         self._pprocess = psutil.Process(self._process.pid)
+
+        # start to cycle the cpu stats so we can have an accurate number on
+        # the first call of ``Process.stats``
+        self.loop.queue_work(partial(get_process_stats, self._pprocess, 0.1))
 
         # start redirecting IO
         self._redirect_io.start()
