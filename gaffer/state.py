@@ -108,25 +108,24 @@ class ProcessState(object):
     """ object used by the manager to maintain the process state """
 
     DEFAULT_PARAMS = {
-            "group": None,
             "args": None,
             "env": None,
             "uid": None,
             "gid": None,
             "cwd": None,
-            "detach": False,
             "shell": False,
             "redirect_output": [],
             "redirect_input": False,
             "custom_streams": [],
             "custom_channels": []}
 
-    def __init__(self, name, cmd, **settings):
+    def __init__(self, name, cmd, appname="system", **settings):
         self.running = deque()
         self.stopped = False
-        self.setup(name, cmd, **settings)
+        self.setup(appname, name, cmd, **settings)
 
-    def setup(self, name, cmd, **settings):
+    def setup(self, appname, name, cmd, **settings):
+        self.appname = appname
         self.name = name
         self.cmd = cmd
         self.settings = settings
@@ -152,10 +151,6 @@ class ProcessState(object):
     def graceful_timeout(self):
         return nanotime(self.settings.get('graceful_timeout', 10.0))
 
-    @property
-    def group(self):
-        return self.settings.get('group')
-
     def __str__(self):
         return "state: %s" % self.name
 
@@ -173,11 +168,8 @@ class ProcessState(object):
 
         params['on_exit_cb'] = on_exit
 
-        return Process(loop, id, self.name, self.cmd, **params)
-
-    @property
-    def group(self):
-        return self.settings.get('group')
+        return Process(loop, id, self.name, self.cmd, appname=self.appname,
+                **params)
 
     def __get_numprocesses(self):
         return atomic_read(self._numprocesses)
@@ -198,13 +190,13 @@ class ProcessState(object):
         if self.flapping and self.flapping is not None:
             self.flapping.reset()
 
-    def ttin(self, i=1):
+    def incr(self, i=1):
         """ increase the maximum number of running processes """
 
         self._numprocesses = add(self._numprocesses, i)
         return self._numprocesses
 
-    def ttou(self, i=1):
+    def decr(self, i=1):
         """ decrease the maximum number of running processes """
         self._numprocesses = sub(self._numprocesses, i)
         return self._numprocesses
@@ -226,50 +218,6 @@ class ProcessState(object):
 
     def list_processes(self):
         return list(self.running)
-
-    def stats(self):
-        """ return stats from alll running process using this template
-        """
-        stats = []
-        lmem = []
-        lcpu = []
-        for p in self.running:
-            pstats = p.stats
-            pstats['pid'] = p.pid
-            pstats['os_pid'] = p.os_pid
-            stats.append(pstats)
-            lmem.append(pstats['mem'])
-            lcpu.append(pstats['cpu'])
-
-        if 'N/A' in lmem or not lmem:
-            mem, max_mem, min_mem = "N/A"
-        else:
-            max_mem = max(lmem)
-            min_mem = min(lmem)
-            mem = sum(lmem)
-
-        if 'N/A' in lcpu or not lcpu:
-            cpu, max_cpu, min_cpu = "N/A"
-        else:
-            max_cpu = max(lcpu)
-            min_cpu = min(lcpu)
-            cpu = sum(lcpu)
-
-        ret = dict(name=self.name, stats=stats, mem=mem, max_mem=max_mem,
-                min_mem=min_mem, cpu=cpu, max_cpu=max_cpu,
-                min_cpu=min_cpu)
-        return ret
-
-    def monitor(self, listener):
-        """ start monitoring in all processes of the process template """
-        for p in self.running:
-            p.monitor(listener)
-
-    def unmonitor(self, listener):
-        """ unmonitor all processes maintained by this process template
-        """
-        for p in self.running:
-            p.unmonitor(listener)
 
     def check_flapping(self):
         """ main function used to check the flapping """

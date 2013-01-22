@@ -294,14 +294,14 @@ class Process(object):
     """
 
 
-    def __init__(self, loop, pid, name, cmd, group=None, args=None, env=None,
+    def __init__(self, loop, pid, name, cmd, appname=None, args=None, env=None,
             uid=None, gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
         self.loop = patch_loop(loop)
         self.pid = pid
         self.name = name
-        self.group = group
+        self.appname = appname or "system"
         self.cmd = cmd
         self.env = env or {}
 

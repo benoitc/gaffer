@@ -19,9 +19,10 @@ else:
     linesep = os.linesep
 
 def test_simple():
+    exit_res = []
     def exit_cb(process, return_code, term_signal):
-        assert process.name == "dummy"
-        assert process.active == False
+        exit_res.append(process)
+
 
     loop = pyuv.Loop.default_loop()
     testfile, cmd, args, cwd = dummy_cmd()
@@ -30,6 +31,7 @@ def test_simple():
 
     assert p.pid == "someid"
     assert p.name == "dummy"
+    assert p.appname == "system"
     assert p.cmd == cmd
     assert p.args == args
     assert cwd == cwd
@@ -44,6 +46,46 @@ def test_simple():
     with open(testfile, 'r') as f:
         res = f.read()
         assert res == 'STARTQUITSTOP'
+
+    assert len(exit_res) == 1
+    assert exit_res[0].name == "dummy"
+    assert exit_res[0].active == False
+    assert exit_res[0].appname == "system"
+
+
+def test_basic_with_appname():
+    exit_res = []
+    def exit_cb(process, return_code, term_signal):
+        exit_res.append(process)
+
+
+    loop = pyuv.Loop.default_loop()
+    testfile, cmd, args, cwd = dummy_cmd()
+    p = Process(loop, "someid", "dummy", cmd, appname="test", args=args,
+        cwd=cwd, on_exit_cb=exit_cb)
+
+    assert p.pid == "someid"
+    assert p.name == "dummy"
+    assert p.appname == "test"
+    assert p.cmd == cmd
+    assert p.args == args
+    assert cwd == cwd
+
+    p.spawn()
+    assert p.active == True
+
+    time.sleep(0.2)
+    p.stop()
+    loop.run()
+    assert p.active == False
+    with open(testfile, 'r') as f:
+        res = f.read()
+        assert res == 'STARTQUITSTOP'
+
+    assert len(exit_res) == 1
+    assert exit_res[0].name == "dummy"
+    assert exit_res[0].active == False
+    assert exit_res[0].appname == "test"
 
 def test_signal():
     loop = pyuv.Loop.default_loop()
