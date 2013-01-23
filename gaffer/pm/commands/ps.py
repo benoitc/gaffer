@@ -46,26 +46,25 @@ class Ps(Command):
         s = Server(uri)
 
 
-        group = "."
+        appname = "."
         if len(args) == 1:
-            group = args[0]
+            appname = args[0]
 
         # get the default groupname
-        if group == ".":
-            group = procfile.get_groupname()
+        if appname == ".":
+            appname = procfile.get_appname()
 
         for name, cmd_str in procfile.processes():
-            pname = "%s:%s" % (group, name)
 
             try:
-                p = s.get_process(pname)
+                t = s.get_template(name, appname)
             except:
                 # we just ignore
                 continue
 
 
             color, balance = self.get_color(balance)
-            stats = p.stats()
+            stats = t.stats()
 
             lines = ["=== %s: `%s`" % (name, cmd_str),
                      "Total CPU: %.2f Total MEM: %.2f" % (stats['cpu'],

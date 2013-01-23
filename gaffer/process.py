@@ -123,7 +123,7 @@ class RedirectIO(object):
 
         label = getattr(handle, 'label')
         msg = dict(event=label, name=self.process.name,
-                pid=self.process.pid, data=data)
+                appname=self.process.appname, pid=self.process.pid, data=data)
         self._emitter.publish(label, msg)
 
 
@@ -169,7 +169,7 @@ class RedirectStdin(object):
 
         label = getattr(handle, 'label')
         msg = dict(event=label, name=self.process.name,
-                pid=self.process.id, data=data)
+                appname=self.process.appname, pid=self.process.id, data=data)
         self._emitter.publish(label, msg)
 
 
@@ -195,7 +195,7 @@ class Stream(RedirectStdin):
             return
 
         msg = dict(event='READ', name=self.process.name,
-                pid=self.process.pid, data=data)
+                appname=self.process.appname, pid=self.process.pid, data=data)
         self._emitter.publish('READ', msg)
 
 

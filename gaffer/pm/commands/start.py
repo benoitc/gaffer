@@ -63,16 +63,19 @@ class Start(Command):
             name = args[0]
             cmd_str = procfile.cfg[name]
             cmd, args = procfile.parse_cmd(cmd_str)
+            appname = procfile.get_appname()
             params = dict(args=args, env=procfile.env,
                     numprocesses=concurrency.get(name, 1),
                     redirect_output=['out', 'err'])
-            m.add_process(name, cmd, **params)
+            m.add_template(name, cmd, appname=appname **params)
         else:
+            appname = procfile.get_appname()
+
             # add processes
             for name, cmd_str in procfile.processes():
                 cmd, args = procfile.parse_cmd(cmd_str)
                 params = dict(args=args, env=procfile.env,
                         numprocesses=concurrency.get(name, 1),
                         redirect_output=['out', 'err'])
-                m.add_process(name, cmd, **params)
+                m.add_template(name, cmd, appname=appname, **params)
         m.run()
