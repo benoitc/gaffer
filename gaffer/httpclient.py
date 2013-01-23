@@ -219,7 +219,6 @@ class Server(object):
         if (body is None) and method in ("POST", "PATCH", "PUT"):
             body = ""
 
-        print(url)
         try:
             resp = self.client.fetch(url, method=method, headers=headers,
                     body=body, **self.options)
@@ -371,7 +370,7 @@ class Server(object):
         `GafferConflict` exception is raised.
         """
         kwargs["_force_update"] = False
-        return self.save_template(name, cmd, appname=None, **kwargs)
+        return self.save_template(name, cmd, appname=appname, **kwargs)
 
     def update_template(self, name, cmd, appname=None, **kwargs):
         """ update a process. """
@@ -511,7 +510,7 @@ class Template(object):
     def stats(self):
         """ Return the template stats
         """
-        resp = self.server.request("get", "/apps/%s/%s" % (self.appname,
+        resp = self.server.request("get", "/apps/%s/%s/stats" % (self.appname,
             self.name))
         return self.server.json_body(resp)
 

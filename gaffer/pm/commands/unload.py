@@ -48,12 +48,12 @@ class UnLoad(Command):
         # get args
         uri = None
         if len(args) == 2:
-            group = args[0]
+            appname = args[0]
             uri = args[1]
         elif len(args) == 1:
-            group = args[0]
+            appname = args[0]
         else:
-            group = "."
+            appname = "."
 
         if pargs.endpoint:
             uri = pargs.endpoint
@@ -62,16 +62,17 @@ class UnLoad(Command):
             uri = "http://127.0.0.1:5000"
 
         # get the default groupname
-        if group == ".":
-            group = procfile.get_groupname()
+        if appname == ".":
+            appname = procfile.get_appname()
 
         # create a server instance
         s = Server(uri)
 
-        groups = s.groups()
-        if group not in groups:
-            raise RuntimeError("%r not found" % group)
+        apps = s.all_apps()
+        if appname not in apps:
+            raise RuntimeError("%r not found" % apps)
 
         # remove the group
-        s.remove_group(group)
-        print("%r unloaded" % group)
+        s.walk_templates(lambda s, t: s.remove_template(t.name, t.appname),
+                appname)
+        print("%r unloaded" % appname)

@@ -98,14 +98,13 @@ class ConsoleOutput(object):
             self.manager.subscribe(action, self._on_process)
 
     def _on_process(self, event, msg):
+        name = "%s.%s" % (msg['appname'], msg['name'])
+
         if not 'os_pid' in msg:
-            name = msg['name']
             line = self._print(name, '%s %s' % (event, name))
             return
 
         os_pid = msg['os_pid']
-        name = msg['name']
-
         if event == "spawn":
             p = self.manager.get_process(msg['pid'])
             line = self._print(name, 'spawn process with pid %s' % os_pid)
@@ -120,12 +119,14 @@ class ConsoleOutput(object):
 
     def _on_output(self, event, msg):
         data =  msg['data'].decode('utf-8')
+        name = "%s.%s" % (msg['appname'], msg['name'])
+
         lines = []
         for line in data.splitlines():
             line = line.strip()
             if line:
-                lines.append(self._print(msg['name'], line))
-        self._write(msg['name'], lines)
+                lines.append(self._print(name, line))
+        self._write(name, lines)
 
     def _write(self, name, lines):
         if self.colorize:

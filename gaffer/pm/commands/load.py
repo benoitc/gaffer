@@ -47,12 +47,12 @@ class Load(Command):
         # get args
         uri = None
         if len(args) == 2:
-            group = args[0]
+            appname = args[0]
             uri = args[1]
         elif len(args) == 1:
-            group = args[0]
+            appname = args[0]
         else:
-            group = "."
+            appname = "."
 
         if pargs.endpoint:
             uri = pargs.endpoint
@@ -60,44 +60,47 @@ class Load(Command):
         if not uri:
             uri = "http://127.0.0.1:5000"
 
-        # get the default groupname
-        if group == ".":
-            group = procfile.get_groupname()
+        # get the default appname
+        if appname == ".":
+            appname = procfile.get_appname()
 
         # create a server instance
         s = Server(uri)
 
         # finally manage group conflicts
-        group = self.find_groupname(group, s)
+        appname = self.find_appname(appname, s)
 
         # parse the concurrency settings
         concurrency = self.parse_concurrency(pargs)
 
+        print(appname)
+
         # finally send the processes
         for name, cmd_str in procfile.processes():
             cmd, args = procfile.parse_cmd(cmd_str)
-
-            pname = "%s:%s" % (group, name)
             params = dict(args=args, env=procfile.env,
                     numprocesses=concurrency.get(name, 1),
                     redirect_output=['out', 'err'],
                     cwd=os.path.abspath(procfile.root))
-            s.add_process(pname, cmd, **params)
-        print("%r has been loaded in %s" % (group, uri))
+            s.add_template(name, cmd, appname=appname, **params)
+        print("%r has been loaded in %s" % (appname, uri))
 
-    def find_groupname(self, g, s):
+    def find_appname(self, a, s):
         tries = 0
         while True:
-            groups = s.groups()
-            if g not in groups:
-                return g
+            apps = s.all_apps()
+            if a not in apps:
+                return a
 
             if tries > 3:
-                raise RuntimeError("%r is conflicting, try to pass a new one")
+                raise RuntimeError(
+                        "%r is conflicting, try to pass a new one" % a
+                      )
 
             i = 0
             while True:
-                g = "%s.%s" % (g, i)
-                if g not in groups:
+                a = "%s.%s" % (a, i)
+                if a not in apps:
                     break
             tries += 1
+            return a

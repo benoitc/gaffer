@@ -66,8 +66,9 @@ class Run(Command):
         cmd_str = " ".join(args)
         cmd, args = procfile.parse_cmd(cmd_str)
         name = os.path.basename(cmd)
+        appname = procfile.get_appname()
         params = dict(args=args, env=procfile.env,
                 numprocesses=numprocesses,
                 redirect_output=['out', 'err'])
-        m.add_process(name, cmd, **params)
+        m.add_template(name, cmd, appname=appname, **params)
         m.run()

@@ -78,7 +78,7 @@ class Procfile(object):
                             env[k] = v
         return env
 
-    def get_groupname(self):
+    def get_appname(self):
         if self.root == ".":
             path = os.getcwd()
         else:
