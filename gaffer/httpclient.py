@@ -35,14 +35,13 @@ Example of usage::
 import json
 import signal
 
-import pyuv
 import six
 from tornado import httpclient
 
 from .events import EventEmitter
 from .loop import patch_loop, get_loop
 from .tornado_pyuv import IOLoop
-from .util import quote, quote_plus, unquote, urlencode
+from .util import quote, quote_plus
 
 class GafferNotFound(Exception):
     """ exception raised on HTTP 404 """
@@ -220,6 +219,7 @@ class Server(object):
         if (body is None) and method in ("POST", "PATCH", "PUT"):
             body = ""
 
+        print(url)
         try:
             resp = self.client.fetch(url, method=method, headers=headers,
                     body=body, **self.options)
@@ -251,52 +251,76 @@ class Server(object):
         resp = self.request("get", "/")
         return self.json_body(resp)['version']
 
-    def processes(self):
-        """ get list of registered processes """
-        resp = self.request("get", "/processes")
-        return self.json_body(resp)
-
     def running(self):
-        """ get list of running processes by pid """
-        resp = self.request("get", "/processes", running="true")
-        return self.json_body(resp)
-
+        resp = self.request("get", "/pids")
+        return self.json_body(resp)['pids']
 
     def ping(self):
         resp = self.request("get", "/ping")
         return resp.body == b'OK'
 
+    def walk(self, callback):
+        apps = self.all_apps()
+        for appname in apps:
+            templates = self.get_templates(appname)
+            for template in templates:
+                callback(self, template)
 
-    def get_process(self, name_or_id):
+    def walk_templates(self, callback, appname=None):
+        appname = appname or "system"
+        templates = self.get_templates(appname)
+        for name in templates:
+            callback(self, self.get_template(name, appname))
+
+    def walk_template(self, callback, name, appname=None):
+        appname = appname or "system"
+        template = self.get_template(name, appname)
+        for pid in template.pids:
+            callback(self, self.get_process(pid))
+
+    def all_apps(self):
+        """ get list of registered processes """
+        resp = self.request("get", "/apps")
+        obj = self.json_body(resp)
+        return obj['apps']
+
+    def get_templates(self, appname=None):
+        appname = appname or "system"
+        resp = self.request("get", "/apps/%s" % appname)
+        obj = self.json_body(resp)
+        return obj['templates']
+
+    def get_template(self, name, appname=None):
         """ get a process by name or id.
 
-        If id is given a ProcessId instance is returned in other cases a
+        If id is given a Process instance is returned in other cases a
         Process instance is returned. """
-        resp = self.request("get", "/processes/%s" % name_or_id)
-        process = self.json_body(resp)
 
-        if isinstance(name_or_id, int):
-            return ProcessId(server=self, pid=name_or_id, process=process)
+        appname = appname or "system"
+        resp = self.request("get", "/apps/%s/%s" % (appname, name))
+        config = self.json_body(resp)['config']
+        return Template(server=self, config=config)
 
-        return Process(server=self, process=process)
+    def get_process(self, pid):
+        return Process(server=self, pid=pid)
 
-    def get_pid(self, pid):
-        return ProcessId(server=self, pid=pid)
-
-    def is_process(self, name):
+    def is_template(self, name, appname=None):
         """ is the process exists ? """
-        resp = self.request("head", "/processes/%s" % name)
+
+        appname = appname or "system"
+        resp = self.request("head", "/apps/%s/%s" % (appname, name))
         if resp.code == 200:
             return True
         return False
 
-    def save_process(self, name, cmd, **kwargs):
-        """ save a process.
+    def save_template(self, name, cmd, appname=None, **kwargs):
+        """ save template.
 
         Args:
 
         - **name**: name of the process
         - **cmd**: program command, string)
+        - **appname**: name of the application
         - **args**: the arguments for the command to run. Can be a list or
           a string. If **args** is  a string, it's splitted using
           :func:`shlex.split`. Defaults to None.
@@ -318,92 +342,56 @@ class Server(object):
         if "_force_update" in kwargs:
             force = kwargs.pop("_force_update")
 
-        process = { "name": name, "cmd": cmd }
-        process.update(kwargs)
+        appname = appname or "system"
 
-        body = json.dumps(process)
+        config = { "name": name, "cmd": cmd, "appname": appname }
+        config.update(kwargs)
+
+        body = json.dumps(config)
 
         headers = {"Content-Type": "application/json" }
 
         if force:
-            if self.is_process(name):
-                self.request("put", "/processes/%s" % name, body=body,
+            if self.is_template(name):
+                self.request("put", "/apps/%s/%s" % (appname, name), body=body,
                         headers=headers)
             else:
-                self.request("post", "/processes", body=body,
+                self.request("post", "/apps/%s" % appname, body=body,
                         headers=headers)
         else:
-            self.request("post", "/processes", body=body,
+            self.request("post", "/apps/%s" % appname, body=body,
                         headers=headers)
 
-        return Process(server=self, process=process)
+        return Template(server=self, config=config)
 
-    def add_process(self, name, cmd, **kwargs):
+    def add_template(self, name, cmd, appname=None, **kwargs):
         """ add a process. Use the same arguments as in save_process.
 
         If a process with the same name is already registred a
         `GafferConflict` exception is raised.
         """
         kwargs["_force_update"] = False
-        return self.save_process(name, cmd, **kwargs)
+        return self.save_template(name, cmd, appname=None, **kwargs)
 
-    def update_process(self, name, cmd, **kwargs):
+    def update_template(self, name, cmd, appname=None, **kwargs):
         """ update a process. """
         kwargs["_force_update"] = True
-        return self.save_process(name, cmd, **kwargs)
+        return self.save_template(name, cmd, appname=appname, **kwargs)
 
-    def remove_process(self, name):
+    def remove_template(self, name, appname=None):
         """ Stop a process and remove it from the managed processes """
 
-        self.request("delete", "/processes/%s" % name)
+        appname = appname or "system"
+        self.request("delete", "/apps/%s/%s" % (appname, name))
         return True
 
-    def send_signal(self, name_or_id, num_or_str):
+    def send_signal(self, name, signal, appname=None):
         """ Send a signal to the pid or the process name """
-        if isinstance(num_or_str, six.string_types):
-            signame = num_or_str.upper()
-            if not signame.startswith('SIG'):
-                signame = "SIG%s" % signame
-            try:
-                signum = getattr(signal, signame)
-            except AttributeError:
-                raise ValueError("invalid signal name")
-        else:
-            signum = num_or_str
-
-        self.request('post', "/processes/%s/_signal/%s" % (name_or_id,
-            signum))
-        return True
-
-    def groups(self):
-        """ return the list of all groups """
-        resp = self.request("get", "/groups")
-        return self.json_body(resp)
-
-    def get_group(self, name):
-        """ return the list of all process templates of this group """
-        resp = self.request("get", "/groups/%s" % name)
-        return self.json_body(resp)
-
-    def start_group(self, name):
-        """ start all process templates of the group """
-        self.request("post", "/groups/%s/_start" % name)
-        return True
-
-    def stop_group(self, name):
-        """ stop all process templates of the group """
-        self.request("post", "/groups/%s/_stop" % name)
-        return True
-
-
-    def restart_group(self, name):
-        """ restart all process templates of the group """
-        self.request("post", "/groups/%s/_restart" % name)
-        return True
-
-    def remove_group(self, name):
-        """ remove the group and all process templates of the group """
-        self.request("delete", "/groups/%s" % name)
+        appname = appname or "system"
+        body = json.dumps({"signal": signal})
+        headers = {"Content-Type": "application/json" }
+        self.request('post', "/apps/%s/%s/signal" % (appname, name),
+            body=body, headers=headers)
         return True
 
     def get_watcher(self, heartbeat="true"):
@@ -412,7 +400,7 @@ class Server(object):
                 heartbeat=str(heartbeat))
         return Watcher(self.loop, url, **self.options)
 
-class ProcessId(object):
+class Process(object):
     """ Process Id object. It represent a pid """
 
     def __init__(self, server, pid):
@@ -455,30 +443,30 @@ class ProcessId(object):
 
     def signal(self, sig):
         """ Send a signal to the pid """
-        path = "/%s/signal" % (self.pid, signum)
+        path = "/%s/signal" % (self.pid, sig)
         body = json.dumps({"signal", sig})
         headers = {"Content-Type": "application/json"}
 
         self.server.request("post", path, body=body, headers=headers)
         return True
 
-class Process(object):
-    """ Process object. Represent a remote process state"""
+class Template(object):
+    """ Template object. Represent a remote template state"""
 
-    def __init__(self, server, process):
+    def __init__(self, server, config):
         self.server = server
+        self.config = config
+        self.name = config['name']
+        self.appname = config['appname']
 
-        if isinstance(process, dict):
-            self.process = process
-        else:
-            self.process = server.get_process(process)
 
     def __str__(self):
         return self.process.get('name')
 
     def __getattr__(self, key):
-        if key in self.process:
-            return self.process[key]
+        if key in self.config:
+            return self.config[key]
+
         try:
             return self.__dict__[key]
         except KeyError as e:
@@ -487,91 +475,71 @@ class Process(object):
     @property
     def active(self):
         """ return True if the process is active """
-        status = self.status()
-        return status['active']
+        resp = self.server.request("get", "/apps/%s/%s/state" % (self.appname,
+            self.name))
+        if resp.body == b'1':
+            return True
+        return False
 
     @property
     def running(self):
         """ return the number of processes running for this template """
-        status = self.status()
-        return status['running']
+        info = self.info()
+        return info['running']
 
     @property
     def numprocesses(self):
         """ return the maximum number of processes that can be launched
         for this template """
-        status = self.status()
-        return status['max_processes']
+        info = self.info()
+        return info['max_processes']
 
     @property
     def pids(self):
         """ return a list of running pids """
-        resp = self.server.request("get", "/processes/%s/_pids" %
-                self.process['name'])
-
+        resp = self.server.request("get", "/apps/%s/%s/pids" % (self.appname,
+            self.name))
         result = self.server.json_body(resp)
         return result['pids']
 
     def info(self):
         """ return the process info dict """
-        return self.process
+        resp = self.server.request("get", "/apps/%s/%s" % (self.appname,
+            self.name))
+        return self.server.json_body(resp)
 
-    def status(self):
-        """ Return the status
-
-        ::
-
-            {
-                "active": true,
-                "running": 1,
-                "numprocesses": 1
-            }
-
+    def stats(self):
+        """ Return the template stats
         """
-        resp = self.server.request("get", "/status/%s" % self.process['name'])
+        resp = self.server.request("get", "/apps/%s/%s" % (self.appname,
+            self.name))
         return self.server.json_body(resp)
 
 
     def start(self):
         """ start the process if not started, spawn new processes """
-        self.server.request("post", "/processes/%s/_start" %
-                self.process['name'])
+        self.server.request("post", "/apps/%s/%s/state" % (self.appname,
+            self.name), body="1")
         return True
 
     def stop(self):
         """ stop the process """
-        self.server.request("post", "/processes/%s/_stop" %
-                self.process['name'])
+        self.server.request("post", "/apps/%s/%s/state" % (self.appname,
+            self.name), body="0")
         return True
 
     def restart(self):
         """ restart the process """
-        self.server.request("post", "/processes/%s/_restart" %
-                self.process['name'])
+        self.server.request("post", "/apps/%s/%s/state" % (self.appname,
+            self.name), body="2")
         return True
 
-    def add(self, num=1):
-        """ increase the number of processes for this template """
-        resp = self.server.request("post", "/processes/%s/_add/%s" %
-                (self.process['name'], num))
-
-        obj = self.server.json_body(resp)
-        return obj['numprocesses']
-
-    def sub(self, num=1):
-        """ decrease the number of processes for this template """
-
-        resp = self.server.request("post", "/processes/%s/_sub/%s" %
-                (self.process['name'], num))
-
-        obj = self.server.json_body(resp)
-        return obj['numprocesses']
-
-    def stats(self):
-        resp = self.server.request("get", "/stats/%s" % self.process['name'])
-        return self.server.json_body(resp)
-
-
+    def scale(self, num=1):
+        body = json.dumps({"scale": num})
+        resp = self.server.request("post", "/apps/%s/%s/numprocesses" % (
+            self.appname, self.name), body=body)
+        result = self.server.json_body(resp)
+        return result['numprocesses']
 
     def signal(self, num_or_str):
         """ send a signal to all processes of this template """
@@ -586,8 +554,9 @@ class Process(object):
         else:
             signum = num_or_str
 
-        self.server.request("post", "/processes/%s/_signal/%s" %
-                (self.process['name'], signum))
+        body = json.dumps({"signal": signum})
+        self.server.request("post", "/apps/%s/%s/signal" % (self.appname,
+            self.name), body=body)
         return True
 
 # ----------- helpers

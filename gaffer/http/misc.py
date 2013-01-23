@@ -18,23 +18,6 @@ class VersionHandler(CorsHandler):
         self.preflight()
         self.write({"name": "gaffer", "version": __version__})
 
-
-class StatusHandler(CorsHandler):
-
-    def get(self, *args):
-        self.preflight()
-        m = self.settings.get('manager')
-        name = args[0]
-
-        try:
-            ret = m.get_process_status(name)
-        except KeyError:
-            self.set_status(404)
-            self.write({"error": "not_found"})
-            return
-
-        self.write(ret)
-
 class PingHandler(CorsHandler):
 
     def get(self):

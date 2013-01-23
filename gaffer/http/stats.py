@@ -70,7 +70,6 @@ class StatsHandler(AsyncHandler):
             else:
                 return self.send_not_found()
 
-
     def _handle_disconnect(self):
         if not self._source:
             return

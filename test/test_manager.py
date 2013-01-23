@@ -471,7 +471,6 @@ def test_application():
     started = []
     stopped = []
     def cb(evtype, info):
-        print(info)
         if evtype == "start":
             started.append((info['appname'], info['name']))
         elif evtype == "stop":

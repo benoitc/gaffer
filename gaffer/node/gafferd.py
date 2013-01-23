@@ -132,8 +132,8 @@ class Server(object):
         self.manager.start(apps=apps)
 
         # add processes
-        for name, cmd, params in self.processes:
-            self.manager.add_process(name, cmd, **params)
+        for name, appname, cmd, params in self.processes:
+            self.manager.add_template(name, cmd, appname=appname, **params)
 
         # run the main loop
         self.manager.run()
@@ -158,6 +158,16 @@ class Server(object):
         cfg_files_read.extend(cfg.read(includes))
 
         return cfg, cfg_files_read
+
+    def _split_name(self, name):
+        if "/" in name:
+            name, appname = name.split("/", 1)
+        elif ":" in name:
+            name, appname = name.split(":", 1)
+        else:
+            appname = "system"
+        return name, appname
+
 
     def parse_config(self, config_file):
         cfg, cfg_files_read = self.read_config(config_file)
@@ -196,6 +206,7 @@ class Server(object):
                         endpoints.append(HttpEndpoint(**kwargs))
             elif section.startswith('process:'):
                 name = section.split("process:", 1)[1]
+                name, appname = self._split_name(name)
                 cmd = cfg.dget(section, 'cmd', '')
                 if cmd:
                     params = PROCESS_DEFAULTS.copy()
@@ -245,22 +256,25 @@ class Server(object):
                             params[key] = cfg.dgetint(section, key,
                                     six.MAXSIZE)
 
-                    processes.append((name, cmd, params))
+                    processes.append((name, appname, cmd, params))
             elif section == "webhooks":
                 for key, val in cfg.items(section):
                     webhooks.append((key, val))
             elif section.startswith('env:'):
                 pname = section.split("env:", 1)[1]
+                name, appname = self._split_name(pname)
+
+
                 kvs = [(key.upper(), val) for key, val in cfg.items(section)]
-                envs[pname] = dict(kvs)
+                envs[(appname, name)] = dict(kvs)
 
         # add environment variables
-        for name, cmd, params in processes:
-            if name in envs:
-                params['env'] = envs[name]
+        for name, appname, cmd, params in processes:
+            if (appname, name) in envs:
+                params['env'] = envs[(appname, name)]
 
         # sort processes by priority
-        processes = sorted(processes, key=lambda p: p[2]['priority'])
+        processes = sorted(processes, key=lambda p: p[3]['priority'])
 
         if not endpoints:
             # we create a default endpoint
