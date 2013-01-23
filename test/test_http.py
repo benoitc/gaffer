@@ -11,7 +11,7 @@ import pyuv
 from gaffer import __version__
 from gaffer.manager import Manager
 from gaffer.http_handler import HttpEndpoint, HttpHandler
-from gaffer.httpclient import (Server, Process, ProcessId,
+from gaffer.httpclient import (Server, Template, Process,
         GafferNotFound, GafferConflict)
 
 from test_manager import dummy_cmd
@@ -63,64 +63,59 @@ def test_multiple_handers():
     m.stop()
     m.run()
 
-def test_processes():
+def test_template():
     m, s = init()
 
-    assert s.processes() == []
+    assert s.get_templates() == []
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
+    m.add_template("dummy", cmd, args=args, cwd=wdir, start=False)
     time.sleep(0.2)
-    assert len(m.processes) == 1
-    assert len(s.processes()) == 1
-    assert s.processes()[0] == "dummy"
+    assert len(m.get_templates()) == 1
+    assert len(s.get_templates()) == 1
+    assert s.get_templates()[0] == "dummy"
 
     m.stop()
     m.run()
 
-def test_process_create():
+def test_template_create():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
+    s.add_template("dummy", cmd, args=args, cwd=wdir, start=False)
     time.sleep(0.2)
-    assert len(m.processes) == 1
-    assert len(s.processes()) == 1
-    assert s.processes()[0] == "dummy"
-    assert "dummy" in m.processes
+    assert len(m.get_templates()) == 1
+    assert len(s.get_templates()) == 1
+    assert s.get_templates()[0] == "dummy"
+    assert "dummy" in m.get_templates()
     assert len(m.running) == 0
 
     with pytest.raises(GafferConflict):
-        s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
+        s.add_template("dummy", cmd, args=args, cwd=wdir, start=False)
 
-    p = s.get_process("dummy")
-    assert isinstance(p, Process)
+    p = s.get_template("dummy")
+    assert isinstance(p, Template)
 
     m.stop()
 
     m.run()
 
-def test_process_remove():
+def test_template():
     m, s = init()
-
     testfile, cmd, args, wdir = dummy_cmd()
-    s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
-
-    assert s.processes()[0] == "dummy"
-
-    s.remove_process("dummy")
-    assert len(s.processes()) == 0
-    assert len(m.processes) == 0
-
+    s.add_template("dummy", cmd, args=args, cwd=wdir, start=False)
+    assert s.get_templates()[0] == "dummy"
+    s.remove_template("dummy")
+    assert len(s.get_templates()) == 0
+    assert len(m.get_templates()) == 0
     m.stop()
-
     m.run()
 
 def test_notfound():
     m, s = init()
 
     with pytest.raises(GafferNotFound):
-        s.get_process("dummy")
+        s.get_template("dummy")
 
     m.stop()
     m.run()
@@ -129,27 +124,27 @@ def test_process_start_stop():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
-    assert isinstance(p, Process)
+    p = s.add_template("dummy", cmd, args=args, cwd=wdir, start=False)
+    assert isinstance(p, Template)
 
     p.start()
     time.sleep(0.2)
 
     assert len(m.running) == 1
-    status = p.status()
-    assert status['running'] == 1
-    assert status['active'] == True
-    assert status['max_processes'] == 1
+    info = p.info()
+    assert info['running'] == 1
+    assert info['active'] == True
+    assert info['max_processes'] == 1
 
     p.stop()
     time.sleep(0.2)
     assert len(m.running) == 0
     assert p.active == False
 
-    s.remove_process("dummy")
-    assert len(s.processes()) == 0
+    s.remove_template("dummy")
+    assert len(s.get_templates()) == 0
 
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir, start=True)
+    p = s.add_template("dummy", cmd, args=args, cwd=wdir, start=True)
     time.sleep(0.2)
     assert len(m.running) == 1
     assert p.active == True
@@ -162,23 +157,23 @@ def test_process_start_stop():
     m.stop()
     m.run()
 
-def test_process_add_sub():
+def test_template_scale():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    p = s.add_template("dummy", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
-    assert isinstance(p, Process)
+    assert isinstance(p, Template)
     assert p.active == True
     assert p.numprocesses == 1
 
 
-    p.add(3)
+    p.scale(3)
     time.sleep(0.2)
     assert p.numprocesses == 4
     assert p.running == 4
 
-    p.sub(3)
+    p.scale(-3)
     time.sleep(0.2)
     assert p.numprocesses == 1
     assert p.running == 1
@@ -190,7 +185,7 @@ def test_running():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    s.add_process("dummy", cmd, args=args, cwd=wdir)
+    s.add_template("dummy", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
 
     assert len(m.running) == 1
@@ -207,14 +202,14 @@ def test_pids():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    p = s.add_template("dummy", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
 
-    p = s.get_process("dummy")
-    assert isinstance(p, Process) == True
+    p = s.get_template("dummy")
+    assert isinstance(p, Template) == True
 
-    pid = s.get_pid(1)
-    assert isinstance(pid, ProcessId) == True
+    pid = s.get_process(1)
+    assert isinstance(pid, Process) == True
     assert pid.pid == 1
     assert pid.info.get('name') == "dummy"
     assert pid.name == "dummy"
@@ -227,19 +222,17 @@ def test_pids():
     time.sleep(0.2)
     assert p.pids == [2]
     m.stop()
-
-    m.stop()
     m.run()
 
 
 def test_stats():
     m, s = init()
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    p = s.add_template("dummy", cmd, args=args, cwd=wdir)
     time.sleep(0.2)
 
-    pid = s.get_pid(1)
-    assert isinstance(pid, ProcessId) == True
+    pid = s.get_process(1)
+    assert isinstance(pid, Process) == True
     assert pid.pid == 1
 
     stats = pid.stats
@@ -251,32 +244,42 @@ def test_stats():
     m.stop()
     m.run()
 
-def test_groups():
+def test_applications():
     m, s = init()
     started = []
     stopped = []
     def cb(evtype, info):
         if evtype == "start":
-            started.append(info['name'])
+            started.append((info['appname'], info['name']))
         elif evtype == "stop":
-            stopped.append(info['name'])
+            stopped.append((info['appname'], info['name']))
 
     m.subscribe('start', cb)
     m.subscribe('stop', cb)
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("ga:a", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("ga:b", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("gb:a", cmd, args=args, cwd=wdir, start=False)
-    groups = sorted(s.groups())
-    ga1 = s.get_group('ga')
-    gb1 = s.get_group('gb')
-    s.start_group("ga")
-    s.stop_group("ga")
-    time.sleep(0.2)
-    m.remove_process("ga:a")
-    time.sleep(0.2)
-    ga2 = s.get_group('ga')
-    m.stop_group("gb")
+    m.add_template("a", cmd, appname="ga", args=args, cwd=wdir, start=False)
+    m.add_template("b", cmd, appname="ga", args=args, cwd=wdir, start=False)
+    m.add_template("a", cmd, appname="gb", args=args, cwd=wdir, start=False)
+
+    apps = s.all_apps()
+
+    ga1 = s.get_templates('ga')
+    gb1 = s.get_templates('gb')
+
+    start_app = lambda m, t: t.start()
+    stop_app = lambda m, t: t.stop()
+
+    s.walk_templates(start_app, "ga")
+    s.walk_templates(start_app, "gb")
+
+    ga2 = []
+    def rem_cb(h):
+        s.remove_template("a", "ga")
+        [ga2.append(name) for name in s.get_templates('ga')]
+
+    t0 = pyuv.Timer(m.loop)
+    t0.start(rem_cb, 0.2, 0.0)
+    s.walk_templates(stop_app, "gb")
 
     def stop(handle):
         m.unsubscribe("start", cb)
@@ -284,15 +287,15 @@ def test_groups():
         m.stop()
 
     t = pyuv.Timer(m.loop)
-    t.start(stop, 0.4, 0.0)
+    t.start(stop, 0.6, 0.0)
     m.run()
 
-    assert groups == ['ga', 'gb']
-    assert ga1 == ['ga:a', 'ga:b']
-    assert gb1 == ['gb:a']
-    assert started == ['ga:a', 'ga:b']
-    assert stopped == ['ga:a', 'ga:b', 'gb:a']
-    assert ga2 == ['ga:b']
+    assert apps == ['ga', 'gb']
+    assert ga1 == ['a', 'b']
+    assert gb1 == ['a']
+    assert started == [('ga', 'a'), ('ga', 'b'), ('gb', 'a')]
+    assert stopped == [('gb', 'a'), ('ga', 'a')]
+    assert ga2 == ['b']
 
 if __name__ == "__main__":
-    test_basic()
+    test_template()

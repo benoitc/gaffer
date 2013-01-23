@@ -12,10 +12,19 @@ from .util import CorsHandler
 from ..error import ProcessError
 
 
+class AllProcessIdsHandler(CorsHandler):
+
+    def get(self, *args):
+        self.preflight()
+        self.set_header('Content-Type', 'application/json')
+        m = self.settings.get('manager')
+        self.write({"pids": list(m.running)})
+
 class ProcessIdHandler(CorsHandler):
 
     def head(self, *args):
         self.preflight()
+        self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
         try:
@@ -26,7 +35,7 @@ class ProcessIdHandler(CorsHandler):
             return
 
         try:
-            m.get_pid(pid)
+            m.get_process(pid)
         except ProcessError:
             self.set_status(404)
             return
@@ -35,6 +44,7 @@ class ProcessIdHandler(CorsHandler):
 
     def get(self, *args):
         self.preflight()
+        self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
         try:
@@ -45,8 +55,8 @@ class ProcessIdHandler(CorsHandler):
             return
 
         try:
-            p = m.get_pid(pid)
-        except ProcesssError as e:
+            p = m.get_process(pid)
+        except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
 
@@ -54,6 +64,7 @@ class ProcessIdHandler(CorsHandler):
 
     def delete(self, *args):
         self.preflight()
+        self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
         try:
@@ -64,13 +75,10 @@ class ProcessIdHandler(CorsHandler):
             return
 
         try:
-            p = m.get_pid(pid)
-        except ProcesssError as e:
+            m.stop_process(pid)
+        except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
-
-        # stop the pid
-        m.stop_pid(pid)
 
         # return the response, we set the status to accepted since the result
         # is async.
@@ -82,6 +90,7 @@ class ProcessIdSignalHandler(CorsHandler):
 
     def post(self, *args):
         self.preflight()
+        self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
         try:
@@ -93,8 +102,8 @@ class ProcessIdSignalHandler(CorsHandler):
 
         # get pidnum
         try:
-            p = m.get_pid(pid)
-        except ProcesssError as e:
+            p = m.get_process(pid)
+        except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
 
@@ -133,6 +142,7 @@ class ProcessIdStatsHandler(CorsHandler):
 
     def get(self, *args):
         self.preflight()
+        self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
         try:
@@ -144,8 +154,8 @@ class ProcessIdStatsHandler(CorsHandler):
 
         # get pidnum
         try:
-            p = m.get_pid(pid)
-        except ProcesssError as e:
+            p = m.get_process(pid)
+        except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
 

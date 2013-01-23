@@ -41,7 +41,7 @@ def get_process_stats(process=None, interval=0):
         stats['mem_info1'] = bytes2human(mem_info[0])
         stats['mem_info2'] = bytes2human(mem_info[1])
     except AccessDenied:
-        stats['mem_info1'] = info['mem_info2'] = "N/A"
+        stats['mem_info1'] = stats['mem_info2'] = "N/A"
 
     try:
         stats['cpu'] = process.get_cpu_percent(interval=interval)

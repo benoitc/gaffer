@@ -62,9 +62,9 @@ def test_manager_hooks():
     m = Manager(loop=loop)
     m.start(apps=[WebHooks(hooks)])
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    m.ttin("dummy", 1)
-    m.remove_process("dummy")
+    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.scale("dummy", 1)
+    m.remove_template("dummy")
 
     def on_stop(manager):
         s.stop()
@@ -83,7 +83,7 @@ def test_manager_hooks():
     assert ('update', 'dummy') in emitted
     assert ('stop', 'dummy') in emitted
     assert ('delete', 'dummy') in emitted
-    assert ('proc.dummy.start', 'dummy') in emitted
-    assert ('proc.dummy.spawn', 'dummy') in emitted
-    assert ('proc.dummy.stop', 'dummy') in emitted
-    assert ('proc.dummy.exit', 'dummy') in emitted
+    assert ('proc.system.dummy.start', 'dummy') in emitted
+    assert ('proc.system.dummy.spawn', 'dummy') in emitted
+    assert ('proc.system.dummy.stop', 'dummy') in emitted
+    assert ('proc.system.dummy.exit', 'dummy') in emitted

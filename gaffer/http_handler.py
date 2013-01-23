@@ -26,11 +26,15 @@ DEFAULT_HANDLERS = [
         (r'/([0-9^/]+)', http.ProcessIdHandler),
         (r'/([0-9^/]+)/signal$', http.ProcessIdSignalHandler),
         (r'/([0-9^/]+)/stats$', http.ProcessIdStatsHandler),
-        (r'/processes', http.ProcessesHandler),
-        (r'/processes/([^/]+)', http.ProcessHandler),
-        (r'/processes/([^/]+)/(_[^/]+)$', http.ProcessManagerHandler),
-        (r'/processes/([^/]+)/(_[^/]+)/(.*)$', http.ProcessManagerHandler),
-        (r'/status/([^/]+)', http.StatusHandler),
+        (r'/pids', http.AllProcessIdsHandler),
+        (r'/apps', http.AllApplicationsHandler),
+        (r'/apps/([^/]+)', http.TemplatesHandler),
+        (r'/apps/([^/]+)/([^/]+)', http.TemplateHandler),
+        (r'/apps/([^/]+)/([^/]+)/stats$', http.TemplateStatsHandler),
+        (r'/apps/([^/]+)/([^/]+)/numprocesses$', http.ScaleTemplateHandler),
+        (r'/apps/([^/]+)/([^/]+)/signal$', http.SignalTemplateHandler),
+        (r'/apps/([^/]+)/([^/]+)/state$', http.StateTemplateHandler),
+        (r'/apps/([^/]+)/([^/]+)/pids$', http.PidsTemplateHandler),
         (r'/watch', http.WatcherHandler),
         (r'/watch/([^/]+)$', http.WatcherHandler),
         (r'/watch/([^/]+)/([^/]+)$', http.WatcherHandler),
@@ -39,10 +43,7 @@ DEFAULT_HANDLERS = [
         (r'/stats/([^/]+)', http.StatsHandler),
         (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
         (r'/streams/([0-9^/]+)/([^/]+)$', http.StreamHandler),
-        (r'/wstreams/([0-9^/]+)$', http.WStreamHandler),
-        (r'/groups', http.GroupsHandler),
-        (r'/groups/([^/]+)$', http.GroupHandler),
-        (r'/groups/([^/]+)/(_[^/]+)$', http.GroupHandler),
+        (r'/wstreams/([0-9^/]+)$', http.WStreamHandler)
 ]
 
 class HttpEndpoint(object):

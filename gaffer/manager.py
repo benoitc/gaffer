@@ -91,7 +91,7 @@ class Manager(object):
         self._tracker = ProcessTracker(self.loop)
 
         # initialize some values
-        self.mapps = None
+        self.mapps = []
         self.started = False
         self._stop_ev = None
         self.max_process_id = 0
@@ -119,8 +119,8 @@ class Manager(object):
         self.subscribe('exit', self._on_exit)
 
         # start contollers
-        for ctl in self.apps:
-            ctl.start(self.loop, self)
+        for mapp in self.mapps:
+            mapp.start(self.loop, self)
 
         self.started = True
 
@@ -177,7 +177,7 @@ class Manager(object):
                     callback(self, templates[name])
 
     def walk_templates(self, callback, appname = None):
-        appnama = appname or "system"
+        appname = appname or "system"
         with self._lock:
             try:
                 templates = self.apps[appname]
@@ -360,7 +360,7 @@ class Manager(object):
 
             # if the list of templates for this application is empty, delete
             # this application
-            if len(self.apps[appname]) == 0:
+            if len(self.apps[appname]) == 0 and appname != "system":
                 del self.apps[appname]
 
             # notify other that this template has been deleted
