@@ -396,6 +396,9 @@ class Process(object):
             self._stdio.append(stream.stdio)
         # create containers for custom channels.
         for channel in self.custom_channels:
+            assert not channel.closed, \
+                "Closed channel {0!r} can't be passed to process!" \
+                    .format(channel)
             self._stdio.append(pyuv.StdIO(stream=channel,
                 flags=pyuv.UV_INHERIT_STREAM))
 
