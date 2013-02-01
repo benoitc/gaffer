@@ -53,8 +53,8 @@ def create_hooks(events):
 
 def test_manager_hooks():
     hooks = create_hooks(['create', 'start', 'update', 'stop',
-        'delete', 'proc.dummy.start', 'proc.dummy.spawn',
-        'proc.dummy.stop', 'proc.dummy.exit'])
+        'delete', 'proc.system.dummy.start', 'proc.system.dummy.spawn',
+        'proc.system.dummy.stop', 'proc.system.dummy.exit'])
     emitted = []
     loop = pyuv.Loop.default_loop()
     s = get_server(loop, emitted)

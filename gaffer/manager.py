@@ -85,7 +85,7 @@ class Manager(object):
             self.loop = get_loop(True)
 
         # initialize the emitter
-        self._emitter = EventEmitter(self.loop)
+        self.events = EventEmitter(self.loop)
 
         # initialize the process tracker
         self._tracker = ProcessTracker(self.loop)
@@ -151,7 +151,7 @@ class Manager(object):
 
         'on' is an alias to this function
         """
-        self._emitter.subscribe(evtype, listener)
+        self.events.subscribe(evtype, listener)
     on = subscribe
 
     def subscribe_once(self, evtype, listener):
@@ -159,12 +159,12 @@ class Manager(object):
 
         'once' is an alias to this function
         """
-        self._emitter.subscribe_once(evtype, listener)
+        self.events.subscribe_once(evtype, listener)
     once = subscribe
 
     def unsubscribe(self, evtype, listener):
         """ unsubscribe from the event *eventype* """
-        self._emitter.unsubscribe(evtype, listener)
+        self.events.unsubscribe(evtype, listener)
 
 
     def all_apps(self):
@@ -788,7 +788,7 @@ class Manager(object):
     def _publish(self, evtype, **ev):
         event = {"event": evtype }
         event.update(ev)
-        self._emitter.publish(evtype, event)
+        self.events.publish(evtype, event)
 
 
     # ------------- events handler

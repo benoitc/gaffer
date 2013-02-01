@@ -232,12 +232,12 @@ def test_redirect_output():
     ev2 = monitored2[0]
 
     assert ev1[0] == 'stdout'
-    assert ev1[1] == {'data': b'hello out', 'pid': "someid",
-            'name': 'dummy', 'event': 'stdout'}
+    assert ev1[1] == {"appname": "system", 'data': b'hello out',
+            'pid': "someid", 'name': 'dummy', 'event': 'stdout'}
 
     assert ev2[0] == 'stderr'
-    assert ev2[1] == {'data': b'hello err', 'pid': "someid",
-            'name': 'dummy', 'event': 'stderr'}
+    assert ev2[1] == {"appname": "system", 'data': b'hello err',
+            'pid': "someid", 'name': 'dummy', 'event': 'stderr'}
 
 def test_redirect_input():
     loop = pyuv.Loop.default_loop()
