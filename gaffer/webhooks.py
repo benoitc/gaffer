@@ -183,10 +183,10 @@ class WebHooks(object):
 
     def _start_monitor(self):
         with self._lock:
-            self.manager.subscribe(".", self._on_event)
+            self.manager.events.subscribe(".", self._on_event)
             self._active = increment(self._active)
 
     def _stop_monitor(self):
         with self._lock:
-            self.manager.unsubscribe(".", self._on_event)
+            self.manager.events.unsubscribe(".", self._on_event)
         self._active = decrement(self._active)
