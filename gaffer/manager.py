@@ -456,7 +456,7 @@ class Manager(object):
             self._tracker.check(p, state.graceful_timeout)
 
             # notify  other that the process is beeing stopped
-            self._publish("stop_pid", name=p.name, pid=p.pid, os_pid=p.os_pid)
+            self._publish("proc.%s.stop" % p.pid, name=p.name, pid=p.pid, os_pid=p.os_pid)
             self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid,
                     os_pid=p.os_pid)
 
@@ -662,8 +662,8 @@ class Manager(object):
                 break
 
             # notify  other that the process is beeing stopped
-            self._publish("stop_pid", name=p.name, appname=appname, pid=p.pid,
-                    os_pid=p.os_pid)
+            self._publish("proc.%s.stop" % p.pid, name=p.name,
+                    appname=appname, pid=p.pid, os_pid=p.os_pid)
             self._publish("proc.%s.%s.stop_pid" % (p.appname, p.name),
                     name=p.name, pid=p.pid, os_pid=p.os_pid)
 
@@ -701,6 +701,10 @@ class Manager(object):
                 appname=p.appname, pid=pid, detached=p.detach,
                 os_pid=p.os_pid)
 
+        self._publish("proc.%s.spawn" % pid, name=p.name,
+                appname=p.appname, pid=pid, detached=p.detach,
+                os_pid=p.os_pid)
+
     def _spawn_processes(self, state):
         """ spawn all processes for a state """
         num_to_start = state.numprocesses - len(state.running)
@@ -734,6 +738,9 @@ class Manager(object):
                 # notify others that the process is beeing reaped
                 self._publish("reap", name=p.name, pid=p.pid, os_pid=p.os_pid)
                 self._publish("proc.%s.%s.reap" % (p.appname, p.name),
+                        name=p.name, appname=p.appname, pid=p.pid,
+                        os_pid=p.os_pid)
+                self._publish("proc.%s.reap" % p.pid,
                         name=p.name, appname=p.appname, pid=p.pid,
                         os_pid=p.os_pid)
 
@@ -838,3 +845,4 @@ class Manager(object):
             self._publish("exit", **ev_details)
             self._publish("proc.%s.%s.exit" % (process.appname, process.name),
                 **ev_details)
+            self._publish("proc.%s.exit" % process.pid, **ev_details)
