@@ -300,7 +300,7 @@ def test_events():
         emitted.append((ev, msg['name']))
 
     # subscribe to all events
-    m.subscribe('.', cb)
+    m.events.subscribe('.', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
@@ -327,7 +327,7 @@ def test_process_events():
         emitted.append(ev)
 
     # subscribe to all events
-    m.subscribe('proc.system.dummy', cb)
+    m.events.subscribe('proc.system.dummy', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_template("dummy", cmd, args=args, cwd=wdir)
@@ -351,7 +351,7 @@ def test_process_exit_event():
         emitted.append(msg)
 
     # subscribe to all events
-    m.subscribe('proc.system.dummy.exit', cb)
+    m.events.subscribe('proc.system.dummy.exit', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_template("dummy", cmd, args=args, cwd=wdir)
@@ -446,7 +446,7 @@ def test_priority():
         started.append(info['name'])
 
     m.start()
-    m.subscribe('start', cb)
+    m.events.subscribe('start', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_template("a", cmd, args=args, cwd=wdir, start=False)
@@ -457,7 +457,7 @@ def test_priority():
     m.walk(lambda m, t: m.start_template(t.name, t.appname))
 
     def stop(handle):
-        m.unsubscribe("start", cb)
+        m.events.unsubscribe("start", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
@@ -477,8 +477,8 @@ def test_application():
             stopped.append((info['appname'], info['name']))
 
     m.start()
-    m.subscribe('start', cb)
-    m.subscribe('stop', cb)
+    m.events.subscribe('start', cb)
+    m.events.subscribe('stop', cb)
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_template("a", cmd, appname="ga", args=args, cwd=wdir, start=False)
     m.add_template("b", cmd, appname="ga", args=args, cwd=wdir, start=False)
@@ -506,8 +506,8 @@ def test_application():
     m.walk_templates(stop_app, "gb")
 
     def stop(handle):
-        m.unsubscribe("start", cb)
-        m.unsubscribe("stop", cb)
+        m.events.unsubscribe("start", cb)
+        m.events.unsubscribe("stop", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
