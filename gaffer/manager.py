@@ -30,6 +30,7 @@ from .events import EventEmitter
 from .error import ProcessError
 from .queue import AsyncQueue
 from .process import Process
+from .pubsub import Topic
 from .state import ProcessState, ProcessTracker
 from .sync import increment
 
@@ -98,6 +99,7 @@ class Manager(object):
         self.processes = OrderedDict()
         self.running = OrderedDict()
         self.apps = OrderedDict()
+        self._topics = {}
         self._updates = deque()
         self._signals = []
 
@@ -116,7 +118,7 @@ class Manager(object):
         self._tracker.start()
 
         # manage processes
-        self.subscribe('exit', self._on_exit)
+        self.events.subscribe('exit', self._on_exit)
 
         # start contollers
         for mapp in self.mapps:
@@ -146,26 +148,17 @@ class Manager(object):
         threadsafe """
         self._mq.send(partial(self._restart, callback))
 
-    def subscribe(self, evtype, listener):
-        """ subscribe to the manager event *eventype*
+    def subscribe(self, topic):
+        if topic not in self._topics:
+            self._topics[topic] = Topic(topic, self)
+            self._topics[topic].start()
 
-        'on' is an alias to this function
-        """
-        self.events.subscribe(evtype, listener)
-    on = subscribe
+        return self._topics[topic].subscribe()
 
-    def subscribe_once(self, evtype, listener):
-        """ subscribe once to the manager event *eventype*
-
-        'once' is an alias to this function
-        """
-        self.events.subscribe_once(evtype, listener)
-    once = subscribe
-
-    def unsubscribe(self, evtype, listener):
-        """ unsubscribe from the event *eventype* """
-        self.events.unsubscribe(evtype, listener)
-
+    def unsubscribe(self, channel):
+        if topic not in self._topics:
+            return
+        self._topics[topic].unsubscribe(channel)
 
     def all_apps(self):
         return list(self.apps)
