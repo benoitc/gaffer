@@ -254,8 +254,8 @@ def test_applications():
         elif evtype == "stop":
             stopped.append((info['appname'], info['name']))
 
-    m.subscribe('start', cb)
-    m.subscribe('stop', cb)
+    m.events.subscribe('start', cb)
+    m.events.subscribe('stop', cb)
     testfile, cmd, args, wdir = dummy_cmd()
     m.add_template("a", cmd, appname="ga", args=args, cwd=wdir, start=False)
     m.add_template("b", cmd, appname="ga", args=args, cwd=wdir, start=False)
@@ -282,8 +282,8 @@ def test_applications():
     s.walk_templates(stop_app, "gb")
 
     def stop(handle):
-        m.unsubscribe("start", cb)
-        m.unsubscribe("stop", cb)
+        m.events.unsubscribe("start", cb)
+        m.events.unsubscribe("stop", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
