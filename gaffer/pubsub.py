@@ -35,8 +35,8 @@ class EventChannel(object):
         self._emitter.publish(evtype, event)
 
 
-class DataChannel(object):
-    """ a data channel.
+class StatChannel(object):
+    """ a channel to collect stats.
 
     This channel is used to collect stats or stream data. """
 
@@ -150,7 +150,7 @@ class Topic(object):
         elif source == "STREAM":
             if self.pid:
                 proc = self.manager.get_process(self.pid)
-                proc.unmonitor_io(".", self._dispatch_data)
+                proc.unmonitor_io(".", self._dispatch_events)
 
         self.active = False
 
@@ -170,10 +170,10 @@ class Topic(object):
         if not self.active:
             self.start()
 
-        if self.source in ("EVENTS", "PROCESS",):
+        if self.source in ("EVENTS", "PROCESS", "STREAM"):
             chan = EventChannel(self)
         else:
-            chan = DataChannel(self)
+            chan = StatChannel(self)
 
         self.channels.add(chan)
         return chan

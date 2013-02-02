@@ -86,4 +86,3 @@ def test_stats():
     res = monitored[0]
     assert "cpu" in res
     assert res["os_pid"] == os_pid
-
