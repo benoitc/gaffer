@@ -105,19 +105,9 @@ class FlappingInfo(object):
         self.retries = 0
 
 class ProcessState(object):
-    """ object used by the manager to maintain the process state """
+    """ object used by the manager to maintain the process state for a
+    session. """
 
-    DEFAULT_PARAMS = {
-            "args": None,
-            "env": None,
-            "uid": None,
-            "gid": None,
-            "cwd": None,
-            "shell": False,
-            "redirect_output": [],
-            "redirect_input": False,
-            "custom_streams": [],
-            "custom_channels": []}
 
     def __init__(self, name, cmd, appname="system", **settings):
         self.running = deque()
