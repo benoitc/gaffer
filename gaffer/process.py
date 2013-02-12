@@ -123,7 +123,7 @@ class RedirectIO(object):
 
         label = getattr(handle, 'label')
         msg = dict(event=label, name=self.process.name,
-                appname=self.process.appname, pid=self.process.pid, data=data)
+                sessionid=self.process.sessionid, pid=self.process.pid, data=data)
         self._emitter.publish(label, msg)
 
 
@@ -169,7 +169,8 @@ class RedirectStdin(object):
 
         label = getattr(handle, 'label')
         msg = dict(event=label, name=self.process.name,
-                appname=self.process.appname, pid=self.process.id, data=data)
+                sessionid=self.process.sessionid, pid=self.process.pid,
+                data=data)
         self._emitter.publish(label, msg)
 
 
@@ -195,7 +196,8 @@ class Stream(RedirectStdin):
             return
 
         msg = dict(event='READ', name=self.process.name,
-                appname=self.process.appname, pid=self.process.pid, data=data)
+                sessionid=self.process.sessionid, pid=self.process.pid,
+                data=data)
         self._emitter.publish('READ', msg)
 
 
@@ -260,6 +262,112 @@ class ProcessWatcher(object):
             self._timer.start(self._async_refresh, 0.1, 0.1)
             self._active = increment(self._active)
 
+
+class ProcessConfig(object):
+    """ object to maintain a process config """
+
+    DEFAULT_PARAMS = {
+            "args": None,
+            "env": None,
+            "uid": None,
+            "gid": None,
+            "cwd": None,
+            "shell": False,
+            "redirect_output": [],
+            "redirect_input": False,
+            "custom_streams": [],
+            "custom_channels": []}
+
+    def __init__(self, name, cmd, **settingss):
+        """
+        Initialize the ProcessConfig object
+
+        Args:
+
+        - **name**: name of the process
+        - **cmd**: program command, string)
+
+        Settings:
+
+        - **args**: the arguments for the command to run. Can be a list or
+          a string. If **args** is  a string, it's splitted using
+          :func:`shlex.split`. Defaults to None.
+        - **env**: a mapping containing the environment variables the command
+          will run with. Optional
+        - **uid**: int or str, user id
+        - **gid**: int or st, user group id,
+        - **cwd**: working dir
+        - **shell**: boolean, run the script in a shell. (UNIX
+          only),
+        - **os_env**: boolean, pass the os environment to the program
+        - **numprocesses**: int the number of OS processes to launch for
+          this description
+        - **flapping**: a FlappingInfo instance or, if flapping detection
+          should be used. flapping parameters are:
+
+          - **attempts**: maximum number of attempts before we stop the
+            process and set it to retry later
+          - **window**: period in which we are testing the number of
+            retry
+          - **retry_in**: seconds, the time after we restart the process
+            and try to spawn them
+          - **max_retry**: maximum number of retry before we give up
+            and stop the process.
+        - **redirect_output**: list of io to redict (max 2) this is a list of custom
+          labels to use for the redirection. Ex: ["a", "b"] will
+          redirect stdout & stderr and stdout events will be labeled "a"
+        - **redirect_input**: Boolean (False is the default). Set it if
+          you want to be able to write to stdin.
+        - **graceful_timeout**: graceful time before we send a  SIGKILL
+          to the process (which definitely kill it). By default 30s.
+          This is a time we let to a process to exit cleanly.
+
+        """
+        self.name = name
+        self.cmd = cmd
+        self.settings = settings
+
+    def __str__(self):
+        return "process: %s" % self.name
+
+    def make_process(self, loop, pid, sessionid=None, on_exit=None):
+        """ create a Process object from the configuration
+
+        Args:
+
+        - **loop**: main pyuv loop instance that will maintain the process
+        - **pid**: process id, generally given by the manager
+        - **sessionid**: Some processes only make sense in certain contexts.
+          this flag instructs gaffer to maintain this process in the sessionid
+          context. A context can be for example an application.
+        - **on_exit**: callback called when the process exited.
+
+        """
+
+        params = {}
+        for name, default in self.DEFAULT_PARAMS.items():
+            params[name] = self.settings.get(name, default)
+
+        os_env = self.settings.get('os_env', True)
+        if os_env:
+            env = params.get('env') or {}
+            env.update(os.environ)
+            params['env'] = env
+
+        params['on_exit_cb'] = on_exit
+        return Process(loop, pid, self.name, self.cmd, sessionid=sessionid,
+                **params)
+
+    def __getitem__(self, key, default=None):
+        if key == "name":
+            return self.name
+
+        if key == "cmd":
+            return self.cmd
+
+        return self.settings.get(key, default)
+
+
 class Process(object):
     """ class wrapping a process
 
@@ -294,14 +402,14 @@ class Process(object):
     """
 
 
-    def __init__(self, loop, pid, name, cmd, appname=None, args=None, env=None,
-            uid=None, gid=None, cwd=None, detach=False, shell=False,
+    def __init__(self, loop, pid, name, cmd, sessionid=None, args=None,
+            env=None, uid=None, gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
         self.loop = patch_loop(loop)
         self.pid = pid
         self.name = name
-        self.appname = appname or "system"
+        self.sessionid = sessionid or "default"
         self.cmd = cmd
         self.env = env or {}
 

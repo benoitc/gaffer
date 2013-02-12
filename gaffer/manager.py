@@ -27,7 +27,7 @@ except ImportError:
 
 from .loop import patch_loop, get_loop
 from .events import EventEmitter
-from .error import ProcessError
+from .error import ProcessError, ProcessConflict, ProcessError
 from .queue import AsyncQueue
 from .process import Process
 from .pubsub import Topic
@@ -206,158 +206,241 @@ class Manager(object):
             return self.apps[appname][name]
 
 
-    def add_template(self, name, cmd, **kwargs):
-        """ add a process template to the manager. all templates should be
-        added using this function
+    def load(self, config, sessionid=None, env=None, start=False):
+        """  load a process config object.
 
-        - **name**: name of the process
-        - **cmd**: program command, string)
-        - **appname**: name of the application that own this template
-        - **args**: the arguments for the command to run. Can be a list or
-          a string. If **args** is  a string, it's splitted using
-          :func:`shlex.split`. Defaults to None.
-        - **env**: a mapping containing the environment variables the command
-          will run with. Optional
-        - **uid**: int or str, user id
-        - **gid**: int or st, user group id,
-        - **cwd**: working dir
-        - **shell**: boolean, run the script in a shell. (UNIX
-          only),
-        - **os_env**: boolean, pass the os environment to the program
-        - **numprocesses**: int the number of OS processes to launch for
-          this description
-        - **flapping**: a FlappingInfo instance or, if flapping detection
-          should be used. flapping parameters are:
+        Args:
 
-          - **attempts**: maximum number of attempts before we stop the
-            process and set it to retry later
-          - **window**: period in which we are testing the number of
-            retry
-          - **retry_in**: seconds, the time after we restart the process
-            and try to spawn them
-          - **max_retry**: maximum number of retry before we give up
-            and stop the process.
-        - **redirect_output**: list of io to redict (max 2) this is a list of custom
-          labels to use for the redirection. Ex: ["a", "b"] will
-          redirect stdout & stderr and stdout events will be labeled "a"
-        - **redirect_input**: Boolean (False is the default). Set it if
-          you want to be able to write to stdin.
-        - **graceful_timeout**: graceful time before we send a  SIGKILL
-          to the process (which definitely kill it). By default 30s.
-          This is a time we let to a process to exit cleanly.
+        - **config**: a ``process.ProcessConfig`` instance
+        - **sessionid**: Some processes only make sense in certain contexts.
+          this flag instructs gaffer to maintain this process in the sessionid
+          context. A context can be for example an application. If no session
+          is specified the config will be attached to the ``default`` session.
+
+        - **env**: dict, None by default, if specified the config env variable will
+          be updated with the env values.
         """
 
-        appname = kwargs.get('appname')
-        if not appname:
-            # if no appname is specified then the process is handled as a
-            # system app.
-            appname = kwargs['appname'] = "system"
-
-        # remove the start options from the kwargs, it's only used to
-        # start the process when creating it.
-        if 'start' in kwargs:
-            start = kwargs.pop('start')
-        else:
-            start = True
+        sessionid = self._sessionid(sessionid)
 
         with self._lock:
-            if appname in self.apps:
-                # check if a process with this name is already referenced for
-                # this app. If yes, raises a conflict error
-                if name in self.apps[appname]:
-                    raise ProcessError(409, "process_conflict")
+            if sessionid in self._sessions:
+                # if the process already exists in this context raises a
+                # conflict.
+                if config.name in self._sessions[sessionid]:
+                    raise ProcessConflict()
             else:
-                # initialize the application
-                self.apps[appname] = OrderedDict()
+                # initialize this session
+                self._sessions[sessionid] = OrderedDict()
 
-            # initialize the process
-            state = ProcessState(name, cmd, **kwargs)
-            self.apps[appname][name] = state
+            state = ProcessState(config, sessionid, env)
+            pname = "%s.%s" % (sessionid, config.name)
+            self._publish("create", name=pname)
 
-            self._publish("create", name=name, appname=appname)
+        if start:
+            self.start(pname)
+
+    def unload(self, name_or_process, sessionid=None):
+        """ unload a process config. """
+
+        sessionid = self._sessionid(sessionid)
+        name = self._get_pname(name_or_process)
+        with self._lock:
+            if sessionid not in self._sessions:
+                raise ProcessNotfound()
+
+            # get the state and remove it from the context
+            session = self._sessions[sessionid]
+            try:
+                state = session.pop(pname)
+            except KeyError:
+                raise ProcessNotFound()
+
+            # stop the process now.
+            self._stop_process(state)
+
+    def reload(self, name_or_process, sessionid=None):
+        """ reload a process config. The number of processes is resetted to
+        the one in settings and all current processes are killed """
+
+        sessionid = self._sessionid(sessionid)
+        name = self._get_pname(name_or_process)
+
+        with self._lock:
+            # reset the number of processes
+            state = _get_state(self._sessionid, name)
+            state.reset()
+
+        # kill all the processes and let gaffer manage asynchronously the
+        # reload
+        self.killall("%s.%s" % (sessionid, name))
+
+
+    def update(self, config, sessionid=None, env=None, start=False):
+        """ update a process config. All processes are killed """
+        sessionid = self._sessionid(sessionid)
+
+        with self._lock:
+            state = _get_state(sessionid, config.name)
+            state.update(config, env=env)
+
             if start:
-                self._publish("start", name=name, appname=appname)
-                self._publish("proc.%s.%s.start" % (appname, name), name=name,
-                        appname=appname)
-                self._manage_processes(state)
+                # make sure we unstop the process
+                state.stop = False
+
+        # kill all the processes and let gaffer manage asynchronously the
+        # reload. If the process is not stopped then it will start
+        self.killall("%s.%s" % (sessionid, name))
 
 
-    def update_template(self, name, cmd, **kwargs):
-        """ update a process template.
+    def start_process(self, name):
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
 
-        When a templates is updated, all current processes are stopped
-        then the state is updated and new processes with new info are
-        started """
-
-        appname = kwargs.get('appname')
-        if not appname:
-            # if no appname is specified then the process is handled as a
-            # system app.
-            appname = kwargs['appname'] = "system"
-
-        # stop all process for this template
-        self.stop_process(name, appname=appname)
-
-        # remove the start option if any
-        if 'start' in kwargs:
-            del kwargs['start']
-
-        # do the update and restart the processes
         with self._lock:
-            state = ProcessState(name, cmd, **kwargs)
-            self.apps[appname][name] = state
-            self._publish("update", appname=appname, name=name)
+            state = _get_state(sessionid, name)
+
+            # make sure we unstop the process
+            state.stop = False
+
+            # notify that we are starting the process
+            self._publish("start", name=pname)
+            self._publish("proc.%s.start" % pname, name=pname)
+
+            # manage processes
             self._manage_processes(state)
 
-    def start_template(self, name, appname=None):
-        appname = appname or "system"
-        with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
-            self._publish("start", name=name, appname=appname)
-            self._publish("proc.%s.%s.start" % (appname, name), name=name,
-                    appname=appname)
-            self._manage_processes(state)
+    def stop_process(self, name):
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
 
-    def stop_template(self, name, appname=None):
-        """ stop a process by name or id
-
-        If a name is given all processes associated to this name will be
-        removed and the process is marked at stopped. If the internal
-        process id is givien, only the process with this id will be
-        stopped """
-
-        appname = appname or "system"
-        with self._lock:
-            self._stop_template(name, appname)
-
-    def restart_template(self, name, appname=None):
-        """ restart a process """
-        appname = appname or "system"
 
         with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
-            self._restart_processes(state)
+            state = _get_state(sessionid, name)
+            # flag the state to stop
+            state.stop = True
+            # reset the number of processes
+            state.reset()
 
-    def remove_template(self, name, appname=None):
-        """ remove the process and its config from the manager """
+            # notify that we are stoppping the process
+            self._publish("stop", name=pname)
+            self._publish("proc.%s.stop" % pname, name=pname)
 
-        appname = appname or "system"
+
+        # kill all the processes. Since the state has been marked to stop then
+        # they won't be restarted.
+        self.stopall("%s.%s" % (sessionid, name))
+
+
+
+    def get_job(self, pid):
+        """ get a job by ID. A job is a ``gaffer.Process`` instance attached
+        to a process state that you can use.
+        """
         with self._lock:
-            # stop all processes
-            self._stop_template(name, appname)
+            try:
+                return self.running[pid]
+            except KeyError:
+                raise ProcessNotFound()
 
-            # remove this template from the application
-            del self.apps[appname][name]
+    def stop_job(self, pid):
+        with self._lock:
 
-            # if the list of templates for this application is empty, delete
-            # this application
-            if len(self.apps[appname]) == 0 and appname != "system":
-                del self.apps[appname]
+            # remove the job from the runnings jobs
+            try:
+                p = self.running.pop(pid)
+            except KeyError:
+                raise ProcessNotFound()
 
-            # notify other that this template has been deleted
-            self._publish("delete", appname=appname, name=name)
+            # remove the process from the state
+            sessionid, name = self._parse_name(name)
+            state = self._get_state(sessionid, name)
+            state.remove(p)
+
+            # notify we stop this job
+            self._publish("job.%s.stop" % p.pid, pid=p.pid, name=p.name)
+
+            # then stop the job
+            p.stop()
+
+    def stopall(self, name):
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
+
+        with self._lock:
+            state = _get_state(sessionid, name)
+            self._publish("proc.%s.kill" % pname, name=pname, signum=signum)
+
+
+    def kill(self, pid, signum):
+        with self._lock:
+            try:
+                p = self.running[pid]
+            except KeyError:
+                raise ProcessNotFound()
+
+            # notify we stop this job
+            self._publish("job.%s.kill" % p.pid, pid=p.pid, name=p.name)
+
+            # effectively send the signal
+            p.kill(signum)
+
+
+
+    def killall(self, name, signum):
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
+        with self._lock:
+            state = _get_state(sessionid, name)
+            self._publish("proc.%s.kill" % pname, name=pname, signum=signum)
+            for p in state.running:
+
+                # notify we stop this job
+                self._publish("job.%s.kill" % p.pid, pid=p.pid, name=p.name)
+
+                # effectively send the signal
+                p.kill(signum)
+
+
+
+
+
+
+    def _sessionid(self, session=None):
+        if not session:
+            return "default"
+        return session
+
+    def _get_pname(self, name_or_process):
+        if hasattr(name_or_process, "name"):
+            return name_or_process.name
+        else:
+            return name_or_process
+
+
+    def _parse_name(self, name):
+        if "." in name:
+            sessionid, name = name.split(".", 1)
+
+        else:
+            sessionid = "default"
+
+        return sessionid, name
+
+    def _get_state(self, sessionid, name):
+        if sessionid not in self._sessions:
+            raise ProcessNotfound()
+
+        session = self._sessions[sessionid]
+        if name not in session:
+            raise ProcessNotfound()
+
+        return session[name]
+
+
+
+
+
 
 
     def scale(self, name, n, appname=None):
@@ -629,6 +712,28 @@ class Manager(object):
 
         if not name in self.apps[appname]:
             raise ProcessError(404, "not_found")
+
+
+    def _stopall(self, state):
+
+        if state.flapping_timer is not None:
+            state.flapping_timer.stop()
+
+        while True:
+            try:
+                p = state.dequeue()
+            except IndexError:
+                break
+
+            if p.pid in self.running:
+                # there is no reason to not have the pid there but make sure
+                # it won't be the case
+                del self.running[p.pid]
+
+            p.stop()
+
+        if not state.stopped:
+            state.flapping_timer.start()
 
     def _stop_template(self, name, appname):
         """ stop all processes in a template """
