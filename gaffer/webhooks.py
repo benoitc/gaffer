@@ -12,7 +12,7 @@ can add this line in the webhooks sections of the gaffer setting file::
     [webhooks]
     create = http://echohttp.com/echo you
 
-Or programatically::
+Or programmatically::
 
     from gaffer.manager import Manager
     from gaffer.webhooks import WebHooks

@@ -122,11 +122,11 @@ The dummy app here only print some info when started or stopped::
         def stop(sef):
             print("stop dummy")
 
-        def rester(self):
+        def restart(self):
             print("restart dummy")
 
 
-See the :doc:`overview` for more infos. You can try it in the example
+See the :doc:`overview` for more info. You can try it in the example
 folder::
 
     $ cd examples

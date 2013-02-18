@@ -13,7 +13,7 @@ class Plugin(object):
 
     name = ""
     version = "?"
-    descripton = ""
+    description = ""
     mandatory = []
 
     def app(self, cfg):

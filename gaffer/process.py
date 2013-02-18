@@ -459,7 +459,7 @@ class Process(object):
     @property
     def info(self):
         """ return the process info. If the process is monitored it
-        return the last informations stored asynchronously by the watcher"""
+        return the last information stored asynchronously by the watcher"""
 
         if not self._pprocess:
             self._pprocess = psutil.Process(self.pid)

@@ -258,7 +258,7 @@ gaffer node.
 
 .. image:: _static/gaffer_watch.png
 
-For more informations go on the :doc:`gafferctl` page.
+For more information go on the :doc:`gafferctl` page.
 
 Demo
 ----

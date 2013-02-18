@@ -125,7 +125,7 @@ See the echo client/server example in the example folder::
 
     $ python echo_client.py
     Sent
-    Reeiving...
+    Receiving...
     Received 'ECHO
 
     '
