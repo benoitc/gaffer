@@ -23,7 +23,7 @@ RE_LINE = re.compile(r'^([A-Za-z0-9_]+):\s*(.+)$')
 
 class Procfile(object):
     """ Procfile object to parse a procfile and a list of given
-    environnment files. """
+    environment files. """
 
     def __init__(self, procfile, envs=None):
         """ main constructor

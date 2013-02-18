@@ -20,7 +20,7 @@ KNOWN_COMMANDS = []
 
 
 def prettify(jsonobj, prettify=True):
-    """ prettiffy JSON output """
+    """ prettify JSON output """
     if not prettify:
         return json.dumps(jsonobj)
 

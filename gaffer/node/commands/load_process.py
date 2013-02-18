@@ -14,7 +14,7 @@ class AddProcess(Command):
         ==========================
 
         Like the command ``add``, his command dynamically add a process
-        to monitor in gafferd. Informations are gathered from a file or
+        to monitor in gafferd. Information gathered from a file or
         stdin if the name of file is ``-``. The file sent is a json file
         that have the same format described for the HTTP message.
 
@@ -54,7 +54,7 @@ class AddProcess(Command):
         - **name**: name of the process
         - **cmd**: program command, string)
         - **args**: the arguments for the command to run. Can be a list or
-          a string. If **args** is  a string, it's splitted using
+          a string. If **args** is  a string, it splits using
           :func:`shlex.split`. Defaults to None.
         - **env**: a mapping containing the environment variables the command
           will run with. Optional

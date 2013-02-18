@@ -7,9 +7,9 @@ app just initialize your manager with it::
 
     manager = Manager(apps=[HttpHandler()])
 
-The HttpHandler can be configured to accept multiple endpoinds and can
+The HttpHandler can be configured to accept multiple endpoints and can
 be extended with new HTTP handlers. Internally we are using Tornado so
-you can either extend it with rules using pure totrnado handlers or wsgi
+you can either extend it with rules using pure tornado handlers or WSGI
 apps.
 
 
@@ -125,7 +125,7 @@ See the echo client/server example in the example folder::
 
     $ python echo_client.py
     Sent
-    Reeiving...
+    Receiving...
     Received 'ECHO
 
     '

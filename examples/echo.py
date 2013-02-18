@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-import os
 import signal
 import sys
-import time
 
 
 class Echo(object):

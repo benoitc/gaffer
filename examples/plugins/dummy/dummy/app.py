@@ -6,5 +6,5 @@ class DummyApp(object):
     def stop(sef):
         print("stop dummy")
 
-    def rester(self):
+    def restart(self):
         print("restart dummy")

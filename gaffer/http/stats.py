@@ -39,7 +39,7 @@ class StatsHandler(AsyncHandler):
             except KeyError:
                 return self.send_not_found()
 
-            if feed == "normal": # send the infos once
+            if feed == "normal": # send the info once
                 self.set_header("Content-Type", "application/json")
                 self.write(infos)
                 self.finish()
@@ -59,7 +59,7 @@ class StatsHandler(AsyncHandler):
             if pid in m.running:
                 p = m.running[pid]
 
-                if feed == "normal": # send the infos once
+                if feed == "normal": # send the info once
                     self.set_header("Content-Type", "application/json")
                     self.write(p.info)
                     self.finish()

@@ -23,7 +23,7 @@ class Load(Command):
         Arguments
         +++++++++
 
-        *name* is the name of the group of process recoreded in gafferd.
+        *name* is the name of the group of process recorded in gafferd.
         By default it will be the name of your project folder.You can use
         ``.`` to specify the current folder.
 

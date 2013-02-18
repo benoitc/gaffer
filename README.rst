@@ -1,7 +1,7 @@
 Gaffer
 ======
 
-Application deployement, monitoring and supervision made simple.
+Application deployment, monitoring and supervision made simple.
 
 Gaffer is a set of Python modules and tools to easily maintain and
 interact with your applications.
@@ -26,7 +26,7 @@ Features
     - Flapping: handle cases where your processes crash too much
     - Possibility to interact with STDIO:
         - websocket stream to write to stdin and receive from stdout
-          (muliple clients can read and write at the same time)
+          (multiple clients can read and write at the same time)
         - subscribe on stdout/stderr feed via longpolling, continuous
           stream, eventsource or websockets
         - write your own client/server using the framework

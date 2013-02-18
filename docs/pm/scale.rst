@@ -4,7 +4,7 @@
 Scaling your process
 ====================
 
-Procfile applications can scal up or down instantly from the
+Procfile applications can scale up or down instantly from the
 command line or API.
 
 Scaling a process in an application is done using the scale

@@ -47,7 +47,7 @@ class GetProcess(Command):
         - **name**: name of the process
         - **cmd**: program command, string)
         - **args**: the arguments for the command to run. Can be a list or
-          a string. If **args** is  a string, it's splitted using
+          a string. If **args** is  a string, it splits using
           :func:`shlex.split`. Defaults to None.
         - **env**: a mapping containing the environment variables the command
           will run with. Optional

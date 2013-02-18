@@ -2,7 +2,7 @@ Gaffer applications
 ===================
 
 Gaffer applications are applications that are started by the manager. A
-gaffer application can be used to interract with the manager or
+gaffer application can be used to interact with the manager or
 listening on events.
 
 An application is a class with the following structure::
@@ -20,7 +20,7 @@ An application is a class with the following structure::
             # method called when the manager stop
 
         def restart(self):
-            # methhod called when the manager restart
+            # method called when the manager restart
 
 Following applications are provided by gaffer:
 ----------------------------------------------
