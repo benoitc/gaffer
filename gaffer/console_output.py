@@ -32,7 +32,7 @@ GAFFER_COLORS = ['cyan', 'yellow', 'green', 'magenta', 'red', 'blue',
 class Color(object):
     """ wrapper around colorama to ease the output creation. Don't use
     it directly, instead, use the ``colored(name_of_color, lines)`` to
-    return the colored ouput.
+    return the colored output.
 
     Colors are: cyan, yellow, green, magenta, red, blue,
     intense_cyan, intense_yellow, intense_green, intense_magenta,
@@ -130,7 +130,7 @@ class ConsoleOutput(object):
         if self.colorize:
             sys.stdout.write(colored(self._get_process_color(name), lines))
         else:
-            sys.stdout.write(''.joint(lines))
+            sys.stdout.write(''.join(lines))
         sys.stdout.flush()
 
     def _print(self, name, line):

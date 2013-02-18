@@ -39,7 +39,7 @@ class IOLoop(object):
 
     def __init__(self, impl=None, _loop=None):
         if impl is not None:
-            raise RuntimeError('When using pyuv the poller implementation cannot be specifiedi')
+            raise RuntimeError('When using pyuv the poller implementation cannot be specified')
         self._loop = _loop or pyuv.Loop()
         self._poll_handles = {}
         self._handlers = {}

@@ -105,7 +105,7 @@ class Server(object):
         self.processes = []
 
     def run(self):
-        # check if any plugin dependancy is missing
+        # check if any plugin dependency is missing
         self.plugin_manager.check_mandatory()
 
         # setup the http api

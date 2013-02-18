@@ -2,8 +2,8 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 """
-Webhooks allow to register an url to a specific event (or alls) and the
-event will be posted on this URL. Each events can triger a post on a
+Webhooks allow to register an url to a specific event (or all) and the
+event will be posted on this URL. Each events can trigger a post on a
 given url.
 
 for example to listen all create events on http://echohttp.com/echo you

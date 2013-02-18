@@ -12,7 +12,7 @@ Design
 
 Gaffer is internally based on an event loop using the `libuv <https://github.com/joyent/libuv/>`_ from Joyent via the `pyuv binding <https://pyuv.readthedocs.org>`_
 
-All gaffer events are added to the loop and processes asynchronously wich
+All gaffer events are added to the loop and processes asynchronously which
 make it pretty performant to handle multiple process and their control.
 
 At the lowest level you will find the manager. A manager is responsible
@@ -30,7 +30,7 @@ be changed dynamically. Current properties of this templates are:
 - **name**: name of the process
 - **cmd**: program command, string)
 - **args**: the arguments for the command to run. Can be a list or
-  a string. If **args** is  a string, it's splitted using
+  a string. If **args** is  a string, it's split using
   :func:`shlex.split`. Defaults to None.
 - **env**: a mapping containing the environment variables the command
   will run with. Optional
@@ -55,7 +55,7 @@ be changed dynamically. Current properties of this templates are:
     and try to spawn them
   - **max_retry**: maximum number of retry before we give up
     and stop the process.
-- **redirect_output**: list of io to redict (max 2) this is a list of custom
+- **redirect_output**: list of io to redirect (max 2) this is a list of custom
   labels to use for the redirection. Ex: ["a", "b"] will
   redirect stdoutt & stderr and stdout events will be labeled "a"
 - **redirect_input**: Boolean (False is the default). Set it if
@@ -63,8 +63,8 @@ be changed dynamically. Current properties of this templates are:
 
 
 The manager is also responsible of starting and stopping gaffer
-applications that you add to he manager to react on different events. A applicaton can
-fetch informations from the manager and interract with him.
+applications that you add to he manager to react on different events.
+An application can fetch information from the manager and interact with him.
 
 Running an application is done like this::
 
@@ -77,7 +77,7 @@ Running an application is done like this::
 
     .... # do smth
 
-    manager.stop() # stop the controlller
+    manager.stop() # stop the controller
     manager.run() # run the event loop
 
 
@@ -113,7 +113,7 @@ You can use this structure for anything you want, even add an app to the
 loop.
 
 To help you in your work a :doc:`pyuv implementation <tornado_pyuv>` of
-tornado is integrated and a powerfull :doc:`events <events>` modules
+tornado is integrated and a powerful :doc:`events <events>` modules
 will allows you to manage PUB/SUB events (or anything evented) inside
 your app. An EventEmitter is a threadsafe class to manage subscriber and
 publisher of events. It is internally used to broadcast processes and
@@ -124,8 +124,8 @@ Watch stats
 -----------
 
 Stats of a process ca, be monitored continuously (there is a refresh
-interval of 0.1s to fetch CPU informations) using the following
-mettod::
+interval of 0.1s to fetch CPU information) using the following
+method::
 
     manager.monitor(<nameorid>, <listener>)
 
@@ -192,7 +192,7 @@ you need to create a process with the *redirect_output* setting::
     declaration.
 
     If you don't want to receive *stderr*, just omit it in the list.
-    Alos if you want to redirect stderr to stdout just use the same
+    Also if you want to redirect stderr to stdout just use the same
     name.
 
 
@@ -230,7 +230,7 @@ write at the same time. This method is threadsafe.
 HTTP API
 --------
 
-See the :doc:`HTTP api description <http>` for more informations.
+See the :doc:`HTTP api description <http>` for more information.
 
 Tools
 -----
@@ -241,4 +241,4 @@ process without having to code. It can be used like `supervisor
 <http://smarden.org/runit/>`_  or other tools around. Speaking of runit
 a similar controlling will be available in 0.2 .
 
-See the :doc:`command-line` documentation for more informations.
+See the :doc:`command-line` documentation for more information.

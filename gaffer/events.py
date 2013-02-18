@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 """
-Many events happend in gaffer.
+Many events happened in gaffer.
 
 
 Manager events
@@ -87,7 +87,7 @@ The :mod:`events` Module
 ------------------------
 
 
-This module offeres a common way to susbscribe and emit events. All
+This module offers a common way to subscribe and emit events. All
 events in gaffer are using.
 
 Example of usage
@@ -122,7 +122,7 @@ from collections import deque
 import pyuv
 
 class EventEmitter(object):
-    """ Many events happend in gaffer. For example a process will emist
+    """ Many events happened in gaffer. For example a process will emit
     the events "start", "stop", "exit".
 
     This object offer a common interface to all events emitters """
@@ -228,7 +228,7 @@ class EventEmitter(object):
 
 
     def subscribe(self, evtype, listener, once=False):
-        """ subcribe to an event """
+        """ subscribe to an event """
 
         if evtype == ".": # wildcard
             self._wildcards.add((once, listener))
@@ -244,8 +244,8 @@ class EventEmitter(object):
 
     def subscribe_once(self, evtype, listener):
         """ subscribe to event once.
-        Once the evennt is triggered we remove ourself from the list of
-        listenerrs """
+        Once the event is triggered we remove ourself from the list of
+        listeners """
 
         self.subscribe(evtype, listener, True)
 

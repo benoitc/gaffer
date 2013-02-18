@@ -9,7 +9,7 @@ import sys
 from tornado import web
 
 class Plugin(object):
-    """ basic plugin interfacce """
+    """ basic plugin interface """
 
     name = ""
     version = "?"

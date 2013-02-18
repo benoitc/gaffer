@@ -4,7 +4,7 @@ TODO
 version 0.6 - 01/2013
 ---------------------
 
-- deployement solution
+- deployment solution
 
 version 0.5 - 12/2012
 ---------------------

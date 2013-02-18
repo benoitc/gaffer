@@ -60,7 +60,7 @@ class GafferNotFound(Exception):
     """ exception raised on HTTP 404 """
 
 class GafferConflict(Exception):
-    """ exption raised on HTTP 409 """
+    """ exception raised on HTTP 409 """
 
 
 class HTTPClient(object):

@@ -1,7 +1,7 @@
 Gaffer
 ======
 
-Application deployement, monitoring and supervision made simple.
+Application deployment, monitoring and supervision made simple.
 
 Gaffer is a set of Python modules and tools to easily maintain and
 interact with your applications.

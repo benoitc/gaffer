@@ -53,7 +53,7 @@ class ProcessTracker(object):
         # the process is killed. It let the possibility to let the time
         # to some worker to quit.
         #
-        # The garbage collector run eveyry 0.1s .
+        # The garbage collector run every 0.1s .
         with self._lock:
             while True:
                 if not len(self.processes):
@@ -228,7 +228,7 @@ class ProcessState(object):
         return list(self.running)
 
     def stats(self):
-        """ return stats from alll running process using this template
+        """ return stats from all running process using this template
         """
         infos = []
         lmem = []

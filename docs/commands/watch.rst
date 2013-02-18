@@ -4,7 +4,7 @@
 Watch changes in gaffer
 =======================
 
-This command allows you to watch changes n a locla or remote
+This command allows you to watch changes in local or remote
 gaffer node.
 
 
@@ -47,7 +47,7 @@ Accepted genetic patterns
 =====================  =========================================
 Patterns               Description
 =====================  =========================================
-create                 to follow all templates creattion
+create                 to follow all templates creation
 start                  start all processes in a tpl
 stop                   all processes in a tpl are stopped
 restart                restart all processes in a tpl
@@ -75,7 +75,7 @@ Command line:
 
 .. note::
 
-    <p1[2,3]> are the parts of the parttern separrated with a
+    <p1[2,3]> are the parts of the pattern separated with a
     '.' .
 
 Options:

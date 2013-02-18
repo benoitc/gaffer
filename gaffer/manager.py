@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 """
 The manager module is a core component of gaffer. A Manager is
-responsible of maintaining processes and allows you to interract with
+responsible of maintaining processes and allows you to interact with
 them.
 
 Classes
@@ -24,7 +24,6 @@ except ImportError:
     from .datastructures import OrderedDict
 
 from .events import EventEmitter
-from .process import Process
 from .state import ProcessState, ProcessTracker
 from .sync import increment
 
@@ -55,7 +54,7 @@ class Manager(object):
 
         .... # do smth
 
-        m.stop() # stop the controlller
+        m.stop() # stop the controller
         m.run() # run the event loop
 
     .. note::
@@ -113,7 +112,7 @@ class Manager(object):
         # manage processes
         self.subscribe('exit', self._on_exit)
 
-        # start contollers
+        # start controllers
         for ctl in self.apps:
             ctl.start(self.loop, self)
 
@@ -187,7 +186,7 @@ class Manager(object):
     once = subscribe
 
     def unsubscribe(self, evtype, listener):
-        """ unsubscribe from the event *eventype* """
+        """ unscribe from the event *eventype* """
         self._emitter.unsubscribe(evtype, listener)
 
     def get_groups(self):
@@ -235,7 +234,7 @@ class Manager(object):
         - **name**: name of the process
         - **cmd**: program command, string)
         - **args**: the arguments for the command to run. Can be a list or
-          a string. If **args** is  a string, it's splitted using
+          a string. If **args** is  a string, it's split using
           :func:`shlex.split`. Defaults to None.
         - **env**: a mapping containing the environment variables the command
           will run with. Optional
@@ -260,8 +259,8 @@ class Manager(object):
             and try to spawn them
           - **max_retry**: maximum number of retry before we give up
             and stop the process.
-        - **redirect_output**: list of io to redict (max 2) this is a list of custom
-          labels to use for the redirection. Ex: ["a", "b"] will
+        - **redirect_output**: list of io to redirect (max 2) this is a list of
+          custom labels to use for the redirection. Ex: ["a", "b"] will
           redirect stdout & stderr and stdout events will be labeled "a"
         - **redirect_input**: Boolean (False is the default). Set it if
           you want to be able to write to stdin.
@@ -280,7 +279,7 @@ class Manager(object):
                 start = True
 
             # Grouped process are prefixed by the name of the group
-            # <grouname>:<name>
+            # <groupname>:<name>
             if ":" in name:
                 group = name.split(":", 1)[0]
                 kwargs['group'] = group
@@ -340,7 +339,7 @@ class Manager(object):
 
         If a name is given all processes associated to this name will be
         removed and the process is marked at stopped. If the internal
-        process id is givien, only the process with this id will be
+        process id is given, only the process with this id will be
         stopped """
 
         with self._lock:
@@ -425,7 +424,7 @@ class Manager(object):
         - **running**: the number of actually running OS processes using
           this template.
         - **max_processes**: The maximum number of processes that should
-          run. It is is normally the same than the **runnin** value.
+          run. It is is normally the same than the **running** value.
 
         """
         with self._lock:
@@ -551,7 +550,7 @@ class Manager(object):
             #        h.close()
             #self.loop.walk(walk_cb)
 
-            # if there any stop callback, excute it
+            # if there any stop callback, execute it
             if self.stop_cb is not None:
                 self.stop_cb(self)
                 self.stop_cb = None
@@ -598,7 +597,7 @@ class Manager(object):
 
         state.stopped = True
 
-        # notify others that all processes of the templates are beeing
+        # notify others that all processes of the templates are being
         # stopped.
         self._publish("stop", name=name)
         self._publish("proc.%s.stop" % name, name=name)
@@ -607,14 +606,14 @@ class Manager(object):
         if state.flapping_timer is not None:
             state.flapping_timer.stop()
 
-        # iterrate over queued processes.
+        # iterate over queued processes.
         while True:
             try:
                 p = state.dequeue()
             except IndexError:
                 break
 
-            # notify  other that the process is beeing stopped
+            # notify  other that the process is being stopped
             self._publish("stop_pid", name=p.name, pid=p.id, os_pid=p.pid)
             self._publish("proc.%s.stop_pid" % p.name, name=p.name,
                     pid=p.id, os_pid=p.pid)
@@ -648,7 +647,7 @@ class Manager(object):
         # graceful time
         self._tracker.check(p, state.graceful_timeout)
 
-        # notify  other that the process is beeing stopped
+        # notify  other that the process is being stopped
         self._publish("stop_pid", name=p.name, pid=pid, os_pid=p.pid)
         self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid,
                 os_pid=p.pid)
@@ -703,7 +702,7 @@ class Manager(object):
                 # graceful time
                 self._tracker.check(p, state.graceful_timeout)
 
-                # notify others that the process is beeing reaped
+                # notify others that the process is being reaped
                 self._publish("reap", name=p.name, pid=p.id, os_pid=p.pid)
                 self._publish("proc.%s.reap" % p.name, name=p.name,
                     pid=p.id, os_pid=p.pid)
@@ -797,7 +796,7 @@ class Manager(object):
 
     def _on_process_exit(self, process, exit_status, term_signal):
         with self._lock:
-            # maybe uncjeck this process from the tracker
+            # maybe uncheck this process from the tracker
             self._tracker.uncheck(process)
 
             # unexpected exit, remove the process from the list of

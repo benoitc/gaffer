@@ -6,7 +6,6 @@ import argparse
 import os
 import sys
 
-from .. import __version__
 from ..procfile import Procfile
 from .commands import get_commands
 

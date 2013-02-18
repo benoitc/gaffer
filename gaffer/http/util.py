@@ -59,7 +59,7 @@ class AsyncHandler(CorsHandler):
         self.set_header("Cache-Control", "no-cache")
 
     def setup_heartbeat(self, heartbeat, m):
-        # set heartbeta
+        # set heartbeat
         if heartbeat.lower() == "true":
             heartbeat = 60
         else:
