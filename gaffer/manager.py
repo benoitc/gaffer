@@ -279,7 +279,7 @@ class Manager(object):
             self._publish("proc.%s.stop" % pname, name=pname)
 
             # stop the process now.
-            state.stop = True
+            state.stopped = True
             self._stopall(state)
 
     def reload(self, name_or_process, sessionid=None):
@@ -333,7 +333,7 @@ class Manager(object):
             state = self._get_state(sessionid, name)
 
             # make sure we unstop the process
-            state.stop = False
+            state.stopped = False
             # reset the number of processes
             state.reset()
 
