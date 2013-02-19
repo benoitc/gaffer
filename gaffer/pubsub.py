@@ -108,14 +108,16 @@ class Topic(object):
         elif self.source == "PROCESS":
             self.manager.events.subscribe("proc.%s" % self.target,
                     self._dispatch_process_events)
+        elif self.source == "JOB":
+            self.manager.events.subscribe("job.%s" % self.target,
+                    self._dispatch_job_events)
         elif self.source == "STATS":
             if self.pid is not None:
                 proc = self.manager.get_process(self.pid)
                 proc.monitor(self._dispatch_data)
             else:
-                aname, tname = self.target.split(".")
-                t = self.manager.get_template(tname, aname)
-                for proc in t.running:
+                state = self.manager._get_locked_state(self.target)
+                for proc in state.running:
                     proc.monitor(self._dispatch_data)
         elif self.source == "STREAM":
             if not self.pid:
@@ -138,14 +140,16 @@ class Topic(object):
         elif self.source == "PROCESS":
             self.manager.events.unsubscribe("proc.%s" % self.target,
                     self._dispatch_process_events)
+        elif self.source == "JOB":
+            self.manager.events.unsubscribe("job.%s" % self.target,
+                    self._dispatch_process_events)
         elif self.source == "STATS":
             if self.pid is not None:
                 proc = self.manager.get_process(self.pid)
                 proc.unmonitor(self._dispatch_data)
             else:
-                aname, tname = self.target.split(".")
-                t = self.manager.get_template(tname, aname)
-                for proc in t.running:
+                state = self.manager._get_locked_state(self.target)
+                for proc in state.running:
                     proc.unmonitor(self._dispatch_data)
         elif source == "STREAM":
             if self.pid:
@@ -170,7 +174,7 @@ class Topic(object):
         if not self.active:
             self.start()
 
-        if self.source in ("EVENTS", "PROCESS", "STREAM"):
+        if self.source in ("EVENTS", "PROCESS", "JOB", "STREAM"):
             chan = EventChannel(self)
         else:
             chan = StatChannel(self)
@@ -189,6 +193,11 @@ class Topic(object):
 
     def _dispatch_process_events(self, evtype, event):
         evtype = evtype.split("proc.%s." % self.target, 1)[1]
+        self._dispatch_events(evtype, event)
+
+    def _dispatch_job_events(self, evtype, event):
+
+        evtype = evtype.split("job.%s." % self.target, 1)[1]
         self._dispatch_events(evtype, event)
 
     def _dispatch_data(self, evtype, data):

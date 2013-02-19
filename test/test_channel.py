@@ -4,6 +4,8 @@
 import time
 
 from gaffer.manager import Manager
+from gaffer.process import ProcessConfig
+
 from test_manager import dummy_cmd
 
 import pyuv
@@ -21,19 +23,20 @@ def test_basic():
     chan.bind('.', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
     m.scale("dummy", 1)
-    m.remove_template("dummy")
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
     m.run()
 
-    assert ('create', 'dummy') in emitted
-    assert ('start', 'dummy') in emitted
-    assert ('update', 'dummy') in emitted
-    assert ('stop', 'dummy') in emitted
-    assert ('delete', 'dummy') in emitted
+    assert ('load', 'default.dummy') in emitted
+    assert ('start', 'default.dummy') in emitted
+    assert ('update', 'default.dummy') in emitted
+    assert ('stop', 'default.dummy') in emitted
+    assert ('unload', 'default.dummy') in emitted
 
 def test_process_events():
     emitted = []
@@ -44,12 +47,13 @@ def test_process_events():
         emitted.append(ev)
 
     # subscribe to all events
-    chan = m.subscribe("PROCESS:system.dummy")
+    chan = m.subscribe("JOB:default.dummy")
     chan.bind_all(cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir)
-    m.stop_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    m.unload(config)
 
     time.sleep(0.2)
     m.stop()
@@ -68,10 +72,11 @@ def test_stats():
 
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("a", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    m.load(config)
     os_pid = m.running[1].os_pid
 
-    chan = m.subscribe("STATS:system.a")
+    chan = m.subscribe("STATS:default.a")
     chan.bind(cb)
 
     def stop(handle):
