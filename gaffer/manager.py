@@ -276,7 +276,7 @@ class Manager(object):
 
             # notify that we are stoppping the process
             self._publish("stop", name=pname)
-            self._publish("proc.%s.stop" % pname, name=pname)
+            self._publish("job.%s.stop" % pname, name=pname)
 
             # stop the process now.
             state.stopped = True
@@ -350,7 +350,7 @@ class Manager(object):
 
             # notify that we are starting the process
             self._publish("start", name=pname)
-            self._publish("proc.%s.start" % pname, name=pname)
+            self._publish("job.%s.start" % pname, name=pname)
 
             # manage processes
             self._manage_processes(state)
@@ -372,7 +372,7 @@ class Manager(object):
 
             # notify that we are stoppping the process
             self._publish("stop", name=pname)
-            self._publish("proc.%s.stop" % pname, name=pname)
+            self._publish("job.%s.stop" % pname, name=pname)
 
             self._stopall(state)
 
@@ -519,7 +519,7 @@ class Manager(object):
             state.remove(p)
 
             # notify we stop this pid
-            self._publish("pid.%s.stop" % p.pid, pid=p.pid, name=p.name)
+            self._publish("proc.%s.stop" % p.pid, pid=p.pid, name=p.name)
 
             # then stop the job
             p.stop()
@@ -547,7 +547,7 @@ class Manager(object):
             p = self._get_pid(pid)
 
             # notify we stop this job
-            self._publish("pid.%s.kill" % p.pid, pid=p.pid, name=p.name)
+            self._publish("proc.%s.kill" % p.pid, pid=p.pid, name=p.name)
 
             # effectively send the signal
             p.kill(signum)
@@ -559,11 +559,11 @@ class Manager(object):
         pname = "%s.%s" % (sessionid, name)
         with self._lock:
             state = self._get_state(sessionid, name)
-            self._publish("proc.%s.kill" % pname, name=pname, signum=signum)
+            self._publish("job.%s.kill" % pname, name=pname, signum=signum)
             for p in state.running:
 
                 # notify we stop this job
-                self._publish("job.%s.kill" % p.pid, pid=p.pid, name=p.name)
+                self._publish("proc.%s.kill" % p.pid, pid=p.pid, name=p.name)
 
                 # effectively send the signal
                 p.kill(signum)
@@ -705,8 +705,6 @@ class Manager(object):
                 self.stop_cb(self)
                 self.stop_cb = None
 
-            print("nothing should run now")
-
     def _stop(self):
         # stop should be synchronous. We need to first stop the
         # processes and let the applications know about it. It is
@@ -770,7 +768,7 @@ class Manager(object):
                 self.running.pop(p.pid)
 
             # notify we stop this pid
-            self._publish("pid.%s.stop" % p.pid, pid=p.pid, name=p.name)
+            self._publish("proc.%s.stop" % p.pid, pid=p.pid, name=p.name)
 
             # stop the process
             p.stop()
@@ -802,7 +800,7 @@ class Manager(object):
 
         self._publish("spawn", name=p.name, pid=pid,
                 detached=p.detach, os_pid=p.os_pid)
-        self._publish("proc.%s.spawn" % p.name, name=p.name,
+        self._publish("job.%s.spawn" % p.name, name=p.name,
                 pid=pid, detached=p.detach, os_pid=p.os_pid)
 
         self._publish("proc.%s.spawn" % pid, name=p.name,
@@ -840,7 +838,7 @@ class Manager(object):
 
                 # notify others that the process is beeing reaped
                 self._publish("reap", name=p.name, pid=p.pid, os_pid=p.os_pid)
-                self._publish("proc.%s.reap" % p.name, name=p.name, pid=p.pid,
+                self._publish("job.%s.reap" % p.name, name=p.name, pid=p.pid,
                         os_pid=p.os_pid)
                 self._publish("proc.%s.reap" % p.pid,
                         name=p.name, pid=p.pid, os_pid=p.os_pid)
@@ -946,5 +944,5 @@ class Manager(object):
                     os_pid=process.os_pid)
 
             self._publish("exit", **ev_details)
-            self._publish("proc.%s.exit" % process.name, **ev_details)
+            self._publish("job.%s.exit" % process.name, **ev_details)
             self._publish("proc.%s.exit" % process.pid, **ev_details)
