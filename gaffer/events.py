@@ -213,7 +213,7 @@ class EventEmitter(object):
         for once, listener in listeners:
             try:
                 listener(evtype, *args, **kwargs)
-            except Exception as e: # we ignore all exception
+            except Exception: # we ignore all exception
                 to_remove.append(listener)
 
             if once:

@@ -5,14 +5,12 @@
 from collections import deque
 import heapq
 import operator
-import os
 import signal
 from threading import RLock
 import time
 
 import pyuv
 
-from .process import Process
 from .sync import add, sub, increment, atomic_read, compare_and_swap
 from .util import nanotime
 
@@ -37,7 +35,8 @@ class ProcessTracker(object):
     def close(self):
         self.processes = []
         self._done_cb = None
-        self._check_timer.close()
+        if not self._check_timer.closed:
+            self._check_timer.close()
 
     def check(self, process, graceful_timeout=10000000000):
         process.graceful_time = graceful_timeout + nanotime()
@@ -83,6 +82,7 @@ class ProcessTracker(object):
                         p.kill(signal.SIGKILL)
                     except:
                         pass
+
                     # and close it. (maybe we should just close it)
                     p.close()
 
@@ -109,20 +109,22 @@ class ProcessState(object):
     session. """
 
 
-    def __init__(self, name, cmd, appname="system", **settings):
+    def __init__(self, config, sessionid, env=None):
+        self.config = config
+        self.sessionid = sessionid
+        self.env = env
+
         self.running = deque()
         self.stopped = False
-        self.setup(appname, name, cmd, **settings)
+        self.setup()
 
-    def setup(self, appname, name, cmd, **settings):
-        self.appname = appname
-        self.name = name
-        self.cmd = cmd
-        self.settings = settings
-        self._numprocesses = self.settings.get('numprocesses', 1)
+    def setup(self):
+        self.name = "%s.%s" % (self.sessionid, self.config.name)
+        self.cmd = self.config.cmd
+        self._numprocesses = self.config.get('numprocesses', 1)
 
         # set flapping
-        self.flapping = self.settings.get('flapping')
+        self.flapping = self.config.get('flapping')
         if isinstance(self.flapping, dict):
             try:
                 self.flapping = FlappingInfo(**self.flapping)
@@ -130,7 +132,6 @@ class ProcessState(object):
                 self.flapping = None
 
         self.flapping_timer = None
-
         self.stopped = False
 
     @property
@@ -139,27 +140,15 @@ class ProcessState(object):
 
     @property
     def graceful_timeout(self):
-        return nanotime(self.settings.get('graceful_timeout', 10.0))
+        return nanotime(self.config.get('graceful_timeout', 10.0))
 
     def __str__(self):
         return "state: %s" % self.name
 
     def make_process(self, loop, id, on_exit):
         """ create an OS process using this template """
-        params = {}
-        for name, default in self.DEFAULT_PARAMS.items():
-            params[name] = self.settings.get(name, default)
-
-        os_env = self.settings.get('os_env', True)
-        if os_env:
-            env = params.get('env') or {}
-            env.update(os.environ)
-            params['env'] = env
-
-        params['on_exit_cb'] = on_exit
-
-        return Process(loop, id, self.name, self.cmd, appname=self.appname,
-                **params)
+        return self.config.make_process(loop, id, self.name, env=self.env,
+                on_exit=on_exit)
 
     def __get_numprocesses(self):
         return atomic_read(self._numprocesses)
@@ -175,10 +164,19 @@ class ProcessState(object):
 
     def reset(self):
         """ reset this template to default values """
-        self.numprocesses = self.settings.get('numprocesses', 1)
+        self.numprocesses = self.config.get('numprocesses', 1)
         # reset flapping
         if self.flapping and self.flapping is not None:
             self.flapping.reset()
+
+    def update(self, config, env=None):
+        """ update a state """
+        self.config = config
+        self.env = env
+
+        # update the number of preocesses
+        self.numprocesses = max(self.config.get('numprocesses', 1),
+                self.numprocesses)
 
     def incr(self, i=1):
         """ increase the maximum number of running processes """

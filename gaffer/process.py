@@ -15,7 +15,7 @@ import shlex
 
 import pyuv
 import psutil
-from psutil.error import AccessDenied, NoSuchProcess
+from psutil.error import AccessDenied
 import six
 
 from .events import EventEmitter
@@ -122,8 +122,8 @@ class RedirectIO(object):
             return
 
         label = getattr(handle, 'label')
-        msg = dict(event=label, name=self.process.name,
-                sessionid=self.process.sessionid, pid=self.process.pid, data=data)
+        msg = dict(event=label, name=self.process.name, pid=self.process.pid,
+                data=data)
         self._emitter.publish(label, msg)
 
 
@@ -168,8 +168,7 @@ class RedirectStdin(object):
             return
 
         label = getattr(handle, 'label')
-        msg = dict(event=label, name=self.process.name,
-                sessionid=self.process.sessionid, pid=self.process.pid,
+        msg = dict(event=label, name=self.process.name, pid=self.process.pid,
                 data=data)
         self._emitter.publish(label, msg)
 
@@ -195,8 +194,7 @@ class Stream(RedirectStdin):
         if not data:
             return
 
-        msg = dict(event='READ', name=self.process.name,
-                sessionid=self.process.sessionid, pid=self.process.pid,
+        msg = dict(event='READ', name=self.process.name, pid=self.process.pid,
                 data=data)
         self._emitter.publish('READ', msg)
 
@@ -278,7 +276,7 @@ class ProcessConfig(object):
             "custom_streams": [],
             "custom_channels": []}
 
-    def __init__(self, name, cmd, **settingss):
+    def __init__(self, name, cmd, **settings):
         """
         Initialize the ProcessConfig object
 
@@ -330,15 +328,14 @@ class ProcessConfig(object):
     def __str__(self):
         return "process: %s" % self.name
 
-    def make_process(self, loop, pid, sessionid=None, on_exit=None):
+    def make_process(self, loop, pid, label, env=None, on_exit=None):
         """ create a Process object from the configuration
 
         Args:
 
         - **loop**: main pyuv loop instance that will maintain the process
         - **pid**: process id, generally given by the manager
-        - **sessionid**: Some processes only make sense in certain contexts.
-          this flag instructs gaffer to maintain this process in the sessionid
+        - **label**: the job label. Usually the process type.
           context. A context can be for example an application.
         - **on_exit**: callback called when the process exited.
 
@@ -354,19 +351,26 @@ class ProcessConfig(object):
             env.update(os.environ)
             params['env'] = env
 
-        params['on_exit_cb'] = on_exit
-        return Process(loop, pid, self.name, self.cmd, sessionid=sessionid,
-                **params)
+        if env is not None:
+            params['env'].update(env)
 
-    def __getitem__(self, key, default=None):
+        params['on_exit_cb'] = on_exit
+        return Process(loop, pid, label, self.cmd, **params)
+
+    def __getitem__(self, key):
         if key == "name":
             return self.name
 
         if key == "cmd":
             return self.cmd
 
-        return self.settings.get(key, default)
+        return self.settings[key]
 
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
 class Process(object):
     """ class wrapping a process
@@ -402,14 +406,13 @@ class Process(object):
     """
 
 
-    def __init__(self, loop, pid, name, cmd, sessionid=None, args=None,
-            env=None, uid=None, gid=None, cwd=None, detach=False, shell=False,
+    def __init__(self, loop, pid, name, cmd, args=None, env=None, uid=None,
+            gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
         self.loop = patch_loop(loop)
         self.pid = pid
         self.name = name
-        self.sessionid = sessionid or "default"
         self.cmd = cmd
         self.env = env or {}
 

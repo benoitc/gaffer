@@ -11,13 +11,9 @@ Classes
 
 """
 from collections import deque
-import copy
-from functools import partial
-import operator
 from threading import RLock
 
 import pyuv
-import six
 
 try:
     from collections import OrderedDict
@@ -27,12 +23,11 @@ except ImportError:
 
 from .loop import patch_loop, get_loop
 from .events import EventEmitter
-from .error import ProcessError, ProcessConflict, ProcessError
-from .queue import AsyncQueue
-from .process import Process
+from .error import ProcessConflict, ProcessNotFound
 from .pubsub import Topic
 from .state import ProcessState, ProcessTracker
 from .sync import increment
+
 
 class Manager(object):
     """ Manager - maintain process alive
@@ -98,21 +93,25 @@ class Manager(object):
         self.max_process_id = 0
         self.processes = OrderedDict()
         self.running = OrderedDict()
-        self.apps = OrderedDict()
+        self._sessions = OrderedDict()
         self._topics = {}
         self._updates = deque()
         self._signals = []
 
-        self.stopping= False
+        self.status = -1
         self.stop_cb = None
         self.restart_cb = None
         self._lock = RLock()
+
+    @property
+    def active(self):
+        return self.status == 0 and self.started
 
     def start(self, apps=[]):
         """ start the manager. """
         self.mapps = apps
 
-        self._mq = AsyncQueue(self.loop, self._handle_messages)
+        self._waker = pyuv.Async(self.loop, self._wakeup)
 
         # start the process tracker
         self._tracker.start()
@@ -125,6 +124,7 @@ class Manager(object):
             mapp.start(self.loop, self)
 
         self.started = True
+        self.status = 0
 
     def run(self):
         """ Convenience function to use in place of `loop.run()`
@@ -140,13 +140,31 @@ class Manager(object):
 
     def stop(self, callback=None):
         """ stop the manager. This function is threadsafe """
+
+        if not self.started:
+            return
+
+        if self.status == 1:
+            # someone already requested to stop the manager
+            return
+
+        # set the callback
         self.stop_cb = callback
-        self._mq.send(self._stop)
+
+        # update the status to stop and wake up the loop
+        self.status = 1
+        self._waker.send()
 
     def restart(self, callback=None):
         """ restart all processes in the manager. This function is
         threadsafe """
-        self._mq.send(partial(self._restart, callback))
+        if self.status == 2:
+            # a restart is already running
+            return
+
+        self.restart_cb = callback
+        self.status = 2
+        self._waker.send()
 
     def subscribe(self, topic):
         if topic not in self._topics:
@@ -155,58 +173,49 @@ class Manager(object):
 
         return self._topics[topic].subscribe()
 
-    def unsubscribe(self, channel):
+    def unsubscribe(self, topic, channel):
         if topic not in self._topics:
             return
         self._topics[topic].unsubscribe(channel)
 
-    def all_apps(self):
-        return list(self.apps)
+    @property
+    def sessions(self):
+        return list(self._sessions)
 
-    def walk(self, callback):
-        with self._lock:
-            for appname, templates in self.apps.items():
-                for name in templates:
-                    callback(self, templates[name])
-
-    def walk_templates(self, callback, appname = None):
-        appname = appname or "system"
-        with self._lock:
+    def jobs(self, sessionid=None):
+        if not sessionid:
+            jobs = []
+            for sessionid in self._sessions:
+                session = self._sessions[sessionid]
+                jobs.extend(["%s.%s" % (sessionid, name) for name in session])
+            return jobs
+        else:
             try:
-                templates = self.apps[appname]
+                session = self._sessions[sessionid]
             except KeyError:
-                raise ProcessError(404, "not_found")
+                raise ProcessNotFound()
 
-            for name in templates:
-                callback(self, templates[name])
+            return ["%s.%s" % (sessionid, name) for name in session]
 
-    def walk_processes(self, callback, name, appname=None):
-        appname = appname or "system"
+
+    def jobs_walk(self, callback, sessionid=None):
         with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
-            for p in state.running:
-                callback(self, p)
+            if not sessionid:
+                for sessionid in self._sessions:
+                    for name in self._sessions[sid]:
+                        callback(self, "%s.%s" % (sid, name))
+            else:
+                try:
+                    session = self._sessions[sessionid]
+                except KeyError:
+                    raise ProcessNotFound()
 
+                for name in session:
+                    callback(self, "%s.%s" % (sessionid, name))
 
     # ------------- process functions
 
-    def get_templates(self, appname=None):
-        appname = appname or "system"
-        with self._lock:
-            try:
-                return self.apps[appname]
-            except KeyError:
-                raise ProcessError(404, "not_found")
-
-    def get_template(self, name, appname=None):
-        appname = appname or "system"
-        with self._lock:
-            self._is_found(name, appname)
-            return self.apps[appname][name]
-
-
-    def load(self, config, sessionid=None, env=None, start=False):
+    def load(self, config, sessionid=None, env=None, start=True):
         """  load a process config object.
 
         Args:
@@ -231,33 +240,47 @@ class Manager(object):
                     raise ProcessConflict()
             else:
                 # initialize this session
-                self._sessions[sessionid] = OrderedDict()
+                self._sessions[sessionid] = OrderedDict()
 
+            # create a new state for this config
             state = ProcessState(config, sessionid, env)
+            self._sessions[sessionid][config.name] = state
+
             pname = "%s.%s" % (sessionid, config.name)
-            self._publish("create", name=pname)
+            self._publish("load", name=pname)
 
         if start:
-            self.start(pname)
+            self.start_job(pname)
 
     def unload(self, name_or_process, sessionid=None):
         """ unload a process config. """
 
         sessionid = self._sessionid(sessionid)
         name = self._get_pname(name_or_process)
+
+        pname = "%s.%s" % (sessionid, name)
+
         with self._lock:
             if sessionid not in self._sessions:
-                raise ProcessNotfound()
+                raise ProcessNotFound()
 
             # get the state and remove it from the context
             session = self._sessions[sessionid]
             try:
-                state = session.pop(pname)
+                state = session.pop(name)
             except KeyError:
                 raise ProcessNotFound()
 
+            # notify that we unload the process
+            self._publish("unload", name=pname)
+
+            # notify that we are stoppping the process
+            self._publish("stop", name=pname)
+            self._publish("proc.%s.stop" % pname, name=pname)
+
             # stop the process now.
-            self._stop_process(state)
+            state.stop = True
+            self._stopall(state)
 
     def reload(self, name_or_process, sessionid=None):
         """ reload a process config. The number of processes is resetted to
@@ -268,12 +291,12 @@ class Manager(object):
 
         with self._lock:
             # reset the number of processes
-            state = _get_state(self._sessionid, name)
+            state = self._get_state(sessionid, name)
             state.reset()
 
-        # kill all the processes and let gaffer manage asynchronously the
-        # reload
-        self.killall("%s.%s" % (sessionid, name))
+            # kill all the processes and let gaffer manage asynchronously the
+            # reload
+            self._stopall(state)
 
 
     def update(self, config, sessionid=None, env=None, start=False):
@@ -281,24 +304,34 @@ class Manager(object):
         sessionid = self._sessionid(sessionid)
 
         with self._lock:
-            state = _get_state(sessionid, config.name)
+            state = self._get_state(sessionid, config.name)
             state.update(config, env=env)
 
             if start:
                 # make sure we unstop the process
                 state.stop = False
 
-        # kill all the processes and let gaffer manage asynchronously the
-        # reload. If the process is not stopped then it will start
-        self.killall("%s.%s" % (sessionid, name))
+            # kill all the processes and let gaffer manage asynchronously the
+            # reload. If the process is not stopped then it will start
+            self._stopall(state)
+
+    def get(self, name):
+        """ get a job config """
+        sessionid, name = self._parse_name(name)
+        with self._lock:
+            state = self._get_state(sessionid, name)
+            return state.config
 
 
-    def start_process(self, name):
+    def start_job(self, name):
+        """ Start a job from which the config have been previously loaded """
+
         sessionid, name = self._parse_name(name)
         pname = "%s.%s" % (sessionid, name)
 
+        print("start %s" % pname)
         with self._lock:
-            state = _get_state(sessionid, name)
+            state = self._get_state(sessionid, name)
 
             # make sure we unstop the process
             state.stop = False
@@ -310,13 +343,15 @@ class Manager(object):
             # manage processes
             self._manage_processes(state)
 
-    def stop_process(self, name):
+    def stop_job(self, name):
+        """ stop a jon. All processes of this job are stopped and won't be
+        restarted by the manager """
+
         sessionid, name = self._parse_name(name)
         pname = "%s.%s" % (sessionid, name)
 
-
         with self._lock:
-            state = _get_state(sessionid, name)
+            state = self._get_state(sessionid, name)
             # flag the state to stop
             state.stop = True
             # reset the number of processes
@@ -326,125 +361,10 @@ class Manager(object):
             self._publish("stop", name=pname)
             self._publish("proc.%s.stop" % pname, name=pname)
 
+            self._stopall(state)
 
-        # kill all the processes. Since the state has been marked to stop then
-        # they won't be restarted.
-        self.stopall("%s.%s" % (sessionid, name))
-
-
-
-    def get_job(self, pid):
-        """ get a job by ID. A job is a ``gaffer.Process`` instance attached
-        to a process state that you can use.
-        """
-        with self._lock:
-            try:
-                return self.running[pid]
-            except KeyError:
-                raise ProcessNotFound()
-
-    def stop_job(self, pid):
-        with self._lock:
-
-            # remove the job from the runnings jobs
-            try:
-                p = self.running.pop(pid)
-            except KeyError:
-                raise ProcessNotFound()
-
-            # remove the process from the state
-            sessionid, name = self._parse_name(name)
-            state = self._get_state(sessionid, name)
-            state.remove(p)
-
-            # notify we stop this job
-            self._publish("job.%s.stop" % p.pid, pid=p.pid, name=p.name)
-
-            # then stop the job
-            p.stop()
-
-    def stopall(self, name):
-        sessionid, name = self._parse_name(name)
-        pname = "%s.%s" % (sessionid, name)
-
-        with self._lock:
-            state = _get_state(sessionid, name)
-            self._publish("proc.%s.kill" % pname, name=pname, signum=signum)
-
-
-    def kill(self, pid, signum):
-        with self._lock:
-            try:
-                p = self.running[pid]
-            except KeyError:
-                raise ProcessNotFound()
-
-            # notify we stop this job
-            self._publish("job.%s.kill" % p.pid, pid=p.pid, name=p.name)
-
-            # effectively send the signal
-            p.kill(signum)
-
-
-
-    def killall(self, name, signum):
-        sessionid, name = self._parse_name(name)
-        pname = "%s.%s" % (sessionid, name)
-        with self._lock:
-            state = _get_state(sessionid, name)
-            self._publish("proc.%s.kill" % pname, name=pname, signum=signum)
-            for p in state.running:
-
-                # notify we stop this job
-                self._publish("job.%s.kill" % p.pid, pid=p.pid, name=p.name)
-
-                # effectively send the signal
-                p.kill(signum)
-
-
-
-
-
-
-    def _sessionid(self, session=None):
-        if not session:
-            return "default"
-        return session
-
-    def _get_pname(self, name_or_process):
-        if hasattr(name_or_process, "name"):
-            return name_or_process.name
-        else:
-            return name_or_process
-
-
-    def _parse_name(self, name):
-        if "." in name:
-            sessionid, name = name.split(".", 1)
-
-        else:
-            sessionid = "default"
-
-        return sessionid, name
-
-    def _get_state(self, sessionid, name):
-        if sessionid not in self._sessions:
-            raise ProcessNotfound()
-
-        session = self._sessions[sessionid]
-        if name not in session:
-            raise ProcessNotfound()
-
-        return session[name]
-
-
-
-
-
-
-
-    def scale(self, name, n, appname=None):
-        """ Scale the number of processes in a template. By using this
+    def scale(self, name, n):
+        """ Scale the number of processes in for a job. By using this
         function you can increase, decrease or set the number of processes in
         a template. Change is handled once the event loop is idling
 
@@ -458,7 +378,8 @@ class Manager(object):
             m.scale("sometemplate", "-1") # decrease of 1
             m.scale("sometemplate", "=1") # set the number of processess to 1
         """
-        appname = appname or "system"
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
 
         # find the operation to do
         if isinstance(n, int):
@@ -478,8 +399,7 @@ class Manager(object):
                 n = int(op[1:])
 
         with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
+            state = self._get_state(sessionid, name)
 
             # scale
             if op == "=":
@@ -493,58 +413,18 @@ class Manager(object):
             else:
                 ret = state.decr(n)
 
-            self._publish("update", name=name)
+            self._publish("update", name=pname)
             self._manage_processes(state)
             return ret
 
-    def manage(self, name, appname=None):
-        appname = appname or "system"
-        with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
-            self._manage_processes(state)
-
-    def get_process(self, pid):
-        """ get a process by ID.
-
-        return a ``gaffer.Process`` instance that you can use.
-        """
-        with self._lock:
-            try:
-                return self.running[pid]
-            except KeyError:
-                raise ProcessError(404, "not_found")
-
-    def stop_process(self, pid):
-        """ Stop a process by pid """
+    def info(self, name):
+        """ get job' infos """
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
 
         with self._lock:
-            if pid not in self.running:
-                return
+            state = self._get_state(sessionid, name)
 
-            # remove the process from the running processes
-            p = self.running.pop(pid)
-            try:
-                state = self.apps[p.appname][p.name]
-            except KeyError:
-                return
-
-            state.remove(p)
-
-            # signal to the process to stop
-            p.stop()
-
-            # track this process to make sure it's killed after the
-            # graceful time
-            self._tracker.check(p, state.graceful_timeout)
-
-            # notify  other that the process is beeing stopped
-            self._publish("proc.%s.stop" % p.pid, name=p.name, pid=p.pid, os_pid=p.os_pid)
-            self._publish("proc.%s.stop_pid" % p.name, name=p.name, pid=pid,
-                    os_pid=p.os_pid)
-
-    def get_template_info(self, name, appname=None):
-        state = self.get_template(name, appname=appname)
         processes = list(state.running)
 
         info = {"active":  state.active,
@@ -553,8 +433,7 @@ class Manager(object):
                 "processes": [p.pid for p in processes]}
 
         # get config
-        config = {"name": state.name,
-                  "appname": state.appname,
+        config = {"name": pname,
                   "cmd": state.cmd}
         config.update(state.settings)
         # remove custom channels because they can't be serialized
@@ -564,15 +443,16 @@ class Manager(object):
         info['config'] = config
         return info
 
-    def get_template_stats(self, name, appname=None):
-        """ return template stats
+    def stats(self, name):
+        """ return job stats
 
         """
-        appname = appname or "system"
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
+
 
         with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
+            state = self._get_state(sessionid, name)
 
             stats = []
             lmem = []
@@ -599,60 +479,198 @@ class Manager(object):
                 min_cpu = min(lcpu)
                 cpu = sum(lcpu)
 
-            ret = dict(name=name, appname=appname, stats=stats, mem=mem,
+            ret = dict(name=pname, stats=stats, mem=mem,
                     max_mem=max_mem, min_mem=min_mem, cpu=cpu,
                     max_cpu=max_cpu, min_cpu=min_cpu)
 
             return ret
 
-    def monitor(self, listener, name, appname=None):
+    def get_process(self, pid):
+        """ get an OS process by ID. A process is a ``gaffer.Process`` instance
+        attached to a process state that you can use.
+        """
+        with self._lock:
+            return self._get_pid(pid)
+
+    def stop_process(self, pid):
+        """ stop a process """
+        with self._lock:
+            # remove the job from the runnings jobs
+            try:
+                p = self.running.pop(pid)
+            except KeyError:
+                raise ProcessNotFound()
+
+            # remove the process from the state
+            sessionid, name = self._parse_name(p.name)
+            state = self._get_state(sessionid, name)
+            state.remove(p)
+
+            # notify we stop this pid
+            self._publish("pid.%s.stop" % p.pid, pid=p.pid, name=p.name)
+
+            # then stop the job
+            p.stop()
+
+            # track this process to make sure it's killed after the
+            # graceful time
+            self._tracker.check(p, state.graceful_timeout)
+
+
+    def stopall(self, name):
+        """ stop all processes of a job. Processes are just exiting and will
+        be restarted by the manager. """
+
+        sessionid, name = self._parse_name(name)
+        with self._lock:
+            state = self._get_state(sessionid, name)
+            # kill all the processes.
+            self._stopall(state)
+
+
+    def kill(self, pid, signum):
+        """ send a signal to a process """
+
+        with self._lock:
+            p = self._get_pid(pid)
+
+            # notify we stop this job
+            self._publish("pid.%s.kill" % p.pid, pid=p.pid, name=p.name)
+
+            # effectively send the signal
+            p.kill(signum)
+
+    def killall(self, name, signum):
+        """ send a signal to all processes of a job """
+
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
+        with self._lock:
+            state = self._get_state(sessionid, name)
+            self._publish("proc.%s.kill" % pname, name=pname, signum=signum)
+            for p in state.running:
+
+                # notify we stop this job
+                self._publish("job.%s.kill" % p.pid, pid=p.pid, name=p.name)
+
+                # effectively send the signal
+                p.kill(signum)
+
+
+    def walk(self, callback, name=None):
+        with self._lock:
+            if not name:
+                processes = [p for pid, p in self.running.items()]
+            else:
+                sessionid, name = self._parse_name(name)
+                state = self._get_state(sessionid, name)
+                processes = state.running
+
+            for p in processes:
+                callback(self, p)
+
+    def list(self, name=None):
+        with self._lock:
+            if not name:
+                processes = [p for pid, p in self.running.items()]
+            else:
+                sessionid, name = self._parse_name(name)
+                state = self._get_state(sessionid, name)
+                processes = state.running
+            return list(processes)
+
+    def pids(self, name=None):
+        return [p.pid for p in self.list(name=name)]
+
+    def manage(self, name):
+        sessionid, name = self._parse_name(name)
+        with self._lock:
+            state = self._get_state(sessionid, name)
+            self._manage_processes(state)
+
+    def monitor(self, listener, name):
         """ get stats changes on a process template or id
         """
 
-        appname = appname or "system"
+        sessionid, name = self._parse_name(name)
         with self._lock:
-            self._is_found(name, appname)
-            template = self.apps[appname][name]
-            for p in template.running:
+            state = self._get_state(sessionid, name)
+            for p in state.running:
                 p.monitor(listener)
 
-    def unmonitor(self, listener, name, appname=None):
+    def unmonitor(self, listener, name):
         """ get stats changes on a process template or id
         """
-        appname = appname or "system"
+        sessionid, name = self._parse_name(name)
         with self._lock:
-            self._is_found(name, appname)
-            template = self.apps[appname][name]
-            for p in template.running:
+            state = self._get_state(sessionid, name)
+            for p in state.running:
                 p.unmonitor(listener)
 
-
-    def send_signal(self, name, signum, appname=None):
-        """ send a signal to a process or all processes using the template"""
-
-        appname = appname or "system"
-        with self._lock:
-            self._is_found(name, appname)
-            state = self.apps[appname][name]
-            for p in state.running:
-                p.kill(signum)
 
     # ------------- general purpose utilities
 
     def wakeup(self):
-        self._mq.send(None)
+        self._waker.send()
 
     def get_process_id(self):
         """ generate a process id """
         self.max_process_id = increment(self.max_process_id)
         return self.max_process_id
 
+    def _get_locked_state(self, name):
+        """ utility function to get a state from name generally used for debug
+        """
+        sessionid, name = self._parse_name(name)
+        with self._lock:
+            return self._get_state(sessionid, name)
+
+
+    def _sessionid(self, session=None):
+        if not session:
+            return "default"
+        return session
+
+    def _get_pname(self, name_or_process):
+        if hasattr(name_or_process, "name"):
+            return name_or_process.name
+        else:
+            return name_or_process
+
+
+    def _parse_name(self, name):
+        if "." in name:
+            sessionid, name = name.split(".", 1)
+
+        else:
+            sessionid = "default"
+
+        return sessionid, name
+
+    def _get_state(self, sessionid, name):
+        if sessionid not in self._sessions:
+            raise ProcessNotFound()
+
+        session = self._sessions[sessionid]
+        if name not in session:
+            raise ProcessNotFound()
+
+        return session[name]
+
+    def _get_pid(self, pid):
+        try:
+            return self.running[pid]
+        except KeyError:
+            raise ProcessNotFound()
+
+
 
     # ------------- general private functions
 
     def _shutdown(self):
         with self._lock:
-            self._mq.close()
+
+            self._tracker.stop()
 
             # stop the applications.
             for ctl in self.mapps:
@@ -662,15 +680,19 @@ class Manager(object):
             self.started = False
 
             # close all handles
-            #def walk_cb(h):
+            def walk_cb(h):
+                if h.active:
+                    print(h)
             #    if h.active:
             #        h.close()
-            #self.loop.walk(walk_cb)
+            self.loop.walk(walk_cb)
 
             # if there any stop callback, excute it
             if self.stop_cb is not None:
                 self.stop_cb(self)
                 self.stop_cb = None
+
+            print("nothing should run now")
 
     def _stop(self):
         # stop should be synchronous. We need to first stop the
@@ -682,39 +704,43 @@ class Manager(object):
 
         # stop all processes
         with self._lock:
-            for appname, templates in self.apps.items():
-                for name in templates:
-                    self._stop_template(name, appname)
+            for sid in self._sessions:
+                for name, state in self._sessions[sid].items():
+                    if not state.stopped:
+                        state.stopped = True
+                        self._stopall(state)
+
 
             self._tracker.on_done(self._shutdown)
 
-    def _restart(self, callback):
+    def _restart(self):
         with self._lock:
             # on restart we first restart the applications
             for app in self.mapps:
                 app.restart()
 
-            # then we restart the temlates
-            for appname, templates in self.apps.items():
-                for name in templates:
-                    self._restart_processes(templates[name])
+            # then we restart the sessions
+            for sid in self._sessions:
+                session = self._sessions[sid]
+                for name in session:
+                    self._restart_processes(session[name])
 
             # if any callback has been set, run it
-            if callback is not None:
-                callback(self)
+            if self.restart_cb is not None:
+                self.restart_cb(self)
+                self.restart_cb = None
+
+            self.status = 0
 
 
-    # ------------- templates private functions
-
-    def _is_found(self, name, appname):
-        if appname not in self.apps:
-            raise ProcessError(404, "not_found")
-
-        if not name in self.apps[appname]:
-            raise ProcessError(404, "not_found")
+    # ------------- process type private functions
 
 
     def _stopall(self, state):
+        """ stop all processes of a job """
+
+        # start the flapping detection before killing the process to prevent
+        # any race condition
 
         if state.flapping_timer is not None:
             state.flapping_timer.stop()
@@ -728,60 +754,21 @@ class Manager(object):
             if p.pid in self.running:
                 # there is no reason to not have the pid there but make sure
                 # it won't be the case
-                del self.running[p.pid]
-
-            p.stop()
-
-        if not state.stopped:
-            state.flapping_timer.start()
-
-    def _stop_template(self, name, appname):
-        """ stop all processes in a template """
-        self._is_found(name, appname)
-
-        # get the template
-        state = self.apps[appname][name]
-
-        # if all process have already been stopped then return
-        if state.stopped:
-            return
-
-        # mark this template as stopped
-        state.stopped = True
-
-        # notify others that all processes of the templates are beeing
-        # stopped.
-        self._publish("stop", name=name, appname=appname)
-        self._publish("proc.%s.%s.stop" % (appname, name), appname=appname,
-                name=name)
-
-        # stop the flapping detection.
-        if state.flapping_timer is not None:
-            state.flapping_timer.stop()
-
-        # iterrate over queued processes.
-        while True:
-            try:
-                p = state.dequeue()
-            except IndexError:
-                break
-
-            # notify  other that the process is beeing stopped
-            self._publish("proc.%s.stop" % p.pid, name=p.name,
-                    appname=appname, pid=p.pid, os_pid=p.os_pid)
-            self._publish("proc.%s.%s.stop_pid" % (p.appname, p.name),
-                    name=p.name, pid=p.pid, os_pid=p.os_pid)
-
-            # remove the pid from the running processes
-            if p.pid in self.running:
                 self.running.pop(p.pid)
+
+            # notify we stop this pid
+            self._publish("pid.%s.stop" % p.pid, pid=p.pid, name=p.name)
 
             # stop the process
             p.stop()
+
             # track this process to make sure it's killed after the
             # graceful time
             self._tracker.check(p, state.graceful_timeout)
 
+        # if the job isn't stopped, restart the flapping detection
+        if not state.stopped and state.flapping_timer is not None:
+            state.flapping_timer.start()
 
     # ------------- functions that manage the process
 
@@ -800,15 +787,13 @@ class Manager(object):
         # we keep a list of all running process by id here
         self.running[pid] = p
 
-        self._publish("spawn", appname=p.appname, name=p.name, pid=pid,
+        self._publish("spawn", name=p.name, pid=pid,
                 detached=p.detach, os_pid=p.os_pid)
-        self._publish("proc.%s.%s.spawn" % (p.appname, p.name), name=p.name,
-                appname=p.appname, pid=pid, detached=p.detach,
-                os_pid=p.os_pid)
+        self._publish("proc.%s.spawn" % p.name, name=p.name,
+                pid=pid, detached=p.detach, os_pid=p.os_pid)
 
         self._publish("proc.%s.spawn" % pid, name=p.name,
-                appname=p.appname, pid=pid, detached=p.detach,
-                os_pid=p.os_pid)
+                pid=pid, detached=p.detach, os_pid=p.os_pid)
 
     def _spawn_processes(self, state):
         """ spawn all processes for a state """
@@ -842,12 +827,10 @@ class Manager(object):
 
                 # notify others that the process is beeing reaped
                 self._publish("reap", name=p.name, pid=p.pid, os_pid=p.os_pid)
-                self._publish("proc.%s.%s.reap" % (p.appname, p.name),
-                        name=p.name, appname=p.appname, pid=p.pid,
+                self._publish("proc.%s.reap" % p.name, name=p.name, pid=p.pid,
                         os_pid=p.os_pid)
                 self._publish("proc.%s.reap" % p.pid,
-                        name=p.name, appname=p.appname, pid=p.pid,
-                        os_pid=p.os_pid)
+                        name=p.name, pid=p.pid, os_pid=p.os_pid)
 
     def _manage_processes(self, state):
         if state.stopped:
@@ -872,8 +855,12 @@ class Manager(object):
         check_flapping, can_retry = state.check_flapping()
         if not check_flapping:
             self._publish("flap", name=state.name)
+
             # stop the processes
-            self._stop_template(state.name, state.appname)
+            if not state.stopped:
+                state.stopped = True
+                self._stopall(state)
+
             if can_retry:
                 # if we can retry later then set a callback
                 def flapping_cb(handle):
@@ -898,36 +885,33 @@ class Manager(object):
 
     # ------------- events handler
 
-    def _handle_messages(self, msg, err):
-        if not msg:
-            return
+    def _wakeup(self, handle):
+        if self.status == 1:
+            handle.close()
+            self._stop()
 
-        if msg == "STOP":
-            self.stop()
-
-        elif six.callable(msg):
-            msg()
+        elif self.status == 2:
+            self._restart()
 
     def _on_exit(self, evtype, msg):
-        appname = msg['appname']
-        name = msg['name']
+        sessionid, name = self._parse_name(msg['name'])
 
         with self._lock:
             try:
-                state = self.apps[appname][name]
-            except KeyError:
+                state = self._get_state(sessionid, name)
+            except ProcessNotFound:
+                # race condition, we already removed this process
                 return
 
             # eventually restart the process
             if not state.stopped:
                 # manage the template, eventually restart a new one.
-
                 if self._check_flapping(state):
                     self._manage_processes(state)
 
     def _on_process_exit(self, process, exit_status, term_signal):
         with self._lock:
-            # maybe uncjeck this process from the tracker
+            # maybe uncheck this process from the tracker
             self._tracker.uncheck(process)
 
             # unexpected exit, remove the process from the list of
@@ -935,19 +919,19 @@ class Manager(object):
             if process.pid in self.running:
                 self.running.pop(process.pid)
 
+            sessionid, name = self._parse_name(process.name)
             try:
-                state = self.apps[process.appname][process.name]
+                state = self._get_state(sessionid, name)
                 # remove the process from the state if needed
                 state.remove(process)
-            except KeyError:
+            except (ProcessNotFound, KeyError):
                 pass
 
             # notify other that the process exited
-            ev_details = dict(name=process.name, appname=process.appname,
-                    pid=process.pid, exit_status=exit_status,
-                    term_signal=term_signal, os_pid=process.os_pid)
+            ev_details = dict(name=process.name, pid=process.pid,
+                    exit_status=exit_status, term_signal=term_signal,
+                    os_pid=process.os_pid)
 
             self._publish("exit", **ev_details)
-            self._publish("proc.%s.%s.exit" % (process.appname, process.name),
-                **ev_details)
+            self._publish("proc.%s.exit" % process.name, **ev_details)
             self._publish("proc.%s.exit" % process.pid, **ev_details)

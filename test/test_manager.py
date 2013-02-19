@@ -13,9 +13,9 @@ from tempfile import mkstemp
 import pyuv
 import pytest
 
-from gaffer.error import ProcessError
+from gaffer.error import ProcessError, ProcessNotFound
 from gaffer.manager import Manager
-from gaffer.process import Process
+from gaffer.process import ProcessConfig, Process
 from gaffer.state import FlappingInfo
 
 def tmpfile():
@@ -59,37 +59,40 @@ def test_simple():
     m.stop(on_stop)
     m.run()
 
-def test_simple_template():
+def test_simple_job():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, start=False)
-    state = m.get_template("dummy")
+
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+
+    m.load(config, start=False)
+    state = m._get_locked_state("dummy")
 
     assert state.numprocesses == 1
-    assert state.name == "dummy"
-    assert state.appname == "system"
+    assert state.name == "default.dummy"
     assert state.cmd == cmd
-    assert state.settings['args'] == args
-    assert state.settings['cwd'] == wdir
+    assert state.config['args'] == args
+    assert state.config['cwd'] == wdir
 
-    m.remove_template("dummy")
+    m.unload("dummy")
 
     with pytest.raises(ProcessError):
-        m.get_template("dummy")
+        m._get_locked_state("dummy")
 
     m.stop()
     m.run()
 
-def test_start_stop_template():
+def test_start_stop_job():
     res = []
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir)
-    state = m.get_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    state = m._get_locked_state("dummy")
     res.append(len(state.running))
-    m.stop_template("dummy")
+    m.stop_job("dummy")
     res.append(len(state.running))
     m.stop()
     m.run()
@@ -102,8 +105,9 @@ def test_start_multiple():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=2)
-    state = m.get_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=2)
+    m.load(config)
+    state = m._get_locked_state("dummy")
     assert len(state.running) == 2
     m.stop()
     m.run()
@@ -112,8 +116,9 @@ def test_scalein():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
-    state = m.get_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
     assert len(state.running) == 1
     ret = m.scale("dummy", 1)
@@ -141,11 +146,11 @@ def test_scalein():
 def test_scaleout():
     m = Manager()
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_template("dummy")
 
     assert len(state.running) == 4
     ret = m.scale("dummy", -1)
@@ -166,8 +171,9 @@ def test_numprocesses():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
     assert len(state.running) == 4
     state.numprocesses = 0
@@ -183,31 +189,35 @@ def test_process_id():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
     res = []
     def cb(m, p):
         res.append(p.pid)
 
-    m.walk_processes(cb, "dummy")
+    res2 = [p.pid for p in m.list("dummy")]
+    m.walk(cb, "dummy")
     m.stop()
     m.run()
 
     assert res == [1, 2, 3, 4]
+    assert res == res2
 
 def test_restart_process():
     results = []
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_template("dummy")
-    results.append(state.pids)
-    m.restart_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+
+    results.append(m.pids("dummy"))
+    m.reload("dummy")
 
     def cb(handle):
-        state = m.get_template("dummy")
-        results.append(state.pids)
+        results.append(m.pids("dummy"))
         m.stop()
 
     t = pyuv.Timer(m.loop)
@@ -221,13 +231,12 @@ def test_restart_manager():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_template("dummy")
-    results.append(state.pids)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    results.append(m.pids("dummy"))
 
     def cb(manager):
-        state = m.get_template("dummy")
-        results.append(state.pids)
+        results.append(m.pids("dummy"))
         m.stop()
 
     m.restart()
@@ -235,25 +244,27 @@ def test_restart_manager():
     t.start(cb, 0.4, 0.0)
     m.run()
 
+    print(results[0])
+    print(results[1])
     assert results[0] != results[1]
 
 def test_send_signal():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
     time.sleep(0.2)
-    state = m.get_template("dummy")
-    processes = state.list_processes()
-    m.send_signal("dummy", signal.SIGHUP)
+
+    m.killall("dummy", signal.SIGHUP)
     time.sleep(0.2)
 
 
     with pytest.raises(ProcessError) as e:
-        m.send_signal("dummy1", signal.SIGHUP)
+        m.killall("dummy1", signal.SIGHUP)
         assert e.errno == 404
 
-    m.stop_process("dummy")
+    m.stop_job("dummy")
 
     def stop(handle):
         handle.stop()
@@ -272,16 +283,24 @@ def test_flapping():
     m.start()
     states = []
     cmd, args, wdir = crash_cmd()
+
+    # create flapping info object
     flapping = FlappingInfo(attempts=1., window=1, retry_in=0.1,
             max_retry=1)
-    m.add_template("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
-    m.add_template("crashing2", cmd, args=args, cwd=wdir)
+
+    # load conf
+    conf1 = ProcessConfig("crashing", cmd, args=args, cwd=wdir,
+            flapping=flapping)
+    conf2 = ProcessConfig("crashing2", cmd, args=args, cwd=wdir)
+    m.load(conf1)
+    m.load(conf2)
+
     time.sleep(0.2)
 
     def cb(handle):
-        state = m.get_template("crashing")
+        state = m._get_locked_state("crashing")
         states.append(state.stopped)
-        state2 = m.get_template("crashing2")
+        state2 = m._get_locked_state("crashing2")
         states.append(state2.stopped)
         m.stop()
 
@@ -303,20 +322,20 @@ def test_events():
     m.events.subscribe('.', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
     m.scale("dummy", 1)
-    m.remove_template("dummy")
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
     m.run()
 
-
-    assert ('create', 'dummy') in emitted
-    assert ('start', 'dummy') in emitted
-    assert ('update', 'dummy') in emitted
-    assert ('stop', 'dummy') in emitted
-    assert ('delete', 'dummy') in emitted
+    assert ('load', 'default.dummy') in emitted
+    assert ('start', 'default.dummy') in emitted
+    assert ('update', 'default.dummy') in emitted
+    assert ('stop', 'default.dummy') in emitted
+    assert ('unload', 'default.dummy') in emitted
 
 def test_process_events():
     emitted = []
@@ -327,20 +346,21 @@ def test_process_events():
         emitted.append(ev)
 
     # subscribe to all events
-    m.events.subscribe('proc.system.dummy', cb)
+    m.events.subscribe('proc.default.dummy', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir)
-    m.stop_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
     m.run()
 
-    assert 'proc.system.dummy.start' in emitted
-    assert 'proc.system.dummy.spawn' in emitted
-    assert 'proc.system.dummy.stop' in emitted
-    assert 'proc.system.dummy.exit' in emitted
+    assert 'proc.default.dummy.start' in emitted
+    assert 'proc.default.dummy.spawn' in emitted
+    assert 'proc.default.dummy.stop' in emitted
+    assert 'proc.default.dummy.exit' in emitted
 
 def test_process_exit_event():
     emitted = []
@@ -351,18 +371,19 @@ def test_process_exit_event():
         emitted.append(msg)
 
     # subscribe to all events
-    m.events.subscribe('proc.system.dummy.exit', cb)
+    m.events.subscribe('proc.default.dummy.exit', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir)
-    m.stop_template("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
     m.run()
 
     assert len(emitted) == 1
-    assert len(emitted[0]) == 7
+    assert len(emitted[0]) == 6
 
     msg = emitted[0]
     assert "exit_status" in msg
@@ -371,9 +392,10 @@ def test_process_stats():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("dummy", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
     time.sleep(0.2)
-    info = m.get_template_stats("dummy")
+    info = m.stats("dummy")
     info_by_id = m.get_process(1).info
     os_pid = m.running[1].os_pid
     m.stop()
@@ -383,34 +405,37 @@ def test_process_stats():
     assert isinstance(info_by_id, dict)
     assert "os_pid" in info_by_id
     assert info_by_id["os_pid"] == os_pid
-    assert info['name'] == "dummy"
+    assert info['name'] == "default.dummy"
     assert len(info['stats']) == 1
     assert info['stats'][0]['os_pid'] == info_by_id['os_pid']
 
 def test_processes_stats():
 
-    def collect_cb(inf, m, template):
-        inf.append(m.get_template_stats(template.name, template.appname))
+    def collect_cb(inf, m, name):
+        inf.append(m.stats(name))
 
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     testfile1, cmd1, args1, wdir1 = dummy_cmd()
-    m.add_template("a", cmd, args=args, cwd=wdir)
+    configa = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    m.load(configa)
+
     time.sleep(0.2)
     infos = []
     infos2 = []
-    m.walk(partial(collect_cb, infos))
-    m.add_template("b", cmd, args=args, cwd=wdir)
-    m.walk(partial(collect_cb, infos2))
+    m.session_walk(partial(collect_cb, infos))
+    configb = ProcessConfig("b", cmd, args=args, cwd=wdir)
+    m.load(configb)
+    m.session_walk(partial(collect_cb, infos2))
     m.stop()
     m.run()
 
     assert len(infos) == 1
     assert len(infos2) == 2
-    assert infos[0]['name'] == "a"
-    assert infos2[0]['name'] == "a"
-    assert infos2[1]['name'] == "b"
+    assert infos[0]['name'] == "default.a"
+    assert infos2[0]['name'] == "default.a"
+    assert infos2[1]['name'] == "default.b"
 
 def test_monitor():
     m = Manager()
@@ -420,7 +445,8 @@ def test_monitor():
 
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("a", cmd, args=args, cwd=wdir)
+    configa = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    m.load(configa)
     time.sleep(0.2)
     os_pid = m.running[1].os_pid
     m.monitor(cb, "a")
@@ -449,12 +475,17 @@ def test_priority():
     m.events.subscribe('start', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("a", cmd, args=args, cwd=wdir, start=False)
-    m.add_template("d", cmd, args=args, cwd=wdir, start=False)
-    m.add_template("b", cmd, args=args, cwd=wdir, start=False)
+    a = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    b = ProcessConfig("b", cmd, args=args, cwd=wdir)
+    c = ProcessConfig("c", cmd, args=args, cwd=wdir)
+
+
+    m.load(a, start=False)
+    m.load(b, start=False)
+    m.load(c, start=False)
 
     # start all processes
-    m.walk(lambda m, t: m.start_template(t.name, t.appname))
+    m.session_walk(lambda mgr, label: mgr.start_job(label))
 
     def stop(handle):
         m.events.unsubscribe("start", cb)
@@ -464,46 +495,53 @@ def test_priority():
     t.start(stop, 0.4, 0.0)
     m.run()
 
-    assert started == ["a", "d", "b"]
+    assert started == ["default.a", "default.b", "default.c"]
 
-def test_application():
+def test_sessions():
     m = Manager()
     started = []
     stopped = []
     def cb(evtype, info):
         if evtype == "start":
-            started.append((info['appname'], info['name']))
+            started.append(info['name'])
         elif evtype == "stop":
-            stopped.append((info['appname'], info['name']))
+            stopped.append(info['name'])
+
+    start_job = lambda mgr, label: mgr.start_job(label)
+    stop_job = lambda mgr, label: mgr.stop_job(label)
 
     m.start()
     m.events.subscribe('start', cb)
     m.events.subscribe('stop', cb)
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_template("a", cmd, appname="ga", args=args, cwd=wdir, start=False)
-    m.add_template("b", cmd, appname="ga", args=args, cwd=wdir, start=False)
-    m.add_template("a", cmd, appname="gb", args=args, cwd=wdir, start=False)
-
-    apps = m.all_apps()
-
-    ga1 = [name for name in m.get_templates('ga')]
-    gb1 = [name for name in m.get_templates('gb')]
-
-    start_app = lambda m, t: m.start_template(t.name, t.appname)
-    stop_app = lambda m, t: m.stop_template(t.name, t.appname)
+    a = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    b = ProcessConfig("b", cmd, args=args, cwd=wdir)
 
 
-    m.walk_templates(start_app, "ga")
-    m.walk_templates(start_app, "gb")
+    # load process config in different sessions
+    m.load(a, sessionid="ga", start=False)
+    m.load(b, sessionid="ga", start=False)
+    m.load(a, sessionid="gb", start=False)
+
+
+    sessions = m.sessions
+
+    ga1 = m.jobs('ga')
+    gb1 = m.jobs('gb')
+
+    m.jobs_walk(start_job, "ga")
+    m.jobs_walk(start_job, "gb")
 
     ga2 = []
     def rem_cb(h):
-        m.remove_template("a", "ga")
-        [ga2.append(name) for name in m.get_templates('ga')]
+        print(m.jobs())
+        m.unload("a", sessionid="ga")
+        [ga2.append(name) for name in m.jobs('ga')]
+
 
     t0 = pyuv.Timer(m.loop)
     t0.start(rem_cb, 0.2, 0.0)
-    m.walk_templates(stop_app, "gb")
+    m.jobs_walk(stop_job, "gb")
 
     def stop(handle):
         m.events.unsubscribe("start", cb)
@@ -514,13 +552,14 @@ def test_application():
     t.start(stop, 0.6, 0.0)
     m.run()
 
-    assert apps == ['ga', 'gb']
-    assert ga1 == ['a', 'b']
-    assert gb1 == ['a']
-    assert started == [('ga', 'a'), ('ga', 'b'), ('gb', 'a')]
-    assert stopped == [('gb', 'a'), ('ga', 'a')]
-    assert ga2 == ['b']
+    assert len(sessions) == 2
+    assert sessions == ['ga', 'gb']
+    assert ga1 == ['ga.a', 'ga.b']
+    assert gb1 == ['gb.a']
+    assert started == ['ga.a', 'ga.b', 'gb.a']
+    assert stopped == ['gb.a', 'ga.a']
+    assert ga2 == ['ga.b']
 
 
 if __name__ == "__main__":
-    test_start_stop_template()
+    test_sessions()
