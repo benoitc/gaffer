@@ -6,32 +6,42 @@ import json
 
 
 from ..error import ProcessError
+from ..process import ProcessConfig
 from .util import CorsHandler
 
 
-class AllApplicationsHandler(CorsHandler):
-    """ /apps """
+class SessionsHandler(CorsHandler):
+    """ /sessions """
 
     def get(self, *args):
         self.preflight()
         m = self.settings.get('manager')
         self.set_header('Content-Type', 'application/json')
-        self.write(json.dumps({"apps": m.all_apps()}))
+        self.write(json.dumps({"sessions": m.sessions}))
 
 
-class TemplatesHandler(CorsHandler):
-    """ /<apps>/<appname> """
+class AllJobsHandler(CorsHandler):
+    """ /jobs """
+
+    def get(self, *args):
+        self.preflight()
+        m = self.settings.get('manager')
+        self.set_header('Content-Type', 'application/json')
+        self.write(json.dumps({"jobs": m.jobs()}))
+
+class JobsHandler(CorsHandler):
+    """ /jobs/<sessionid> """
 
     def get(self, *args, **kwargs):
         self.preflight()
         m = self.settings.get('manager')
-        appname = args[0]
-        templates = list(m.get_templates(appname))
+        sessionid = args[0]
+        jobs = list(m.jobs(sessionid))
 
         # send response
         self.set_header('Content-Type', 'application/json')
-        self.write(json.dumps({"appname": appname,
-                               "templates": templates}))
+        self.write(json.dumps({"sessionid": sessionid,
+                               "jobs": jobs}))
 
     def post(self, *args, **kwargs):
         self.preflight()
@@ -43,13 +53,21 @@ class TemplatesHandler(CorsHandler):
             return self.write({"error": "bad_request"})
             return
 
-        # set the application name
-        settings['appname'] = args[0]
+        # extract the sessionid from the path.
+        sessionid = args[0]
 
-        # store the template
+        # do we start the job once the config is loaded? True by default.
+        if "start" in settings:
+            start = settings.pop("start")
+        else:
+            start = True
+
+        config = ProcessConfig(name, cmd, **settings)
+
+        # load the config
         m = self.settings.get('manager')
         try:
-            m.add_template(name, cmd, **settings)
+            m.load(config, sessionid=sessionid, start=start)
         except ProcessError as e :
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -66,19 +84,16 @@ class TemplatesHandler(CorsHandler):
         return name, cmd, obj
 
 
-class TemplateHandler(CorsHandler):
-    """ /<apps>/<appname>/<template> """
+class JobHandler(CorsHandler):
+    """ /jobs/<sessionid>/<label> """
 
     def head(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
-        appname = args[0]
-        name = args[1]
-
         try:
-            m.get_template(name, appname)
+            m.get("%s.%s" % (args[0], args[1]))
         except ProcessError:
             return self.set_status(404)
 
@@ -94,7 +109,7 @@ class TemplateHandler(CorsHandler):
 
 
         try:
-            info = m.get_template_info(name, appname)
+            info = m.info("%s.%s" % (args[0], args[1]))
         except ProcessError:
             self.set_status(404)
             return self.write({"error": "not_found"})
@@ -105,11 +120,11 @@ class TemplateHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
+        sessionid = args[0]
         name = args[1]
 
         try:
-            m.remove_template(name, appname)
+            m.unload(name, sessionid)
         except ProcessError:
             self.set_status(404)
             return self.write({"error": "not_found"})
@@ -120,17 +135,26 @@ class TemplateHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
+        sessionid = args[0]
         name = args[1]
 
         try:
-            cmd, settings = self.fetch_body(name, appname)
+            cmd, settings = self.fetch_body(name)
         except ValueError as e:
             self.set_status(400)
             return self.write({"error": "bad_request", "reason": str(e)})
 
+        # do we start the job once the config is loaded? True by default.
+        if "start" in settings:
+            start = settings.pop("start")
+        else:
+            start = True
+
+        # create config object
+        config = ProcessConfig(name, cmd, **settings)
+
         try:
-            m.update(name, cmd, appname=appname, **settings)
+            m.update(config, sessionid=sessionid, start=start)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -139,36 +163,31 @@ class TemplateHandler(CorsHandler):
         self.write({"ok": True})
 
 
-    def fetch_body(self, name, appname):
-        obj = json.loads(self.request.body.decode('utf-8'))
-        if "cmd" not in obj:
-            raise ValueError("invalid template")
+    def fetch_body(self, name):
+        settings = json.loads(self.request.body.decode('utf-8'))
+        if "cmd" not in settings:
+            raise ValueError("invalid process config")
 
-        if obj.get('appname') !=  appname:
-            raise ValueError("application name conflict with the path")
+        if 'name' in settings:
+            if settings.get('name') != name:
+                raise ValueError("template name conflict with the path")
 
-        if obj.get('name') != name:
-            raise ValueError("template name conflict with the path")
+            del settings['name']
 
-        del obj['name']
-        del obj['appname']
-
-        cmd = obj.pop("cmd")
-        return cmd, obj
+        cmd = settings.pop("cmd")
+        return cmd, config
 
 
-class TemplateStatsHandler(CorsHandler):
-    """ /<apps>/<appname>/<template>/stats """
+class JobStatsHandler(CorsHandler):
+    """ /jobs/<sessionid>/<label>/stats """
 
     def get(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
 
         try:
-            stats = m.get_template_stats(name, appname)
+            stats = m.stats("%s.%s" % (args[0], args[1]))
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -176,18 +195,16 @@ class TemplateStatsHandler(CorsHandler):
         self.write(stats)
 
 
-class ScaleTemplateHandler(CorsHandler):
-    """ /<apps>/<appname>/<template>/numprocesses """
+class ScaleJobHandler(CorsHandler):
+    """ /jobs/<sessionid>/<label>/numprocesses """
 
     def get(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
 
         try:
-            t = m.get_template(name, appname)
+            t = m._get_locked_state("%s.%s" % (args[0], args[1]))
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -198,8 +215,6 @@ class ScaleTemplateHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
 
         try:
             n = self.get_scaling_value()
@@ -208,12 +223,12 @@ class ScaleTemplateHandler(CorsHandler):
             return self.write({"error": "bad_request"})
 
         try:
-            ret = m.scale(name, n, appname)
+            ret = m.scale("%s.%s" % (args[0], args[1]), n)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
 
-        self.write({"numprocesses": n})
+        self.write({"numprocesses": ret})
 
     def get_scaling_value(self):
         obj = json.loads(self.request.body.decode('utf-8'))
@@ -222,8 +237,8 @@ class ScaleTemplateHandler(CorsHandler):
         return obj['scale']
 
 
-class PidsTemplateHandler(CorsHandler):
-    """ /<apps>/<appname>/<template>/pids """
+class PidsJobHandler(CorsHandler):
+    """ /jobs/<sessionid>/<label>/pids """
 
     def get(self, *args):
         self.preflight()
@@ -233,24 +248,22 @@ class PidsTemplateHandler(CorsHandler):
         name = args[1]
 
         try:
-            t = m.get_template(name, appname)
+            pids = m.pids("%s.%s" % (args[0], args[1]))
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
 
-        self.write({"pids": t.pids})
+        self.write({"pids": pids})
 
 
-class SignalTemplateHandler(CorsHandler):
-    """ /<apps>/<appname>/<template>/signal """
+class SignalJobHandler(CorsHandler):
+    """ /<jobs>/<sessionid>/<label>/signal """
 
 
     def post(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
 
         try:
             sig = self.get_signal_value()
@@ -259,7 +272,7 @@ class SignalTemplateHandler(CorsHandler):
             return self.write({"error": "bad_request"})
 
         try:
-             m.send_signal(name, sig, appname)
+             m.kill("%s.%s" % (args[0], args[1]), sig)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -275,17 +288,14 @@ class SignalTemplateHandler(CorsHandler):
         return obj['signal']
 
 
-class StateTemplateHandler(CorsHandler):
+class StateJobHandler(CorsHandler):
 
     def get(self, *args):
         self.preflight()
 
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
-
         try:
-            t = m.get_template(name, appname)
+            t = m._get_locked_state("%s.%s" % (args[0], args[1]))
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -296,9 +306,6 @@ class StateTemplateHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
-
         try:
             do = self.get_action(m)
         except ValueError:
@@ -306,7 +313,7 @@ class StateTemplateHandler(CorsHandler):
             return self.write({"error": "bad_request"})
 
         try:
-            do(name, appname)
+            do("%s.%s" % (args[0], args[1]))
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -317,11 +324,11 @@ class StateTemplateHandler(CorsHandler):
     def get_action(self, m):
         state = self.request.body
         if state == b'1':
-            do = m.start_template
+            do = m.start_job
         elif state == b'0':
-            do = m.stop_template
+            do = m.stop_job
         elif state == b'2':
-            do = m.restart_template
+            do = m.reload
         else:
             raise ValueError("invalid state")
         return do
