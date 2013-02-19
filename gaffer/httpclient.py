@@ -40,6 +40,7 @@ from tornado import httpclient
 
 from .events import EventEmitter
 from .loop import patch_loop, get_loop
+from .process import ProcessConfig
 from .tornado_pyuv import IOLoop
 from .util import quote, quote_plus
 
@@ -258,146 +259,105 @@ class Server(object):
         resp = self.request("get", "/ping")
         return resp.body == b'OK'
 
-    def walk(self, callback):
-        apps = self.all_apps()
-        for appname in apps:
-            templates = self.get_templates(appname)
-            for template in templates:
-                callback(self, template)
-
-    def walk_templates(self, callback, appname=None):
-        appname = appname or "system"
-        templates = self.get_templates(appname)
-        for name in templates:
-            callback(self, self.get_template(name, appname))
-
-    def walk_template(self, callback, name, appname=None):
-        appname = appname or "system"
-        template = self.get_template(name, appname)
-        for pid in template.pids:
-            callback(self, self.get_process(pid))
-
-    def all_apps(self):
-        """ get list of registered processes """
-        resp = self.request("get", "/apps")
+    def sessions(self):
+        """ get list of current sessions """
+        resp = self.request("get", "/sessions")
         obj = self.json_body(resp)
-        return obj['apps']
+        return obj['sessions']
 
-    def get_templates(self, appname=None):
-        appname = appname or "system"
-        resp = self.request("get", "/apps/%s" % appname)
-        obj = self.json_body(resp)
-        return obj['templates']
+    def jobs(self, sessionid=None):
+        if sessionid is None:
+            resp = self.request("get", "/jobs")
+        else:
+            resp = self.request("get", "/jobs/%s" % sessionid)
 
-    def get_template(self, name, appname=None):
-        """ get a process by name or id.
+        return self.json_body(resp)["jobs"]
 
-        If id is given a Process instance is returned in other cases a
-        Process instance is returned. """
+    def jobs_walk(self, callback, sessionid=None):
+        jobs = self.jobs(sessionid)
+        for job in jobs:
+            sessionid, name = self._parse_name(job)
+            callback(self, Job(self, config=name, sessionid=sessionid))
 
-        appname = appname or "system"
-        resp = self.request("get", "/apps/%s/%s" % (appname, name))
-        config = self.json_body(resp)['config']
-        return Template(server=self, config=config)
-
-    def get_process(self, pid):
-        return Process(server=self, pid=pid)
-
-    def is_template(self, name, appname=None):
-        """ is the process exists ? """
-
-        appname = appname or "system"
-        resp = self.request("head", "/apps/%s/%s" % (appname, name))
+    def job_exists(self, name):
+        sessionid, name = self._parse_name(name)
+        resp = self.request("head", "/jobs/%s/%s" % (sessionid, name))
         if resp.code == 200:
             return True
         return False
 
-    def save_template(self, name, cmd, appname=None, **kwargs):
-        """ save template.
+
+    def load(self, config, sessionid=None, start=True, force=False):
+        """  load a process config object.
 
         Args:
 
-        - **name**: name of the process
-        - **cmd**: program command, string)
-        - **appname**: name of the application
-        - **args**: the arguments for the command to run. Can be a list or
-          a string. If **args** is  a string, it's splitted using
-          :func:`shlex.split`. Defaults to None.
-        - **env**: a mapping containing the environment variables the command
-          will run with. Optional
-        - **uid**: int or str, user id
-        - **gid**: int or st, user group id,
-        - **cwd**: working dir
-        - **detach**: the process is launched but won't be monitored and
-          won't exit when the manager is stopped.
-        - **shell**: boolean, run the script in a shell. (UNIX
-          only),
-        - os_env: boolean, pass the os environment to the program
-        - numprocesses: int the number of OS processes to launch for
-          this description
+        - **config**: dict or a ``process.ProcessConfig`` instance
+        - **sessionid**: Some processes only make sense in certain contexts.
+          this flag instructs gaffer to maintain this process in the sessionid
+          context. A context can be for example an application. If no session
+          is specified the config will be attached to the ``default`` session.
+        """
 
-        If `_force_update=True` is passed, the existing process template
-        will be overwritten. """
-        if "_force_update" in kwargs:
-            force = kwargs.pop("_force_update")
-
-        appname = appname or "system"
-
-        config = { "name": name, "cmd": cmd, "appname": appname }
-        config.update(kwargs)
-
-        body = json.dumps(config)
-
+        sessionid = self._sessionid(sessionid)
         headers = {"Content-Type": "application/json" }
+
+        # build config body
+        config_dict = config.to_dict()
+        config_dict.update({'start': start})
+        body = json.dumps(config_dict)
+
+        name = "%s.%s" % (sessionid, config.name)
 
         if force:
-            if self.is_template(name):
-                self.request("put", "/apps/%s/%s" % (appname, name), body=body,
-                        headers=headers)
+            if self.job_exists(name):
+                self.request("put", "/jobs/%s/%s" % (sessionid, config.name),
+                        body=body, headers=headers)
             else:
-                self.request("post", "/apps/%s" % appname, body=body,
+                self.request("post", "/jobs/%s" % sessionid, body=body,
                         headers=headers)
         else:
-            self.request("post", "/apps/%s" % appname, body=body,
+            self.request("post", "/jobs/%s" % sessionid, body=body,
                         headers=headers)
 
-        return Template(server=self, config=config)
+        return Job(server=self, config=config, sessionid=sessionid)
 
-    def add_template(self, name, cmd, appname=None, **kwargs):
-        """ add a process. Use the same arguments as in save_process.
-
-        If a process with the same name is already registred a
-        `GafferConflict` exception is raised.
-        """
-        kwargs["_force_update"] = False
-        return self.save_template(name, cmd, appname=appname, **kwargs)
-
-    def update_template(self, name, cmd, appname=None, **kwargs):
-        """ update a process. """
-        kwargs["_force_update"] = True
-        return self.save_template(name, cmd, appname=appname, **kwargs)
-
-    def remove_template(self, name, appname=None):
-        """ Stop a process and remove it from the managed processes """
-
-        appname = appname or "system"
-        self.request("delete", "/apps/%s/%s" % (appname, name))
+    def unload(self, name, sessionid=None):
+        sessionid = self._sessionid(sessionid)
+        self.request("delete", "/jobs/%s/%s" % (sessionid, name))
         return True
 
-    def send_signal(self, name, signal, appname=None):
-        """ Send a signal to the pid or the process name """
-        appname = appname or "system"
-        body = json.dumps({"signal": signal})
-        headers = {"Content-Type": "application/json" }
-        self.request('post', "/apps/%s/%s/signal" % (appname, name),
-            body=body, headers=headers)
-        return True
+    def get_job(self, name):
+        sessionid, name = self._parse_name(name)
+        resp = self.request("get", "/jobs/%s/%s" % (sessionid, name))
+        config_dict = self.json_body(resp)['config']
+        return Job(server=self, config=ProcessConfig.from_dict(config_dict),
+                sessionid=sessionid)
+
+    def get_process(self, pid):
+        return Process(server=self, pid=pid)
 
     def get_watcher(self, heartbeat="true"):
         """ return a watcher to listen on /watch """
         url =  make_uri(self.uri, '/watch', feed='eventsource',
                 heartbeat=str(heartbeat))
         return Watcher(self.loop, url, **self.options)
+
+    def _parse_name(self, name):
+        if "." in name:
+            sessionid, name = name.split(".", 1)
+        elif "/" in name:
+            sessionid, name = name.split("/", 1)
+        else:
+            sessionid = "default"
+
+        return sessionid, name
+
+    def _sessionid(self, session=None):
+        if not session:
+            return "default"
+        return session
+
 
 class Process(object):
     """ Process Id object. It represent a pid """
@@ -431,7 +391,6 @@ class Process(object):
     @property
     def stats(self):
         resp = self.server.request("get", "/%s/stats" % self.pid)
-        print(resp)
         obj = self.server.json_body(resp)
         return obj['stats']
 
@@ -440,7 +399,7 @@ class Process(object):
         self.server.request("delete", "/%s" % self.pid)
         return True
 
-    def signal(self, sig):
+    def kill(self, sig):
         """ Send a signal to the pid """
         path = "/%s/signal" % (self.pid, sig)
         body = json.dumps({"signal", sig})
@@ -449,33 +408,45 @@ class Process(object):
         self.server.request("post", path, body=body, headers=headers)
         return True
 
-class Template(object):
-    """ Template object. Represent a remote template state"""
+class Job(object):
+    """ Job object. Represent a remote job"""
 
-    def __init__(self, server, config):
+    def __init__(self, server, config=None, sessionid=None):
         self.server = server
-        self.config = config
-        self.name = config['name']
-        self.appname = config['appname']
+        self.sessionid = sessionid or 'default'
+        if not isinstance(config, ProcessConfig):
+            self.name = config
+        else:
+            self.name = config['name']
 
+        self.cached_config = None
+
+    @property
+    def config(self):
+        if not self.cached_config:
+            resp = self.request("get", "/jobs/%s/%s" % (self.sessionid,
+                self.name))
+            config_dict = self.json_body(resp)['config']
+            self._config = ProcessConfig.from_dict(config_dict)
+        return self.cached_config
 
     def __str__(self):
-        return self.process.get('name')
+        return self.name
 
     def __getattr__(self, key):
-        if key in self.config:
-            return self.config[key]
-
         try:
             return self.__dict__[key]
         except KeyError as e:
             raise AttributeError(str(e))
 
+        if key in self.config:
+            return self.config[key]
+
     @property
     def active(self):
         """ return True if the process is active """
-        resp = self.server.request("get", "/apps/%s/%s/state" % (self.appname,
-            self.name))
+        resp = self.server.request("get", "/jobs/%s/%s/state" % (
+            self.sessionid, self.name))
         if resp.body == b'1':
             return True
         return False
@@ -496,51 +467,51 @@ class Template(object):
     @property
     def pids(self):
         """ return a list of running pids """
-        resp = self.server.request("get", "/apps/%s/%s/pids" % (self.appname,
-            self.name))
+        resp = self.server.request("get", "/jobs/%s/%s/pids" % (
+            self.sessionid, self.name))
         result = self.server.json_body(resp)
         return result['pids']
 
     def info(self):
         """ return the process info dict """
-        resp = self.server.request("get", "/apps/%s/%s" % (self.appname,
+        resp = self.server.request("get", "/jobs/%s/%s" % (self.sessionid,
             self.name))
         return self.server.json_body(resp)
 
     def stats(self):
         """ Return the template stats
         """
-        resp = self.server.request("get", "/apps/%s/%s/stats" % (self.appname,
-            self.name))
+        resp = self.server.request("get", "/jobs/%s/%s/stats" %
+                (self.sessionid, self.name))
         return self.server.json_body(resp)
 
 
     def start(self):
         """ start the process if not started, spawn new processes """
-        self.server.request("post", "/apps/%s/%s/state" % (self.appname,
+        self.server.request("post", "/jobs/%s/%s/state" % (self.sessionid,
             self.name), body="1")
         return True
 
     def stop(self):
         """ stop the process """
-        self.server.request("post", "/apps/%s/%s/state" % (self.appname,
+        self.server.request("post", "/jobs/%s/%s/state" % (self.sessionid,
             self.name), body="0")
         return True
 
     def restart(self):
         """ restart the process """
-        self.server.request("post", "/apps/%s/%s/state" % (self.appname,
+        self.server.request("post", "/jobs/%s/%s/state" % (self.sessionid,
             self.name), body="2")
         return True
 
     def scale(self, num=1):
         body = json.dumps({"scale": num})
-        resp = self.server.request("post", "/apps/%s/%s/numprocesses" % (
-            self.appname, self.name), body=body)
+        resp = self.server.request("post", "/jobs/%s/%s/numprocesses" % (
+            self.sessionid, self.name), body=body)
         result = self.server.json_body(resp)
         return result['numprocesses']
 
-    def signal(self, num_or_str):
+    def kill(self, num_or_str):
         """ send a signal to all processes of this template """
         if isinstance(num_or_str, six.string_types):
             signame = num_or_str.upper()
@@ -554,7 +525,7 @@ class Template(object):
             signum = num_or_str
 
         body = json.dumps({"signal": signum})
-        self.server.request("post", "/apps/%s/%s/signal" % (self.appname,
+        self.server.request("post", "/jobs/%s/%s/signal" % (self.sessionid,
             self.name), body=body)
         return True
 

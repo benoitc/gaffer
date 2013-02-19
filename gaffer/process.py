@@ -366,11 +366,35 @@ class ProcessConfig(object):
 
         return self.settings[key]
 
+    def __contain__(self, key):
+        if key in ('name', 'cmd'):
+            return True
+
+        if key in self.settings:
+            return True
+
+        return False
+
     def get(self, key, default=None):
         try:
             return self[key]
         except KeyError:
             return default
+
+    def to_dict(self):
+        d = dict(name=self.name, cmd=self.cmd)
+        d.update(self.settings)
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        try:
+            name = d.pop('name')
+            cmd = d.pop('cmd')
+        except KeyError:
+            raise ValueError("invalid config dict")
+
+        return cls(name, cmd, **d)
 
 class Process(object):
     """ class wrapping a process

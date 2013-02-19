@@ -8,6 +8,6 @@ from .pid import (AllProcessIdsHandler, ProcessIdHandler,
 from .watcher import WatcherHandler
 from .stats import StatsHandler
 from .stream import StreamHandler, WStreamHandler
-from .templates import (AllApplicationsHandler, TemplatesHandler,
-        TemplateHandler, TemplateStatsHandler, ScaleTemplateHandler,
-        PidsTemplateHandler, SignalTemplateHandler, StateTemplateHandler)
+from .jobs import (SessionsHandler, AllJobsHandler, JobsHandler,
+        JobHandler, JobStatsHandler, ScaleJobHandler,
+        PidsJobHandler, SignalJobHandler, StateJobHandler)

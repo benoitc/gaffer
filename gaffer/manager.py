@@ -282,12 +282,18 @@ class Manager(object):
             state.stopped = True
             self._stopall(state)
 
-    def reload(self, name_or_process, sessionid=None):
+    def reload(self, name, sessionid=None):
         """ reload a process config. The number of processes is resetted to
         the one in settings and all current processes are killed """
 
-        sessionid = self._sessionid(sessionid)
-        name = self._get_pname(name_or_process)
+        if not sessionid:
+            if hasattr(name, "name"):
+                sessionid = 'default'
+                name = getattr(name, 'name')
+            else:
+                sessionid, name = self._parse_name(name)
+        else:
+            name = self._get_pname(name)
 
         with self._lock:
             # reset the number of processes
@@ -298,6 +304,8 @@ class Manager(object):
             # reload
             self._stopall(state)
 
+            # manage processes
+            self._manage_processes(state)
 
     def update(self, config, sessionid=None, env=None, start=False):
         """ update a process config. All processes are killed """
@@ -314,6 +322,9 @@ class Manager(object):
             # kill all the processes and let gaffer manage asynchronously the
             # reload. If the process is not stopped then it will start
             self._stopall(state)
+
+            # manage processes
+            self._manage_processes(state)
 
     def get(self, name):
         """ get a job config """
@@ -435,9 +446,8 @@ class Manager(object):
                 "processes": [p.pid for p in processes]}
 
         # get config
-        config = {"name": pname,
-                  "cmd": state.cmd}
-        config.update(state.settings)
+        config = state.config.to_dict()
+
         # remove custom channels because they can't be serialized
         config.pop('custom_channels', None)
 
@@ -643,7 +653,8 @@ class Manager(object):
     def _parse_name(self, name):
         if "." in name:
             sessionid, name = name.split(".", 1)
-
+        elif "/" in name:
+            sessionid, name = name.split("/", 1)
         else:
             sessionid = "default"
 
