@@ -343,7 +343,7 @@ def test_process_events():
         emitted.append(ev)
 
     # subscribe to all events
-    m.events.subscribe('proc.default.dummy', cb)
+    m.events.subscribe('job.default.dummy', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
@@ -354,10 +354,10 @@ def test_process_events():
     m.stop()
     m.run()
 
-    assert 'proc.default.dummy.start' in emitted
-    assert 'proc.default.dummy.spawn' in emitted
-    assert 'proc.default.dummy.stop' in emitted
-    assert 'proc.default.dummy.exit' in emitted
+    assert 'job.default.dummy.start' in emitted
+    assert 'job.default.dummy.spawn' in emitted
+    assert 'job.default.dummy.stop' in emitted
+    assert 'job.default.dummy.exit' in emitted
 
 def test_process_exit_event():
     emitted = []
@@ -368,7 +368,7 @@ def test_process_exit_event():
         emitted.append(msg)
 
     # subscribe to all events
-    m.events.subscribe('proc.default.dummy.exit', cb)
+    m.events.subscribe('job.default.dummy.exit', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
