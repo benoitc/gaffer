@@ -97,7 +97,6 @@ def test_start_stop_job():
     m.stop()
     m.run()
 
-    print(res)
     assert res == [1, 0]
 
 
@@ -244,8 +243,6 @@ def test_restart_manager():
     t.start(cb, 0.4, 0.0)
     m.run()
 
-    print(results[0])
-    print(results[1])
     assert results[0] != results[1]
 
 def test_send_signal():
@@ -534,7 +531,6 @@ def test_sessions():
 
     ga2 = []
     def rem_cb(h):
-        print(m.jobs())
         m.unload("a", sessionid="ga")
         [ga2.append(name) for name in m.jobs('ga')]
 
