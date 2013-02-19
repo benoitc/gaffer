@@ -202,8 +202,8 @@ class Manager(object):
         with self._lock:
             if not sessionid:
                 for sessionid in self._sessions:
-                    for name in self._sessions[sid]:
-                        callback(self, "%s.%s" % (sid, name))
+                    for name in self._sessions[sessionid]:
+                        callback(self, "%s.%s" % (sessionid, name))
             else:
                 try:
                     session = self._sessions[sessionid]
@@ -329,12 +329,13 @@ class Manager(object):
         sessionid, name = self._parse_name(name)
         pname = "%s.%s" % (sessionid, name)
 
-        print("start %s" % pname)
         with self._lock:
             state = self._get_state(sessionid, name)
 
             # make sure we unstop the process
             state.stop = False
+            # reset the number of processes
+            state.reset()
 
             # notify that we are starting the process
             self._publish("start", name=pname)
@@ -352,10 +353,11 @@ class Manager(object):
 
         with self._lock:
             state = self._get_state(sessionid, name)
+
+            # put the number to 0
+            state.numprocesses = 0
             # flag the state to stop
-            state.stop = True
-            # reset the number of processes
-            state.reset()
+            state.stopped = True
 
             # notify that we are stoppping the process
             self._publish("stop", name=pname)

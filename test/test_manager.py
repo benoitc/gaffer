@@ -424,10 +424,10 @@ def test_processes_stats():
     time.sleep(0.2)
     infos = []
     infos2 = []
-    m.session_walk(partial(collect_cb, infos))
+    m.jobs_walk(partial(collect_cb, infos))
     configb = ProcessConfig("b", cmd, args=args, cwd=wdir)
     m.load(configb)
-    m.session_walk(partial(collect_cb, infos2))
+    m.jobs_walk(partial(collect_cb, infos2))
     m.stop()
     m.run()
 
@@ -485,7 +485,7 @@ def test_priority():
     m.load(c, start=False)
 
     # start all processes
-    m.session_walk(lambda mgr, label: mgr.start_job(label))
+    m.jobs_walk(lambda mgr, label: mgr.start_job(label))
 
     def stop(handle):
         m.events.unsubscribe("start", cb)
