@@ -36,6 +36,8 @@ class AsyncQueue(object):
         self._spinner = pyuv.Idle(self.loop)
         self._tick = pyuv.Async(loop, self._do_send)
         self._callback = callback
+        self.active = True
+
 
     def send(self, msg):
         """ add a message to the queue
@@ -49,10 +51,15 @@ class AsyncQueue(object):
 
     def close(self):
         """ close the queue """
+        if not self.active:
+            return
+
         self._queue.clear()
+
         self._dispatcher.close()
         self._spinner.close()
         self._tick.close()
+        self.active = False
 
     def _do_send(self, handle):
         if not self._dispatcher.active:

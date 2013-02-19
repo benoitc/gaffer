@@ -20,5 +20,18 @@ class ProcessError(Exception):
     def to_json(self):
         return json.dumps(self.to_dict)
 
+class ProcessNotFound(ProcessError):
+    """ exception raised when a process or job isn't found """
+
+    def __init__(self, reason="not_found"):
+        ProcessError.__init__(self, errno=404, reason=reason)
+
+
+class ProcessConflict(ProcessError):
+    """ exception raised when a job already exists in the manager """
+
+    def __init__(self, reason="process_conflict"):
+        ProcessError.__init__(self, errno=409, reason=reason)
+
 class TopicError(ProcessError):
     """ raised on topic error """

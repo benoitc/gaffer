@@ -31,7 +31,6 @@ def test_simple():
 
     assert p.pid == "someid"
     assert p.name == "dummy"
-    assert p.sessionid == "default"
     assert p.cmd == cmd
     assert p.args == args
     assert cwd == cwd
@@ -50,42 +49,7 @@ def test_simple():
     assert len(exit_res) == 1
     assert exit_res[0].name == "dummy"
     assert exit_res[0].active == False
-    assert exit_res[0].sessionid == "default"
 
-
-def test_basic_with_sessionid():
-    exit_res = []
-    def exit_cb(process, return_code, term_signal):
-        exit_res.append(process)
-
-
-    loop = pyuv.Loop.default_loop()
-    testfile, cmd, args, cwd = dummy_cmd()
-    p = Process(loop, "someid", "dummy", cmd, sessionid="test", args=args,
-        cwd=cwd, on_exit_cb=exit_cb)
-
-    assert p.pid == "someid"
-    assert p.name == "dummy"
-    assert p.sessionid == "test"
-    assert p.cmd == cmd
-    assert p.args == args
-    assert cwd == cwd
-
-    p.spawn()
-    assert p.active == True
-
-    time.sleep(0.2)
-    p.stop()
-    loop.run()
-    assert p.active == False
-    with open(testfile, 'r') as f:
-        res = f.read()
-        assert res == 'STARTQUITSTOP'
-
-    assert len(exit_res) == 1
-    assert exit_res[0].name == "dummy"
-    assert exit_res[0].active == False
-    assert exit_res[0].sessionid == "test"
 
 def test_signal():
     loop = pyuv.Loop.default_loop()
@@ -101,6 +65,7 @@ def test_signal():
     with open(testfile, 'r') as f:
         res = f.read()
         assert res == 'STARTHUPQUITSTOP'
+
 
 def test_info():
     loop = pyuv.Loop.default_loop()
@@ -232,12 +197,12 @@ def test_redirect_output():
     ev2 = monitored2[0]
 
     assert ev1[0] == 'stdout'
-    assert ev1[1] == {"sessionid": "default", 'data': b'hello out',
-            'pid': "someid", 'name': 'dummy', 'event': 'stdout'}
+    assert ev1[1] == {'data': b'hello out', 'pid': "someid", 'name': 'dummy',
+            'event': 'stdout'}
 
     assert ev2[0] == 'stderr'
-    assert ev2[1] == {"sessionid": "default", 'data': b'hello err',
-            'pid': "someid", 'name': 'dummy', 'event': 'stderr'}
+    assert ev2[1] == {'data': b'hello err', 'pid': "someid", 'name': 'dummy',
+            'event': 'stderr'}
 
 def test_redirect_input():
     loop = pyuv.Loop.default_loop()
