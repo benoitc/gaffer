@@ -103,6 +103,9 @@ def test_basic():
     t1.start(stop, 0.8, 0.0)
 
     m.run()
+
+    assert opened == [True]
+    assert success == [True]
     assert ('load', 'default.dummy') in messages
     assert ('start', 'default.dummy') in messages
     assert ('update', 'default.dummy') in messages
