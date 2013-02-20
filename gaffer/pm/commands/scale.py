@@ -69,22 +69,11 @@ class Scale(Command):
         ops = self.parse_scaling(args)
         for name, op, val in ops:
             if name in procfile.cfg:
-                pname = "%s:%s" % (group, name)
-
-                p = s.get_process(pname)
-                if op == "=":
-                    curr = p.numprocesses
-                    if curr > val:
-                        p.sub(curr - val)
-                    else:
-                        p.add(val - curr)
-                elif op == "+":
-                    p.add(val)
-                else:
-                    p.sub(val)
+                pname = "%s.%s" % (group, name)
+                job = s.get_job(pname)
+                job.scale("%s%s" % (op, val))
                 print("Scaling %s processes... done, now running %s" % (name,
                     p.numprocesses))
-
 
     def parse_scaling(self, args):
         ops = []

@@ -6,6 +6,7 @@ from .base import Command
 
 from ...manager import Manager
 from ...console_output import ConsoleOutput
+from ...process import ProcessConfig
 from ...sig_handler import SigHandler
 
 
@@ -67,7 +68,9 @@ class Start(Command):
             params = dict(args=args, env=procfile.env,
                     numprocesses=concurrency.get(name, 1),
                     redirect_output=['out', 'err'])
-            m.add_template(name, cmd, appname=appname **params)
+
+            config = ProcessConfig(name, cmd, **params)
+            m.load(config, sessionid=appname)
         else:
             appname = procfile.get_appname()
 
@@ -77,5 +80,6 @@ class Start(Command):
                 params = dict(args=args, env=procfile.env,
                         numprocesses=concurrency.get(name, 1),
                         redirect_output=['out', 'err'])
-                m.add_template(name, cmd, appname=appname, **params)
+                config = ProcessConfig(name, cmd, **params)
+                m.load(config, sessionid=appname)
         m.run()
