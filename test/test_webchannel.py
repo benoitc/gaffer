@@ -111,3 +111,48 @@ def test_basic():
     assert ('update', 'default.dummy') in messages
     assert ('stop', 'default.dummy') in messages
     assert ('unload', 'default.dummy') in messages
+
+
+def test_basic_socket():
+    m = start_manager()
+    s = get_server(m.loop)
+
+    # get a gaffer socket
+    socket = s.socket()
+    socket.start()
+
+    assert s.version == __version__
+
+    messages =[]
+    def cb(event, data):
+        messages.append((event, data['name']))
+
+    # bind to all events
+    socket.subscribe('EVENTS')
+    socket['EVENTS'].bind_all(cb)
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+
+    def do_events(h):
+        m.load(config)
+        m.scale("dummy", 1)
+        m.unload("dummy")
+
+    def stop(h):
+        h.close()
+        socket.close()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(do_events, 0.4, 0.0)
+    t1 = pyuv.Timer(m.loop)
+    t1.start(stop, 0.8, 0.0)
+
+    m.run()
+
+    assert ('load', 'default.dummy') in messages
+    assert ('start', 'default.dummy') in messages
+    assert ('update', 'default.dummy') in messages
+    assert ('stop', 'default.dummy') in messages
+    assert ('unload', 'default.dummy') in messages

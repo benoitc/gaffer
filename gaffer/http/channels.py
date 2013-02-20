@@ -137,19 +137,20 @@ class ChannelConnection(SockJSConnection):
                 reason=str(e)))
 
         if msg.event == "SUB":
-            self.write_message({"event": "gaffer:subscription_success"})
+            self.write_message({"event": "gaffer:subscription_success",
+                "topic": msg.topic})
         elif msg.event == "UNSUB":
-            self.write_message({"event": "gaffer:subscription_success"})
+            self.write_message({"event": "gaffer:subscription_success",
+                "topic": msg.topic })
         elif msg.event == "CMD":
             self.write_message({"event": "gaffer:command_success",
-                "result": ret})
+                "result": ret, "cmd": msg.name})
 
     def process_command(self, msg):
         meth = getattr(self.manager, msg.name)
         return meth(*msg.args, **msg.kwargs)
 
     def add_subscription(self, topic):
-        print("add subscription")
         if topic in self._subscriptions:
             sub = self._subscriptions[topic]
         else:

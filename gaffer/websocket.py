@@ -179,6 +179,7 @@ class WebSocket(object):
         self.stream.read_until(b'\r\n\r\n', self._on_headers)
 
     def _on_headers(self, data):
+        print("%r" % data)
         first, _, rest = data.partition(b'\r\n')
         headers = HTTPHeaders.parse(tornado.escape.native_str(rest))
         # Expect HTTP 101 response.
