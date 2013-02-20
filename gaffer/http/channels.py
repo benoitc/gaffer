@@ -171,23 +171,22 @@ class Channel(SockJSConnection):
     def start_subscription(self, sub):
         if sub.source == "EVENTS":
             sub.callback = partial(self._dispatch_event, sub.topic)
-
             # subscribe to all manager events
             self.manager.events.subscribe(sub.target, sub.callback)
+        elif sub.source == "JOB":
+            sub.callback = partial(self._dispatch_process_event, sub.topic)
+            self.manager.events.subscribe("job.%s" % sub.target, sub.callback)
         elif sub.source == "PROCESS":
             sub.callback = partial(self._dispatch_process_event, sub.topic)
-
             self.manager.events.subscribe("proc.%s" % sub.target, sub.callback)
         elif sub.source == "STATS":
             if sub.pid is not None:
                 sub.callback = partial(self._dispatch_event, sub.topic)
-
                 # subscribe to the pid stats
                 proc = self.manager.get_process(sub.pid)
                 proc.monitor(sub.callback)
             else:
                 sub.callback = partial(self._dispatch_event, sub.topic)
-
                 # subscribe to the group stats
                 aname, tname = sub.target.split(".")
                 t = self.manager.get_template(tname, aname)
@@ -207,6 +206,9 @@ class Channel(SockJSConnection):
     def stop_subscription(self, sub):
         if sub.source == "EVENTS":
             self.manager.events.unsubscribe(sub.target, sub.callback)
+        elif sub.source == "JOB":
+            self.manager.events.unsubscribe("job.%s" % sub.target,
+                    sub.callback)
         elif sub.source == "PROCESS":
             self.manager.events.unsubscribe("proc.%s" % sub.target,
                     sub.callback)
@@ -238,6 +240,10 @@ class Channel(SockJSConnection):
 
         evtype = evtype.split("proc.%s." % sub.target, 1)[1]
         self._dispatch_event(toptic, evtype, ev)
+
+
+
+
 
 def _error_msg(event="gaffer:error", **data):
     msg =  { "event": event, "data": data }
