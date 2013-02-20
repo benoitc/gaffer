@@ -171,7 +171,7 @@ class Server(object):
         elif ":" in name:
             name, sessionid = name.split(":", 1)
         elif "." in name:
-            name, sessionid = name.split(":", 1)
+            name, sessionid = name.split(".", 1)
         else:
             sessionid = "default"
         return name, sessionid
