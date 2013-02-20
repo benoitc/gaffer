@@ -8,6 +8,7 @@ from .base import Command
 
 from ...manager import Manager
 from ...console_output import ConsoleOutput
+from ...process import ProcessConfig
 from ...sig_handler import SigHandler
 
 
@@ -70,5 +71,7 @@ class Run(Command):
         params = dict(args=args, env=procfile.env,
                 numprocesses=numprocesses,
                 redirect_output=['out', 'err'])
-        m.add_template(name, cmd, appname=appname, **params)
+
+        config = ProcessConfig(name, cmd, **params)
+        m.add_template(config, sessionid=appname)
         m.run()

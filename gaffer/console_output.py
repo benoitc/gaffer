@@ -86,40 +86,39 @@ class ConsoleOutput(object):
         self.manager = manager
 
         for action in self.subscribed:
-            self.manager.subscribe(action, self._on_process)
+            self.manager.events.subscribe(action, self._on_process)
 
     def stop(self):
         for action in self.subscribed:
-            self.manager.unsubscribe(".", self._on_process)
+            self.manager.events.unsubscribe(action, self._on_process)
 
     def restart(self, start):
         self.stop()
         for action in self.subscribed:
-            self.manager.subscribe(action, self._on_process)
+            self.manager.events.subscribe(action, self._on_process)
 
     def _on_process(self, event, msg):
-        name = "%s.%s" % (msg['appname'], msg['name'])
+        name = msg['name']
 
         if not 'os_pid' in msg:
             line = self._print(name, '%s %s' % (event, name))
-            return
-
-        os_pid = msg['os_pid']
-        if event == "spawn":
-            p = self.manager.get_process(msg['pid'])
-            line = self._print(name, 'spawn process with pid %s' % os_pid)
-
-            if p.redirect_output and self.output_streams:
-                for output in p.redirect_output:
-                    p.monitor_io(output, self._on_output)
         else:
-            line = self._print(name,
-                    '%s process with pid %s' % (event, os_pid))
+            os_pid = msg['os_pid']
+            if event == "spawn":
+                p = self.manager.get_process(msg['pid'])
+                line = self._print(name, 'spawn process with pid %s' % os_pid)
+
+                if p.redirect_output and self.output_streams:
+                    for output in p.redirect_output:
+                        p.monitor_io(output, self._on_output)
+            else:
+                line = self._print(name,
+                        '%s process with pid %s' % (event, os_pid))
         self._write(name, line)
 
     def _on_output(self, event, msg):
         data =  msg['data'].decode('utf-8')
-        name = "%s.%s" % (msg['appname'], msg['name'])
+        name = msg['name']
 
         lines = []
         for line in data.splitlines():

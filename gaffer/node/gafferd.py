@@ -17,6 +17,7 @@ from ..console_output import ConsoleOutput
 from ..http_handler import HttpHandler, HttpEndpoint
 from ..manager import Manager
 from ..pidfile import Pidfile
+from ..process import ProcessConfig
 from ..sig_handler import SigHandler
 from ..state import FlappingInfo
 from ..util import daemonize, setproctitle_
@@ -126,14 +127,19 @@ class Server(object):
         if self.args.verboseful:
             apps.append(ConsoleOutput(actions=['.']))
         elif self.args.verbose:
-            apps.append(ConsoleOutput(output_streams=False,
-                actions=['.']))
+            apps.append(ConsoleOutput(output_streams=False))
 
         self.manager.start(apps=apps)
 
         # add processes
-        for name, appname, cmd, params in self.processes:
-            self.manager.add_template(name, cmd, appname=appname, **params)
+        for name, sessionid, cmd, params in self.processes:
+            if "start" in params:
+                start = params.pop("start")
+            else:
+                start = True
+
+            config = ProcessConfig(name, cmd, **params)
+            self.manager.load(config, sessionid=sessionid, start=start)
 
         # run the main loop
         self.manager.run()
@@ -161,12 +167,14 @@ class Server(object):
 
     def _split_name(self, name):
         if "/" in name:
-            name, appname = name.split("/", 1)
+            name, sessionid = name.split("/", 1)
         elif ":" in name:
-            name, appname = name.split(":", 1)
+            name, sessionid = name.split(":", 1)
+        elif "." in name:
+            name, sessionid = name.split(":", 1)
         else:
-            appname = "system"
-        return name, appname
+            sessionid = "default"
+        return name, sessionid
 
 
     def parse_config(self, config_file):
@@ -204,9 +212,14 @@ class Server(object):
                         kwargs['ssl_options'] = None
                     if kwargs.get('uri') is not None:
                         endpoints.append(HttpEndpoint(**kwargs))
-            elif section.startswith('process:'):
-                name = section.split("process:", 1)[1]
-                name, appname = self._split_name(name)
+            elif section.startswith('process:') or section.startswith('job:'):
+                if section.startswith('process:'):
+                    prefix = "process:"
+                else:
+                    prefix = "job:"
+
+                name = section.split(prefix, 1)[1]
+                name, sessionid = self._split_name(name)
                 cmd = cfg.dget(section, 'cmd', '')
                 if cmd:
                     params = PROCESS_DEFAULTS.copy()
@@ -256,22 +269,22 @@ class Server(object):
                             params[key] = cfg.dgetint(section, key,
                                     six.MAXSIZE)
 
-                    processes.append((name, appname, cmd, params))
+                    processes.append((name, sessionid, cmd, params))
             elif section == "webhooks":
                 for key, val in cfg.items(section):
                     webhooks.append((key, val))
             elif section.startswith('env:'):
                 pname = section.split("env:", 1)[1]
-                name, appname = self._split_name(pname)
+                name, sessionid = self._split_name(pname)
 
 
                 kvs = [(key.upper(), val) for key, val in cfg.items(section)]
-                envs[(appname, name)] = dict(kvs)
+                envs[(sessionid, name)] = dict(kvs)
 
         # add environment variables
-        for name, appname, cmd, params in processes:
-            if (appname, name) in envs:
-                params['env'] = envs[(appname, name)]
+        for name, sessionid, cmd, params in processes:
+            if (sessionid, name) in envs:
+                params['env'] = envs[(sessionid, name)]
 
         # sort processes by priority
         processes = sorted(processes, key=lambda p: p[3]['priority'])

@@ -693,12 +693,10 @@ class Manager(object):
             self.started = False
 
             # close all handles
-            def walk_cb(h):
-                if h.active:
-                    print(h)
+            #def walk_cb(h):
             #    if h.active:
             #        h.close()
-            self.loop.walk(walk_cb)
+            #self.loop.walk(walk_cb)
 
             # if there any stop callback, excute it
             if self.stop_cb is not None:
@@ -798,13 +796,12 @@ class Manager(object):
         # we keep a list of all running process by id here
         self.running[pid] = p
 
-        self._publish("spawn", name=p.name, pid=pid,
-                detached=p.detach, os_pid=p.os_pid)
-        self._publish("job.%s.spawn" % p.name, name=p.name,
-                pid=pid, detached=p.detach, os_pid=p.os_pid)
+        self._publish("spawn", name=p.name, pid=pid, os_pid=p.os_pid)
+        self._publish("job.%s.spawn" % p.name, name=p.name, pid=pid,
+            os_pid=p.os_pid)
 
-        self._publish("proc.%s.spawn" % pid, name=p.name,
-                pid=pid, detached=p.detach, os_pid=p.os_pid)
+        self._publish("proc.%s.spawn" % pid, name=p.name, pid=pid,
+            os_pid=p.os_pid)
 
     def _spawn_processes(self, state):
         """ spawn all processes for a state """

@@ -57,14 +57,14 @@ class Ps(Command):
         for name, cmd_str in procfile.processes():
 
             try:
-                t = s.get_template(name, appname)
+                job = s.get_job("%s.%s" % (appname, name))
             except:
                 # we just ignore
                 continue
 
 
             color, balance = self.get_color(balance)
-            stats = t.stats()
+            stats = job.stats()
 
             lines = ["=== %s: `%s`" % (name, cmd_str),
                      "Total CPU: %.2f Total MEM: %.2f" % (stats['cpu'],

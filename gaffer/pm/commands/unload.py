@@ -73,6 +73,5 @@ class UnLoad(Command):
             raise RuntimeError("%r not found" % apps)
 
         # remove the group
-        s.walk_templates(lambda s, t: s.remove_template(t.name, t.appname),
-                appname)
+        s.jobs_walk(lambda s, job: s.unload(job), appname)
         print("%r unloaded" % appname)

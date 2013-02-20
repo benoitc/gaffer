@@ -6,6 +6,8 @@ import os
 
 from .base import Command
 from ...httpclient import Server
+from ...process import ProcessConfig
+
 
 class Load(Command):
     """\
@@ -73,8 +75,6 @@ class Load(Command):
         # parse the concurrency settings
         concurrency = self.parse_concurrency(pargs)
 
-        print(appname)
-
         # finally send the processes
         for name, cmd_str in procfile.processes():
             cmd, args = procfile.parse_cmd(cmd_str)
@@ -82,14 +82,16 @@ class Load(Command):
                     numprocesses=concurrency.get(name, 1),
                     redirect_output=['out', 'err'],
                     cwd=os.path.abspath(procfile.root))
-            s.add_template(name, cmd, appname=appname, **params)
+
+            config = ProcessConfig(name, cmd, **params)
+            s.add_template(config, sessionid=appname)
         print("%r has been loaded in %s" % (appname, uri))
 
     def find_appname(self, a, s):
         tries = 0
         while True:
-            apps = s.all_apps()
-            if a not in apps:
+            sessions = s.sessions()
+            if a not in sessions:
                 return a
 
             if tries > 3:
@@ -100,7 +102,7 @@ class Load(Command):
             i = 0
             while True:
                 a = "%s.%s" % (a, i)
-                if a not in apps:
+                if a not in sessions:
                     break
             tries += 1
             return a
