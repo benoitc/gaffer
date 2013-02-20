@@ -17,7 +17,7 @@ from tornado.httpserver import HTTPServer
 from .loop import patch_loop
 from .util import parse_address, is_ipv6
 from . import http
-
+from .http import sockjs
 
 DEFAULT_HANDLERS = [
         (r'/', http.WelcomeHandler),
@@ -65,10 +65,9 @@ class HttpEndpoint(object):
     def __str__(self):
         return ",".join(self.uri)
 
-    def start(self, loop, app):
-        self.loop = patch_loop(loop)
+    def start(self, io_loop, app):
+        self.io_loop = io_loop
         self.app = app
-        self.io_loop = IOLoop(_loop=loop)
         self._start_server()
 
     def _start_server(self):
@@ -126,17 +125,28 @@ class HttpHandler(object):
 
     def start(self, loop, manager):
         self.loop = patch_loop(loop)
+        self.io_loop = IOLoop(_loop=loop)
         self.manager = manager
-        self.app = Application(self.handlers, manager=self.manager,
+
+        # add channel routes
+        user_settings = { "manager": manager }
+        channel_router = sockjs.SockJSRouter(http.ChannelConnection,
+                "/channel", io_loop=self.io_loop, user_settings=user_settings)
+        handlers = self.handlers + channel_router.urls
+
+        # create the application
+        self.app = Application(handlers, manager=self.manager,
                 **self.settings)
 
         # start endpoints
         for endpoint in self.endpoints:
-            endpoint.start(self.loop, self.app)
+            endpoint.start(self.io_loop, self.app)
 
     def stop(self):
         for endpoint in self.endpoints:
             endpoint.stop()
+
+        self.io_loop.close()
 
     def restart(self):
         for endpoint in self.endpoints:
