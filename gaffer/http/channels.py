@@ -2,11 +2,12 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+from functools import partial
 import json
 
-from .sockjs import SockJSConnection, SockJSRouter
-from ..sync import incrrement, decrement
-from ..error import ProcessError, TopicError, MessageError
+from .sockjs import SockJSConnection
+from ..sync import increment, decrement
+from ..error import ProcessError
 
 
 class MessageError(Exception):
@@ -20,7 +21,7 @@ COMMANDS_TABLE= {
         "unload": "remove_template",
         "reload": "restart_template",
         "update": "update_template",
-        "remove"; "remove_template",
+        "remove": "remove_template",
         "list": "list",
         "start": "start_template",
         "stop": "stop_template",
@@ -35,7 +36,7 @@ class Subscription(object):
         self.nb = 0
         self.callback = None
 
-        parts = self.name.split(":", 1)
+        parts = self.topic.split(":", 1)
         self.pid = None
         if len(parts) == 1:
             self.source = parts[0].upper()
@@ -54,7 +55,7 @@ class Message(object):
     def __init__(self, msg):
         if not isinstance(msg, dict):
             try:
-                msg = json.loads(raw)
+                msg = json.loads(msg)
             except ValueError:
                 raise MessageError("invalid_json")
 
@@ -70,7 +71,7 @@ class Message(object):
             self.nop = False
             self.parse_message(msg)
 
-    def parse_message(self, msg)
+    def parse_message(self, msg):
         try:
             self.data = msg['data']
         except KeyError:
@@ -86,8 +87,8 @@ class Message(object):
             if "name" not in self.data:
                 raise MessageError("cmd_name_mssing")
 
-            self.name = name
-            if name not in self.COMMANDS_TABLE:
+            self.name = self.data['name']
+            if self.name not in self.COMMANDS_TABLE:
                 raise MessageError("cmd_notfound")
 
             self.args = self.data.get('args', ())
@@ -96,21 +97,22 @@ class Message(object):
             raise MessageError("unknown_cmd")
 
     def __str__(self):
-        if event in ("SUB", "UNSUB"):
+        if self.event in ("SUB", "UNSUB"):
             return "%s: %s" % (self.event, self.data['event'])
-        elif event == "CMD":
+        elif self.event == "CMD":
             return "%s: %s" % (self.event, self.data['cmd'])
 
         return self.event
 
 
-class Channel(SockJSConnection):
+class ChannelConnection(SockJSConnection):
 
     def on_open(self, info):
-        self.manager = self.settings.manager
+        self.manager = self.session.server.settings.get('manager')
         self._subscriptions = {}
 
     def on_message(self, raw):
+        print(raw)
         try:
             msg = Message(raw)
         except MessageError as e:
@@ -144,10 +146,11 @@ class Channel(SockJSConnection):
 
     def process_command(self, msg):
         meth = getattr(self.manager, msg.name)
-        return meth(msg.args, msg.kwargs)
+        return meth(*msg.args, **msg.kwargs)
 
     def add_subscription(self, topic):
-        if event in self._subscriptions:
+        print("add subscription")
+        if topic in self._subscriptions:
             sub = self._subscriptions[topic]
         else:
             sub = self._subscriptions[topic] = Subscription(topic)
@@ -158,10 +161,10 @@ class Channel(SockJSConnection):
         sub.nb = increment(sub.nb)
 
     def del_subscription(self, topic):
-        if event not in self._subscriptions:
+        if topic not in self._subscriptions:
             return
 
-        sub = self._subscriptions[event]
+        sub = self._subscriptions[topic]
         sub.nb = decrement(sub.nb)
 
         if not sub.nb:
@@ -221,29 +224,32 @@ class Channel(SockJSConnection):
                 t = self.manager.get_template(tname, aname)
                 for proc in t.running:
                     proc.unmonitor(sub.callback)
-        elif source == "STREAM":
+        elif sub.source == "STREAM":
             if sub.pid:
                 proc = self.manager.get_process(sub.pid)
                 proc.unmonitor_io(".", sub.callback)
 
     def _dispatch_event(self, topic, evtype, ev):
-        data = { "event": evtype }
+        data = { "event": evtype, "topic": topic}
         data.update(ev)
-        msg = { "topic": topic, data: data}
+        msg = { "event": "gaffer:event", "data": data}
         self.write_message(msg)
 
     def _dispatch_process_events(self, topic, evtype, ev):
+
         try:
             sub = self._subscriptions[topic]
         except KeyError:
             return
 
         evtype = evtype.split("proc.%s." % sub.target, 1)[1]
-        self._dispatch_event(toptic, evtype, ev)
+        self._dispatch_event(topic, evtype, ev)
 
-
-
-
+    def write_message(self, msg):
+        if isinstance(msg, dict):
+            self.send(json.dumps(msg))
+        else:
+            self.send(msg)
 
 def _error_msg(event="gaffer:error", **data):
     msg =  { "event": event, "data": data }

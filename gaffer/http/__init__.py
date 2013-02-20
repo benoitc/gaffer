@@ -2,6 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+from .channels import ChannelConnection
 from .misc import WelcomeHandler, PingHandler, VersionHandler
 from .pid import (AllProcessIdsHandler, ProcessIdHandler,
         ProcessIdSignalHandler, ProcessIdStatsHandler)
