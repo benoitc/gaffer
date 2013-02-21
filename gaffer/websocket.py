@@ -6,6 +6,7 @@ import array
 import base64
 import functools
 import hashlib
+import json
 import logging
 import os
 import re
@@ -14,6 +15,7 @@ import struct
 import sys
 import time
 
+import pyuv
 import tornado.escape
 from tornado import iostream
 from tornado.httputil import HTTPHeaders
@@ -22,6 +24,7 @@ from tornado.util import bytes_type, b
 from .tornado_pyuv import IOLoop, install
 install()
 
+from .events import EventEmitter
 from .loop import patch_loop
 from .util import urlparse, ord_
 
@@ -323,3 +326,167 @@ class WebSocket(object):
                 logging.error('Uncaught exception', exc_info=True)
                 self._abort()
         return wrapper
+
+
+class Channel(object):
+
+    def __init__(self, loop, topic):
+        self.topic = topic
+        self._emitter = EventEmitter(loop)
+
+    def __str__(self):
+        return "channel: %s" % self.topic
+
+    def bind(self, event, callback):
+        self._emitter.subscribe(event, callback)
+
+    def unbind(self, event, listener):
+        self._emitter.unsubscribe(evenet, callback)
+
+    def bind_all(self, callback):
+        self._emitter.subscribe(".", callback)
+
+    def unbind_all(self, callback):
+        self._emitter.unsubscribe(".", callback)
+
+    def send(self, event, message):
+        self._emitter.publish(event, message)
+
+    def close(self):
+        self._emitter.close()
+
+
+class GafferSocket(WebSocket):
+
+    def __init__(self, loop, url, **kwargs):
+        loop = patch_loop(loop)
+
+        try:
+            self.heartbeat_timeout = kwargs.pop('heartbeat')
+        except KeyError:
+            self.heartbeat_timeout = 15.0
+
+        # define status
+        self.active = False
+        self.closed = False
+
+        # dict to maintain opened channels
+        self.channels = dict()
+
+        # emitter for global events
+        self._emitter = EventEmitter(loop)
+
+        self._heartbeat = pyuv.Timer(loop)
+        super(GafferSocket, self).__init__(loop, url, **kwargs)
+
+    def start(self):
+        super(GafferSocket, self).start()
+        self.active = True
+
+    def subscribe(self, topic):
+        # we already subsribed to this topic
+        if topic in self.channels:
+            return
+
+        # make sure we started the socket
+        assert self.active == True
+
+        # create a new channel.
+        # we don't wait the response for it so we make sure we won't send
+        # twice the same message until we really want it.
+        self.channels[topic] = Channel(self.loop, topic)
+
+        # send subscription message
+        msg = {"event": "SUB", "data": {"topic": topic}}
+        self.write_message(json.dumps(msg))
+        return self.channels[topic]
+
+    def unsubscribe(self, topic):
+        # we are not subscribed to this topic
+        if topic not in self.channels:
+            return
+
+        # make sure we started the socket
+        assert self.active == True
+
+        # remove the channels from the list
+        channel = self.channels.pop(topic)
+        channel.close()
+
+        # send unsubscription message
+        msg = {"event": "UNSUB", "data": {"topic": topic}}
+        self.write_message(json.dumps(msg))
+
+    def bind(self, event, callback):
+        """ bind to a global event """
+        self._emitter.subscribe(event, callback)
+
+    def unbind(self, event, listener):
+        """ unbind to a global event """
+        self._emitter.unsubscribe(evenet, callback)
+
+    def bind_all(self, callback):
+        """ bind to all global events """
+        self._emitter.subscribe(".", callback)
+
+    def unbind_all(self, callback):
+        """ unbind to all global events """
+        self._emitter.unsubscribe(".", callback)
+
+    def __getitem__(self, topic):
+        try:
+            channel = self.channels[topic]
+        except KeyError:
+            raise KeyError("%s channel isn't subscribed" % topic)
+
+        return channel
+
+    def __delitem__(self, topic):
+        self.unsubcribe(topic)
+
+    ### websocket methods
+
+    def on_open(self):
+        self._heartbeat.start(self.on_heartbeat, self.heartbeat_timeout,
+                self.heartbeat_timeout)
+        self._heartbeat.unref()
+
+    def on_close(self):
+        self.active = False
+        self.closed = True
+        self._heartbeat.stop()
+
+    def on_message(self, raw):
+        msg = json.loads(raw)
+        assert "event" in msg
+
+        event = msg['event']
+
+        if event == "gaffer:subscription_success":
+            self._emitter.publish("subscription_success", msg)
+        elif event == "gaffer:subscription_error":
+            self._emitter.publish("subscription_error", msg)
+
+            # remove the channel from the subscribed list
+            if "topic" in self.channels:
+                channel = self.channels.pop(topic)
+                channel.close()
+
+        elif event == "gaffer:command_success":
+            self._emitter.publish("command_success", msg)
+        elif event == "gaffer:event":
+            # if message type is an event then it should contain a data
+            # property
+            assert "data" in msg
+            data = msg['data']
+
+            topic = data['topic']
+            event = data['event']
+            if topic in self.channels:
+                channel = self.channels[topic]
+                channel.send(event, data)
+
+    def on_heartbeat(self):
+        # on heartbeat send a nop message to the channel
+        # it will maintain the connection open
+        self.write_message(json.dumps({"event": "NOP"}))
