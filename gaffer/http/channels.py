@@ -112,7 +112,6 @@ class ChannelConnection(SockJSConnection):
         self._subscriptions = {}
 
     def on_message(self, raw):
-        print(raw)
         try:
             msg = Message(raw)
         except MessageError as e:
