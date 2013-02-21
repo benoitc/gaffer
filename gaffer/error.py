@@ -35,3 +35,11 @@ class ProcessConflict(ProcessError):
 
 class TopicError(ProcessError):
     """ raised on topic error """
+
+
+class CommandError(ProcessError):
+    """ exception raised on command error """
+
+
+class CommandNotFound(ProcessNotFound):
+    """ exception raised when a command doesn't exist """

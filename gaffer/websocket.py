@@ -13,7 +13,9 @@ import re
 import socket
 import struct
 import sys
+import threading
 import time
+import uuid
 
 import pyuv
 import tornado.escape
@@ -41,6 +43,7 @@ Sec-Websocket-Version: 13
 # Magic string defined in the spec for calculating keys.
 WS_MAGIC = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
+LOGGER = logging.getLogger("gaffer")
 
 def frame(data, opcode=0x01):
     """Encode data in a websocket frame."""
@@ -182,7 +185,6 @@ class WebSocket(object):
         self.stream.read_until(b'\r\n\r\n', self._on_headers)
 
     def _on_headers(self, data):
-        print("%r" % data)
         first, _, rest = data.partition(b'\r\n')
         headers = HTTPHeaders.parse(tornado.escape.native_str(rest))
         # Expect HTTP 101 response.
@@ -356,6 +358,72 @@ class Channel(object):
         self._emitter.close()
 
 
+class GafferCommand(object):
+
+    def __init__(self, *args, **kwargs):
+        self.identity = uuid.uuid4().hex
+        self.name = args[0]
+        self.args = args[1:]
+        self.kwargs = kwargs
+
+        self._callbacks = []
+        self._result = None
+        self._error = None
+        self._sock = None
+        self.active = False
+
+        self._lock = threading.Lock()
+        self._condition = threading.Condition()
+
+    def __str__(self):
+        return "GafferCommand:%s (%s)" % (self.name, self.identity)
+
+    def done(self):
+        """ return True if the command has been completed or returned an error
+        """
+        return (self._result is not None or self._error is not None)
+
+    def result(self):
+        """ Return the value returned by the call. If the call hasn't been
+        completed it will return None """
+        with self._condition:
+            return self._result
+
+    def error(self):
+        """ Return the error returned by the call. If the call hasn't been
+        completed it will return None """
+        with self._condition:
+            return self._error
+
+    def add_done_callback(self, callback):
+        self._callbacks.append(callback)
+
+    def _start(self, sock):
+        self._sock = sock
+        self.active = True
+
+    def _set_result(self, result):
+        with self._lock:
+            self._result = result
+            self.active = False
+
+        self._handle_callbacks()
+
+    def _set_error(self, error):
+        with self._lock:
+            self._error = error
+            self.active = False
+
+        self._handle_callbacks()
+
+    def _handle_callbacks(self):
+        for cb in self._callbacks:
+            try:
+                cb(self)
+            except Exception:
+                LOGGER.exception('exception calling callback for %r', self)
+
+
 class GafferSocket(WebSocket):
 
     def __init__(self, loop, url, **kwargs):
@@ -372,6 +440,9 @@ class GafferSocket(WebSocket):
 
         # dict to maintain opened channels
         self.channels = dict()
+
+        # dict to maintain commands
+        self.commands = dict()
 
         # emitter for global events
         self._emitter = EventEmitter(loop)
@@ -417,6 +488,20 @@ class GafferSocket(WebSocket):
         msg = {"event": "UNSUB", "data": {"topic": topic}}
         self.write_message(json.dumps(msg))
 
+    def send_command(self, *args, **kwargs):
+        # register a new command
+        cmd0 = GafferCommand(*args, **kwargs)
+        cmd = self.commands[cmd.identity] = cmd0
+
+        # send the new command
+        data = {"identity": cmd.identity, "name": cmd.name, "args": cmd.args,
+                "kwargs": cmd.kwargs}
+        msg = {"event": "CMD", "data": data}
+        self.write_message(json.dumps(msg))
+
+        # return the command object
+        return cmd
+
     def bind(self, event, callback):
         """ bind to a global event """
         self._emitter.subscribe(event, callback)
@@ -447,6 +532,7 @@ class GafferSocket(WebSocket):
     ### websocket methods
 
     def on_open(self):
+        # start the heartbeat
         self._heartbeat.start(self.on_heartbeat, self.heartbeat_timeout,
                 self.heartbeat_timeout)
         self._heartbeat.unref()
@@ -473,7 +559,18 @@ class GafferSocket(WebSocket):
                 channel.close()
 
         elif event == "gaffer:command_success":
-            self._emitter.publish("command_success", msg)
+            identity = msg['data']['id']
+            result = msg['data']['result']
+            if identity in self.commands:
+                cmd = self.commands.pop(identity)
+                cmd._set_result(result)
+                self._emitter.publish("command_success", cmd)
+        elif event == "gaffer:command_error":
+            identity = msg['data']['id']
+            if identity in self.commands:
+                cmd = self.commands.pop(identity)
+                cmd._set_error(msg['data']['error'])
+                self._emitter.publish("command_error", cmd)
         elif event == "gaffer:event":
             # if message type is an event then it should contain a data
             # property
