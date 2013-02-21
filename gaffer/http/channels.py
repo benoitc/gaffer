@@ -234,7 +234,6 @@ class ChannelConnection(SockJSConnection):
         self.write_message(msg)
 
     def _dispatch_process_events(self, topic, evtype, ev):
-
         try:
             sub = self._subscriptions[topic]
         except KeyError:
