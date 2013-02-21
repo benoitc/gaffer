@@ -48,15 +48,12 @@ class WSCommand(Command):
         super(WSCommand, self).__init__(msg.name, msg.args, msg.kwargs)
 
     def reply(self, result):
-        print(result)
         data = {"id": self.identity, "result": result}
         msg = {"event": "gaffer:command_success", "data": data}
-        print(msg)
         self.ws.write_message(msg)
 
     def reply_error(self, exc_type, exc_value=None, exc_tb=None):
         data = {"id": self.identity, "error": str(exc_value)}
-        print(str(exc_value))
         msg = {"event": "gaffer:command_error", "data": data}
         self.ws.write_message(msg)
 
@@ -125,11 +122,9 @@ class ChannelConnection(SockJSConnection):
         self._subscriptions = {}
 
     def on_message(self, raw):
-        print("got %s" % raw)
         try:
             msg = Message(raw)
         except MessageError as e:
-            print("err: %s" % str(e))
             return self.write_message(_error_msg(error="invalid_msg",
                 reason=str(e)))
 
