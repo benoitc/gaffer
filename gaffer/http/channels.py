@@ -6,6 +6,7 @@ from functools import partial
 import json
 
 from .sockjs import SockJSConnection
+from ..controller import Command, Controller
 from ..sync import increment, decrement
 from ..error import ProcessError
 
@@ -13,21 +14,10 @@ from ..error import ProcessError
 class MessageError(Exception):
     """ raised on message error """
 
+
 class SubscriptionError(Exception):
     """ raised on subscriptionError """
 
-COMMANDS_TABLE= {
-        "load": "add_template",
-        "unload": "remove_template",
-        "reload": "restart_template",
-        "update": "update_template",
-        "remove": "remove_template",
-        "list": "list",
-        "start": "start_template",
-        "stop": "stop_template",
-        "scale": "scale",
-        "kill": "kill",
-        "killall": "killall"}
 
 class Subscription(object):
 
@@ -48,6 +38,27 @@ class Subscription(object):
 
     def __str__(self):
         return "subscription: %s" % self.topic
+
+
+class WSCommand(Command):
+
+    def __init__(self, ws, msg):
+        self.ws = ws
+        self.identity = msg.identity
+        super(WSCommand, self).__init__(msg.name, msg.args, msg.kwargs)
+
+    def reply(self, result):
+        print(result)
+        data = {"id": self.identity, "result": result}
+        msg = {"event": "gaffer:command_success", "data": data}
+        print(msg)
+        self.ws.write_message(msg)
+
+    def reply_error(self, exc_type, exc_value=None, exc_tb=None):
+        data = {"id": self.identity, "error": str(exc_value)}
+        print(str(exc_value))
+        msg = {"event": "gaffer:command_error", "data": data}
+        self.ws.write_message(msg)
 
 
 class Message(object):
@@ -87,10 +98,11 @@ class Message(object):
             if "name" not in self.data:
                 raise MessageError("cmd_name_mssing")
 
-            self.name = self.data['name']
-            if self.name not in self.COMMANDS_TABLE:
-                raise MessageError("cmd_notfound")
+            if "identity" not in self.data:
+                raise MessageError("cmd_identity_missing")
 
+            self.identity = self.data['identity']
+            self.name = self.data['name']
             self.args = self.data.get('args', ())
             self.kwargs = self.data.get('kwargs', {})
         else:
@@ -109,12 +121,15 @@ class ChannelConnection(SockJSConnection):
 
     def on_open(self, info):
         self.manager = self.session.server.settings.get('manager')
+        self.ctl = Controller(self.manager)
         self._subscriptions = {}
 
     def on_message(self, raw):
+        print("got %s" % raw)
         try:
             msg = Message(raw)
         except MessageError as e:
+            print("err: %s" % str(e))
             return self.write_message(_error_msg(error="invalid_msg",
                 reason=str(e)))
 
@@ -126,8 +141,9 @@ class ChannelConnection(SockJSConnection):
                 self.add_subscription(msg.topic)
             elif msg.event == "UNSUB":
                 self.del_subscription(msg.topic)
-            elif msg == "CMD":
-                ret = self.process_command(msg)
+            elif msg.event == "CMD":
+                command = WSCommand(self, msg)
+                self.ctl.process_command(command)
         except ProcessError as e:
             return self.write_message(_error_msg(event="command_error",
                 reason=e.reason, errno=e.errno))
@@ -141,13 +157,6 @@ class ChannelConnection(SockJSConnection):
         elif msg.event == "UNSUB":
             self.write_message({"event": "gaffer:subscription_success",
                 "topic": msg.topic })
-        elif msg.event == "CMD":
-            self.write_message({"event": "gaffer:command_success",
-                "result": ret, "cmd": msg.name})
-
-    def process_command(self, msg):
-        meth = getattr(self.manager, msg.name)
-        return meth(*msg.args, **msg.kwargs)
 
     def add_subscription(self, topic):
         if topic in self._subscriptions:

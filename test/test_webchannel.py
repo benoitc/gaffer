@@ -34,6 +34,16 @@ def start_manager():
 def get_server(loop):
     return Server("http://%s:%s" % (TEST_HOST, TEST_PORT), loop=loop)
 
+def init():
+    m = start_manager()
+    s = get_server(m.loop)
+
+    # get a gaffer socket
+    socket = s.socket()
+    socket.start()
+
+    return (m, s, socket)
+
 def test_basic():
     """ test using a basic websocket client
 
@@ -196,3 +206,41 @@ def test_stats():
     res = monitored[0]
     assert "cpu" in res
     assert res["os_pid"] == os_pid
+
+
+def test_simple_jon():
+    m, s, socket = init()
+
+    assert s.jobs() == []
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+
+    # send a command
+    cmd0 = socket.send_command("load", config.to_dict(), start=False)
+    cmd1 = socket.send_command("jobs")
+
+    results = []
+    def do_events(h):
+        results.append((len(m.jobs()), len(s.jobs()), s.jobs()[0]))
+
+    def stop(h):
+        h.close()
+        socket.close()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(do_events, 0.4, 0.0)
+    t1 = pyuv.Timer(m.loop)
+    t1.start(stop, 0.8, 0.0)
+    m.run()
+
+    print(results)
+    print("cmd0 %s" % cmd0.result())
+    print("cmd1 %s" % cmd1.result())
+
+    assert cmd0.error() == None
+    assert cmd1.error() == None
+    assert results[0] == (1, 1, "default.dummy")
+    assert cmd0.result() == {"ok": True}
+    assert cmd1.result()["jobs"][0] == "default.dummy"
