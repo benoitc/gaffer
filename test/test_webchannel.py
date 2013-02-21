@@ -79,7 +79,6 @@ def test_basic():
     s = get_server(m.loop)
     assert s.version == __version__
 
-
     submsg = json.dumps({"event": "SUB", "data": {"topic": "EVENTS"}})
     ws.write_message(submsg)
     testfile, cmd, args, wdir = dummy_cmd()
@@ -88,7 +87,6 @@ def test_basic():
 
     def do_events(h):
         m.load(config)
-        print("scale")
         m.scale("dummy", 1)
         m.unload("dummy")
 
