@@ -156,3 +156,45 @@ def test_basic_socket():
     assert ('update', 'default.dummy') in messages
     assert ('stop', 'default.dummy') in messages
     assert ('unload', 'default.dummy') in messages
+
+
+def test_stats():
+    m = start_manager()
+    s = get_server(m.loop)
+
+    # get a gaffer socket
+    socket = s.socket()
+    socket.start()
+
+    assert s.version == __version__
+
+    monitored = []
+    def cb(event, info):
+        print(event)
+        monitored.append(info)
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("a", cmd, args=args, cwd=wdir)
+
+    # bind to all events
+    socket.subscribe("STATS:default.a")
+    socket["STATS:default.a"].bind_all(cb)
+
+
+    m.load(config)
+    os_pid = m.running[1].os_pid
+
+
+    def stop(handle):
+        socket.close()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.3, 0.0)
+
+    m.run()
+
+    assert len(monitored) >= 1
+    res = monitored[0]
+    assert "cpu" in res
+    assert res["os_pid"] == os_pid

@@ -191,10 +191,9 @@ class ChannelConnection(SockJSConnection):
                 proc.monitor(sub.callback)
             else:
                 sub.callback = partial(self._dispatch_event, sub.topic)
-                # subscribe to the group stats
-                aname, tname = sub.target.split(".")
-                t = self.manager.get_template(tname, aname)
-                for proc in t.running:
+                # subscribe to the job processes stats
+                state = self.manager._get_locked_state(sub.target)
+                for proc in state.running:
                     proc.monitor(sub.callback)
         elif sub.source == "STREAM":
             if not sub.pid:
@@ -221,10 +220,9 @@ class ChannelConnection(SockJSConnection):
                 proc = self.manager.get_process(sub.pid)
                 proc.unmonitor(sub.callback)
             else:
-                aname, tname = sub.target.split(".")
-                t = self.manager.get_template(tname, aname)
-                for proc in t.running:
-                    proc.unmonitor(sub.callback)
+                state = self.manager._get_locked_state(sub.target)
+                for proc in state.running:
+                    proc.monitor(sub.callback)
         elif sub.source == "STREAM":
             if sub.pid:
                 proc = self.manager.get_process(sub.pid)
