@@ -208,7 +208,7 @@ def test_stats():
     assert res["os_pid"] == os_pid
 
 
-def test_simple_jon():
+def test_simple_job():
     m, s, socket = init()
 
     assert s.jobs() == []
@@ -234,10 +234,6 @@ def test_simple_jon():
     t1 = pyuv.Timer(m.loop)
     t1.start(stop, 0.8, 0.0)
     m.run()
-
-    print(results)
-    print("cmd0 %s" % cmd0.result())
-    print("cmd1 %s" % cmd1.result())
 
     assert cmd0.error() == None
     assert cmd1.error() == None
