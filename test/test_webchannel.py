@@ -178,7 +178,6 @@ def test_stats():
 
     monitored = []
     def cb(event, info):
-        print(event)
         monitored.append(info)
 
     testfile, cmd, args, wdir = dummy_cmd()

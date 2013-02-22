@@ -409,14 +409,14 @@ class Manager(object):
                 op = n[0]
                 if op not in ("=", "+", "-"):
                     raise ValueError("bad_operation")
-                n = int(op[1:])
+                n = int(n[1:])
 
         with self._lock:
             state = self._get_state(sessionid, name)
 
             # scale
             if op == "=":
-                curr = state.numproceses
+                curr = state.numprocesses
                 if curr > n:
                     ret = state.decr(curr - n)
                 else:
@@ -425,7 +425,6 @@ class Manager(object):
                 ret = state.incr(n)
             else:
                 ret = state.decr(n)
-
             self._publish("update", name=pname)
             self._manage_processes(state)
             return ret
@@ -440,7 +439,8 @@ class Manager(object):
 
         processes = list(state.running)
 
-        info = {"active":  state.active,
+        info = {"name": pname,
+                "active":  state.active,
                 "running": len(state.running),
                 "max_processes": state.numprocesses,
                 "processes": [p.pid for p in processes]}
@@ -552,6 +552,7 @@ class Manager(object):
             # effectively send the signal
             p.kill(signum)
 
+
     def killall(self, name, signum):
         """ send a signal to all processes of a job """
 
@@ -561,13 +562,12 @@ class Manager(object):
             state = self._get_state(sessionid, name)
             self._publish("job.%s.kill" % pname, name=pname, signum=signum)
             for p in state.running:
-
                 # notify we stop this job
                 self._publish("proc.%s.kill" % p.pid, pid=p.pid, name=p.name)
-
                 # effectively send the signal
                 p.kill(signum)
 
+            self._manage_processes(state)
 
     def walk(self, callback, name=None):
         with self._lock:

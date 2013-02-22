@@ -26,23 +26,23 @@ COMMANDS_TABLE= {
         "stopall": "stopall",
         "killall": "killall",
         # process commands
-        "process_info": "get_process_info",
-        "process_stats": "get_process_stats",
+        "process_info": "process_info",
+        "process_stats": "process_stats",
         "stop_process": "stop_process",
         "kill": "kill"}
 
 
 class Command(object):
 
-    def __init__(self, name, args, kwargs):
+    def __init__(self, name, args=None, kwargs=None):
         self.name = name
-        self.args = args
-        self.kwargs = kwargs
+        self.args = args or ()
+        self.kwargs = kwargs or {}
 
     def reply(self, result):
         raise NotImplementedError
 
-    def reply_error(self, exc_type, exc_value=None, exc_tb=None):
+    def reply_error(self, error):
         raise NotImplementedError
 
 class Controller(object):
@@ -60,13 +60,16 @@ class Controller(object):
 
     def process_command(self, cmd):
         if cmd.name not in COMMANDS_TABLE:
-            return cmd.reply_error(CommandNotFound, CommandNotFound())
+            cmd.reply_error({"errno": 404, "reason": "command_not_found"})
+            return
 
         try:
             fun = getattr(self, COMMANDS_TABLE[cmd.name])
             fun(cmd)
         except ProcessError as pe:
             cmd.reply_error({"errno": pe.errno, "reason": pe.reason})
+        except CommandError as ce:
+            cmd.reply_error({"errno": ce.errno, "reason": ce.reason})
         except Exception as e:
             cmd.reply_error({"errno": 500, "reason": str(e)})
 
@@ -144,7 +147,7 @@ class Controller(object):
         cmd.reply({"ok": True})
 
     def scale(self, cmd):
-        if len(self.args) < 2:
+        if len(cmd.args) < 2:
             raise CommandError()
 
         numprocesses = self.manager.scale(cmd.args[0], cmd.args[1])
@@ -170,7 +173,7 @@ class Controller(object):
         cmd.reply({"ok": True})
 
     def killall(self, cmd):
-        if len(self.args) < 2:
+        if len(cmd.args) < 2:
             raise CommandError()
 
         self.manager.killall(cmd.args[0], cmd.args[1])
@@ -198,7 +201,7 @@ class Controller(object):
         cmd.reply({"ok": True})
 
     def kill(self, cmd):
-        if len(self.args) < 2:
+        if len(cmd.args) < 2:
             raise CommandError()
 
         self.manager.kill(cmd.args[0], cmd.args[1])

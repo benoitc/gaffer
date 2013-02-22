@@ -40,6 +40,8 @@ class TopicError(ProcessError):
 class CommandError(ProcessError):
     """ exception raised on command error """
 
+    def __init__(self, reason="bad_command"):
+        ProcessError.__init__(self, errno=400, reason=reason)
 
 class CommandNotFound(ProcessNotFound):
     """ exception raised when a command doesn't exist """

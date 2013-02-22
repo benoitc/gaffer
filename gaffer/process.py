@@ -366,6 +366,12 @@ class ProcessConfig(object):
 
         return self.settings[key]
 
+    def __setitem__(self, key, value):
+        if key in ("name", "cmd"):
+            setattr(self, key, value)
+        else:
+            self.settings[key] = value
+
     def __contain__(self, key):
         if key in ('name', 'cmd'):
             return True
@@ -387,7 +393,8 @@ class ProcessConfig(object):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, config):
+        d = config.copy()
         try:
             name = d.pop('name')
             cmd = d.pop('cmd')
@@ -589,6 +596,7 @@ class Process(object):
             self._info.update({'os_pid': self.os_pid,
                 'create_time':self._pprocess.create_time})
 
+        self._info['active'] = self._process.active
         return self._info
 
     @property
