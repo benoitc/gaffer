@@ -10,58 +10,27 @@ from ...httpclient import Server
 from ...console_output import colored, GAFFER_COLORS
 
 class Ps(Command):
-    """\
-        List your process informations
-        ------------------------------
-
-        Ps allows you to retrieve some process informations
-
-
-        .. image:: ../_static/gaffer_ps.png
-
-        Command line
-        ------------
-
-        ::
-
-            $ gaffer ps [group]
-
-        Args
-        ++++
-
-        *group*  is the name of the group of process recoreded in gafferd.
-        By default it will be the name of your project folder.You can use
-        ``.`` to specify the current folder.
-
-        *name* is the name of one process
-
+    """
+    usage: gaffer ps [<appname>]
     """
 
     name = "ps"
+    short_descr = "list your processes informations"
 
-    def run(self, procfile, pargs):
-        args = pargs.args
-        uri = pargs.endpoint or "http://127.0.0.1:5000"
+    def run(self, procfile, server, args):
         balance = copy.copy(GAFFER_COLORS)
-        s = Server(uri)
 
-
-        appname = "."
-        if len(args) == 1:
-            appname = args[0]
-
-        # get the default groupname
-        if appname == ".":
+        appname = args['<appname>']
+        if not appname or appname == ".":
+            # get the default groupname
             appname = procfile.get_appname()
 
         for name, cmd_str in procfile.processes():
-
             try:
-                job = s.get_job("%s.%s" % (appname, name))
+                job = server.get_job("%s.%s" % (appname, name))
             except:
                 # we just ignore
                 continue
-
 
             color, balance = self.get_color(balance)
             stats = job.stats()
@@ -76,7 +45,6 @@ class Ps(Command):
                     info['ctime']))
 
             print(colored(color, '\n'.join(lines)))
-
 
     def get_color(self, balance):
         code = balance.pop(0)

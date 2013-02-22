@@ -5,75 +5,38 @@
 import os
 
 from .base import Command
-from ...httpclient import Server
+from ...httpclient import Server, GafferNotFound
 
 class Scale(Command):
-    """\
-        Scaling your process
-        ====================
+    """
+    usage: gaffer scale [--app=appname] (<args>)...
 
-        Procfile applications can scal up or down instantly from the
-        command line or API.
-
-        Scaling a process in an application is done using the scale
-        command:
-
-        ::
-
-            $ gaffer scale dummy=3
-            Scaling dummy processes... done, now running 3
-
-        Or both at once:
-
-        ::
-
-            $ gaffer scale dummy=3 dummy1+2
-            Scaling dummy processes... done, now running 3
-            Scaling dummy1 processes... done, now running 3
-
-
-        Command line
-        ------------
-
-        ::
-
-            $ gaffer scale [group] process[=|-|+]3
-
-
-        Options
-        +++++++
-
-        **--endpoint**
-
-            Gaffer node URL to connect.
-
-
-        Operations supported are +,-,=
-
+      --app=appname  name of the procfile applicatino. [default: .]
     """
 
     name = "scale"
+    short_descr = "scaling your process"
 
-    def run(self, procfile, pargs):
-        args = pargs.args
-        uri = pargs.endpoint or "http://127.0.0.1:5000"
-        s = Server(uri)
+    def run(self, procfile, server, args):
+        appname = args["--app"]
+        if not appname or appname == ".":
+            appname = procfile.get_appname()
 
-        group = procfile.get_groupname()
-        if len(args) > 1:
-            if ("=" not in args[0] and
-                    "+" not in args[0] and
-                    "-" not in args[0]):
-                group = args[0]
-
-        ops = self.parse_scaling(args)
+        ops = self.parse_scaling(args["<args>"])
         for name, op, val in ops:
             if name in procfile.cfg:
-                pname = "%s.%s" % (group, name)
-                job = s.get_job(pname)
-                job.scale("%s%s" % (op, val))
-                print("Scaling %s processes... done, now running %s" % (name,
-                    p.numprocesses))
+                pname = "%s.%s" % (appname, name)
+
+                try:
+                    job = server.get_job(pname)
+                    ret = job.scale("%s%s" % (op, val))
+                    print("Scaling %s processes... done, now running %s" %
+                            (name,ret))
+
+                except GafferNotFound as e:
+                    print(e)
+                    pass
+
 
     def parse_scaling(self, args):
         ops = []

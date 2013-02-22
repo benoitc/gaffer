@@ -108,7 +108,7 @@ class Procfile(object):
         dconf = OrderedDict()
         for k, v in self.cfg.items():
             cmd, args = self.parse_cmd(v)
-            name = "%s:%s" % (self.get_groupname(), k)
+            name = "%s:%s" % (self.get_appname(), k)
 
             dconf["process:%s" % name] = OrderedDict([("cmd", cmd),
                 ("args", " ".join(args)), ("priority", ln),

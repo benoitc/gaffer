@@ -44,59 +44,98 @@ and then scale them up and down::
 
 .. image:: _static/gaffer_ps.png
 
+OPTIONS
+-------
 
-gaffer commands
--------------------
-
-- **start**: :doc:`pm/start`
-- **run**: :doc:`pm/run`
-- **export**: :doc:`pm/export`
-- **load**: :doc:`pm/load`
-- **unload**: :doc:`pm/unload`
-- **scale**: :doc:`pm/scale`
-- **ps**: :doc:`pm/ps`
-
-.. toctree::
-   :hidden:
-   :glob:
-
-   pm/*
+    -h --help                           show this help message and exit
+    --version                           show version and exit
+    -f procfile,--procfile procfile     Specify an alternate Procfile to load
+    -d root,--directory root            Specify an alternate application root
+                                        This defaults to the  directory
+                                        containing the Procfile [default: .]
+    -e k=v,--env k=v                    Specify one or more .env files to load
+    --endpoint endpoint                 gafferd node URL to connect
+                                        [default: http://127.0.0.1:5000]
 
 
-Command line usage
-------------------
+SUBCOMMANDS
+-----------
 
-::
+    **export** [-c concurrency|--concurrency concurrency]
+               [--format=format] [--out=filename] [<name>]
 
-    $ gaffer
-    usage: gaffer [options] command [args]
+                Export a Procfile
 
-    manage Procfiles applications.
+                This command export a Procfile to a gafferd process settings
+                format. It can be either a JSON that you could send to gafferd
+                via the JSON API or an ini file that can be included to the
+                gafferd configuration.
 
-    optional arguments:
-      -h, --help            show this help message and exit
-      -c CONCURRENCY, --concurrency CONCURRENCY
-                            Specify the number of each process type to run. The
-                            value passed in should be in the format
-                            process=num,process=num
-      -e ENVS [ENVS ...], --env ENVS [ENVS ...]
-                            Specify one or more .env files to load
-      -f FILE, --procfile FILE
-                            Specify an alternate Procfile to load
-      -d ROOT, --directory ROOT
-                            Specify an alternate application root. This defaults
-                            to the directory containing the Procfile
-      --endpoint ENDPOINT   Gaffer node URL to connect
-      --version             show program's version number and exit
+                <format>        ini or json
+                --out=filename  path of filename where the export will be saved
 
-    Commands:
-    ---------
+    **load** [-c concurrency|--concurrency concurrency] [<name>]
+                Load a Procfile application to gafferd
 
-        start 	Start a process
-        run   	Run one-off command
-        export	Export a Procfile
-        load  	Load a Procfile application to gafferd
-        unload	Unload a Procfile application to gafferd
-        scale 	Scaling your process
-        ps    	List your process informations
-        help  	Get help on a command
+                <name> is the name of the application recorded in
+                        gafferd. By default it will be the name of your
+                        project folder.You can use ``.`` to specify the current
+                        folder.
+
+    **ps** [<appname>]
+                List your processes informations
+
+                <appname> he name of the application (session) of process
+                recoreded in gafferd.  By default it will be the name of your
+                project folder.You can use ``.`` to specify the current
+                folder.
+
+    **run** [-c] [<args>]...
+            Run one-off commands using the same environment as your
+            defined processes
+
+            -c concurrency
+                Specify the number of each process type to run. The value
+                passed in should be in the format process=num,process=num
+            --concurrency concurrency
+                same as the -c option.
+
+    **scale** [<appname>] [process=value]...
+            Scaling your process
+
+            Procfile applications can scale up or down instantly from the
+            command line or API.
+
+            Scaling a process in an application is done using the scale
+            command:
+
+                ::
+
+                    $ gaffer scale dummy=3
+                    Scaling dummy processes... done, now running 3
+
+
+            Or both at once:
+
+                ::
+
+                    $ gaffer scale dummy=3 dummy1+2
+                    Scaling dummy processes... done, now running 3
+                    Scaling dummy1 processes... done, now running 3
+
+
+
+
+    **start** [-c concurrency|--concurrency concurrency]
+
+            Start a process type or all process types from the Procfile.
+
+            -c concurrency
+                Specify the number of each process type to run. The value
+                passed in should be in the format process=num,process=num
+            --concurrency concurrency
+                same as the -c option.
+
+
+    **unload** [<name>]
+            Unload a Procfile application from a gafferd node

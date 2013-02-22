@@ -10,70 +10,37 @@ from ...process import ProcessConfig
 
 
 class Load(Command):
-    """\
-        Load a Procfile application to gafferd
-        ======================================
+    """
+    usage: gaffer load [-c concurrency|--concurrency concurrency]...
+                       [<appname>]
 
-        This command allows you to load your Procfile application
-        in gafferd.
+    <appname>  name of the application recorded in hafferd. By default it
+                 will be the name of your project folder.You can use ``.`` to specify the
+                 current folder.
 
-        Command line
-        ------------
-
-            $ gaffer load [name] [url]
-
-        Arguments
-        +++++++++
-
-        *name* is the name of the group of process recoreded in gafferd.
-        By default it will be the name of your project folder.You can use
-        ``.`` to specify the current folder.
-
-        *uri*  is the url to connect to a gaffer node. By default
-        'http://127.0.0.1:5000'
-
-        Options
-        +++++++
-
-        **--endpoint**
-
-            Gaffer node URL to connect.
+    -h, --help
+    -c concurrency,--concurrency concurrency  Specify the number processesses
+                                                to run.
 
     """
 
     name = "load"
+    short_descr = "load a Procfile application"
 
-    def run(self, procfile, pargs):
-        args = pargs.args
-
-        # get args
-        uri = None
-        if len(args) == 2:
-            appname = args[0]
-            uri = args[1]
-        elif len(args) == 1:
-            appname = args[0]
-        else:
-            appname = "."
-
-        if pargs.endpoint:
-            uri = pargs.endpoint
-
-        if not uri:
-            uri = "http://127.0.0.1:5000"
-
-        # get the default appname
-        if appname == ".":
+    def run(self, procfile, server, args):
+        appname = args['<appname>']
+        if not appname or appname == ".":
+            # get the default appname
             appname = procfile.get_appname()
 
-        # create a server instance
-        s = Server(uri)
+        # replace all "." from the appname
+        appname = appname.replace(".", "-")
 
         # finally manage group conflicts
-        appname = self.find_appname(appname, s)
+        appname = self.find_appname(appname, server)
 
         # parse the concurrency settings
-        concurrency = self.parse_concurrency(pargs)
+        concurrency = self.parse_concurrency(args)
 
         # finally send the processes
         for name, cmd_str in procfile.processes():
@@ -84,8 +51,8 @@ class Load(Command):
                     cwd=os.path.abspath(procfile.root))
 
             config = ProcessConfig(name, cmd, **params)
-            s.add_template(config, sessionid=appname)
-        print("%r has been loaded in %s" % (appname, uri))
+            server.load(config, sessionid=appname)
+        print("%r has been loaded in %s" % (appname, server.uri))
 
     def find_appname(self, a, s):
         tries = 0
@@ -101,7 +68,7 @@ class Load(Command):
 
             i = 0
             while True:
-                a = "%s.%s" % (a, i)
+                a = "%s-%s" % (a, i)
                 if a not in sessions:
                     break
             tries += 1
