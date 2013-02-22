@@ -4,7 +4,7 @@
 
 import sys
 
-from .error import CommandError, CommandNotFound
+from .error import ProcessError, CommandError, CommandNotFound
 from .process import ProcessConfig
 
 COMMANDS_TABLE= {
@@ -62,14 +62,13 @@ class Controller(object):
         if cmd.name not in COMMANDS_TABLE:
             return cmd.reply_error(CommandNotFound, CommandNotFound())
 
-        print("process: %s" % cmd.name)
-
         try:
             fun = getattr(self, COMMANDS_TABLE[cmd.name])
             fun(cmd)
-        except:
-            # we pass the exception to the command `reply_error` method
-            cmd.reply_error(*sys.exc_info())
+        except ProcessError as pe:
+            cmd.reply_error({"errno": pe.errno, "reason": pe.reason})
+        except Exception as e:
+            cmd.reply_error({"errno": 500, "reason": str(e)})
 
     def sessions(self, cmd):
         cmd.reply({"sessions": self.manager.sessions})
@@ -107,12 +106,16 @@ class Controller(object):
             raise CommandError()
 
         self.manager.unload(cmd.args[0], **cmd.kwargs)
+        cmd.reply({"ok": True})
+
 
     def reload(self, cmd):
         if not cmd.args:
             raise CommandError()
 
         self.manager.reload(cmd.args[0], **cmd.kwargs)
+        cmd.reply({"ok": True})
+
 
     def update(self, cmd):
         if not cmd.args:
