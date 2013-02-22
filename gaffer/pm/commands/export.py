@@ -8,51 +8,46 @@ import json
 from .base import Command
 
 class Export(Command):
-    """\
-        Export a Procfile
-        =================
+    """
+    usage: gaffer export [-c concurrency|--concurrency concurrency]...
+                         [--format=format] [--out=filename] [<name>]
 
-        This command export a Procfile to a gafferd process settings
-        format. It can be either a JSON that you could send to gafferd
-        via the JSON API or an ini file that can be included to the
-        gafferd configuration.
-
-        Command Line
-        ------------
-
-        ::
-
-            $ gaffer export [ini|json] [filename]
-
+      -h, --help
+      -c concurrency,--concurrency concurrency  Specify the number processesses
+                                                to run.
+      --format=format                           json or ini
+      --out=filename
     """
 
     name = "export"
+    short_descr = "export a Procfile"
 
-    def run(self, procfile, pargs):
-        args = pargs.args
-        concurrency = self.parse_concurrency(pargs)
+    def run(self, procfile, server, args):
+        concurrency = self.parse_concurrency(args)
 
-        if len(args) < 1:
-            raise RuntimeError("format is missing")
+        if args['--format'] == "json":
 
-        if args[0] == "json":
-            if len(args) < 2:
-                raise RuntimeError("procname is missing")
+            if not args['<name>']:
+                print("you should provide a process type to export")
+                sys.exit(1)
+
             try:
-                obj = procfile.as_dict(args[1], concurrency)
+                obj = procfile.as_dict(args["<name>"], concurrency)
             except KeyError:
-                raise KeyError("%r is not found" % args[1])
+                raise KeyError("%r is not found" % args["<name>"])
 
-            if len(args) == 3:
-                with open(args[2], 'w') as f:
+            if args['--out']:
+                with open(args['--out'], 'w') as f:
                     json.dump(obj, f, indent=True)
 
             else:
+                print(obj)
                 print(json.dumps(obj, indent=True))
         else:
+            print(concurrency)
             config = procfile.as_configparser(concurrency)
-            if len(args) == 2:
-                with open(args[1], 'w') as f:
+            if args['--out']:
+                with open(args['--out'], 'w') as f:
                     config.write(f, space_around_delimiters=True)
             else:
                 buf = StringIO()

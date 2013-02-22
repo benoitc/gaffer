@@ -1,30 +1,45 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+"""
+usage: gaffer [--version] [-f procfile|--procfile procfile]
+              [-d root|--directory root] [-e path|--env path]...
+              [--endpoint endpoint] <command> [<args>...]
 
-import argparse
+Options
+
+    -h --help                           show this help message and exit
+    --version                           show version and exit
+    -f procfile,--procfile procfile     Specify an alternate Procfile to load
+    -d root,--directory root            Specify an alternate application root
+                                        This defaults to the  directory
+                                        containing the Procfile [default: .]
+    -e path,--env path                  Specify one or more .env files to load
+    --endpoint endpoint                 gafferd node URL to connect
+                                        [default: http://127.0.0.1:5000]
+
+"""
 import os
 import sys
 
+
 from .. import __version__
+from ..docopt import docopt, printable_usage
+from ..httpclient import Server
 from ..procfile import Procfile
+
 from .commands import get_commands
-
-COMMANDS = [
-    ('start', 'start [name]', 'start a process'),
-    ('run', 'run <cmd>', 'run one-off commands'),
-    ('export', 'export [format]',  'export'),
-]
-
-CHOICES = [c[0] for c in COMMANDS]
-
 
 class ProcfileManager(object):
 
-    def __init__(self):
-
+    def __init__(self, argv=None):
         self.commands = get_commands()
-        self.parser = self._init_parser()
+
+        version_str = "gaffer version %s" % __version__
+        self.doc_str = "%s%s" % (__doc__, self._commands_help())
+        self.args = docopt(self.doc_str, argv=argv,  version=version_str,
+                options_first=True)
+
         self.procfile = None
         self.concurrency_settings = {}
         self.root = "."
@@ -33,105 +48,76 @@ class ProcfileManager(object):
 
 
     def run(self):
-        self.args = args = self.parser.parse_args()
-
-        if not args.command:
+        if self.args['<command>'].lower() == "help":
             self.display_help()
-        elif args.command.lower() == "help":
-            if args.args[0] in self.commands:
-                cmd = self.commands[args.args[0]]
-                print(cmd.desc)
         else:
+            cmdname = self.args['<command>']
+            if cmdname not in self.commands:
+                print("Unknown command: %r" % cmdname)
+                self.display_help()
+                sys.exit(1)
+
+            # parse command arguments
+            cmd = self.commands[cmdname]
+            cmd_argv = [cmdname] + self.args['<args>']
+            cmd_args =  docopt(cmd.__doc__, argv=cmd_argv)
+
+            # create the procfile
             self._init_procfile()
-            cmd = self.commands[args.command]
+
+            # get the server
+            server = Server(self.args["--endpoint"])
+
+            print(cmd_args)
+            # finally launch the command
+            cmd = self.commands[cmdname]
             try:
-                return cmd.run(self.procfile, args)
+                return cmd.run(self.procfile, server, cmd_args)
             except Exception as e:
                 sys.stdout.write(str(e))
                 sys.exit(1)
         sys.exit(0)
 
     def display_help(self):
-        self.parser.print_help()
+        if self.args['<args>']:
+            name = self.args['<args>'][0]
+            if name in self.commands:
+                cmd = self.commands[name]
+                print(printable_usage(self.commands[name].__doc__))
+                return
 
-    def display_version(self):
-        from gaffer import __version__
-
-        return "\n".join([
-            "%(prog)s (version " +  __version__ + ")\n"
-            "Available in the public domain.", ""])
-
+        print(self.doc_str)
 
     def _init_procfile(self):
-        if self.args.root:
-            self.root = self.args.root
+        if self.args["--directory"]:
+            self.root = self.args["--directory"]
 
-        if self.args.procfile:
-            self.procfile_name = self.args.procfile
+        if self.args["--procfile"]:
+            self.procfile_name = self.args["--procfile"]
 
-        if self.args.envs:
-            self.envs = self.args.envs
+        if self.args["--env"]:
+            self.envs = list(set(self.args["--env"]))
 
         fname = os.path.join(self.root, self.procfile_name)
         self.procfile = Procfile(fname, self.envs)
 
-
-    def _init_parser(self):
-        parser = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description='manage Procfiles applications.',
-            usage='%(prog)s [options] command [args]',
-            epilog=self._commands_help())
-
-        commands = sorted([name for name in self.commands] + ["help"])
-
-        # initialize arguments
-        parser.add_argument('command', nargs="?", choices=commands,
-                help=argparse.SUPPRESS)
-        parser.add_argument('args', nargs="*", help=argparse.SUPPRESS)
-
-        parser.add_argument('-c', '--concurrency', dest='concurrency',
-                help="""Specify the number of each process type to
-                run. The value passed in should be in the format
-                process=num,process=num""")
-        parser.add_argument('-e', '--env', dest='envs', nargs="+",
-                help='Specify one or more .env files to load')
-
-        parser.add_argument('-f', '--procfile', dest='procfile',
-                metavar='FILE', default='Procfile',
-                help='Specify an alternate Procfile to load')
-
-        parser.add_argument('-d', '--directory', dest='root',
-                default='.',
-                help="""Specify an alternate application root. This
-                defaults to the  directory containing the
-                Procfile""")
-
-        parser.add_argument('--endpoint', dest='endpoint',
-                default='http://127.0.0.1:5000',
-                help="Gaffer node URL to connect")
-
-        parser.add_argument('--version', action="version",
-                version=self.display_version())
-        return parser
-
     def _commands_help(self):
         commands = [name for name in self.commands] + ["help"]
         max_len = len(max(commands, key=len))
-        output = ["Commands:",
-                  "---------",
+        output = ["Commands",
                   " "]
         for name in commands:
             if name == "help":
                 desc = "Get help on a command"
-                output.append("\t%-*s\t%s" % (max_len, name, desc))
+                output.append("    %-*s\t%s" % (max_len, name, desc))
             else:
                 cmd = self.commands[name]
                 # Command name is max_len characters.
                 # Used by the %-*s formatting code
-                output.append("\t%-*s\t%s" % (max_len, name, cmd.short))
+                output.append("    %-*s\t%s" % (max_len, name, cmd.short_descr))
         output.append("")
         return '\n'.join(output)
+
 
 def main():
     pm = ProcfileManager()

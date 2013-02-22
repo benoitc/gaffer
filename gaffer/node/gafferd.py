@@ -1,8 +1,32 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+"""
+usage: gafferd [--version] [-v | -vv] [-c CONFIG|--config=CONFIG]
+[--plugins-dir=PLUGINS_DIR] [--daemon] [--pidfile=PIDFILE] [--bind=ADDRESS]
+[--certfile=CERTFILE] [--keyfile=KEYFILE] [--backlog=BACKLOG][CONFIG]
 
-import argparse
+Args
+
+    CONFIG                    configuration file path
+
+Options
+
+    -h --help                   show this help message and exit
+    --version                   show version and exit
+    -v -vv                      verbose mode
+    -c CONFIG --config=CONFIG   configuration file
+    --plugins-dir=PLUGINS_DIR   default plugin dir [default: <PLUGIN_DIR>]
+    --daemon                    Start gaffer in daemon mode
+    --pidfile=PIDFILE
+    --bind=ADDRESS              default HTTP binding [default: 127.0.0.1:5000]
+    --certfile=CERTFILE         SSL certificate file for the default binding
+    --backlog=BACKLOG           default backlog [default: 128].
+
+"""
+
+
+
 import fnmatch
 try:
     import configparser
@@ -11,9 +35,12 @@ except ImportError:
 import os
 import sys
 
+
 import six
 
+from .. import __version__
 from ..console_output import ConsoleOutput
+from ..docopt import docopt
 from ..http_handler import HttpHandler, HttpEndpoint
 from ..manager import Manager
 from ..pidfile import Pidfile
@@ -72,7 +99,7 @@ class Server(object):
         self.args = args
         self.cfg = None
 
-        config_file = args.config or args.config_file
+        config_file = args['CONFIG'] or args["--config"]
         if not config_file:
             self.set_defaults()
         else:
@@ -84,23 +111,26 @@ class Server(object):
     def default_endpoint(self):
         params = ENDPOINT_DEFAULTS.copy()
 
-        if self.args.backlog:
-            params['backlog'] = self.args.backlog
+        if self.args["--backlog"]:
+            try:
+                params['backlog'] = int(self.args["--backlog"])
+            except ValueError:
+                raise RuntimeError("backlog should be an integer")
 
-        if self.args.certfile:
-            params['ssl_options']['certfile'] = self.args.certfile
+        if self.args["--certfile"]:
+            params['ssl_options']['certfile'] = self.args["--certfile"]
 
-        if self.args.keyfile:
-            params['ssl_options']['keyfile'] = self.args.keyfile
+        if self.args["--keyfile"]:
+            params['ssl_options']['keyfile'] = self.args["--keyfile"]
 
         if not params['ssl_options']:
             del params['ssl_options']
 
-        params['uri'] = self.args.bind or '127.0.0.1:5000'
+        params['uri'] = self.args["--bind"] or '127.0.0.1:5000'
         return HttpEndpoint(**params)
 
     def set_defaults(self):
-        self.plugins_dir = self.args.plugins_dir
+        self.plugins_dir = self.args["--plugins-dir"]
         self.webhooks = []
         self.endpoints = [self.default_endpoint()]
         self.processes = []
@@ -124,9 +154,9 @@ class Server(object):
         apps.extend(plugin_apps)
 
         # verbose mode
-        if self.args.verboseful:
+        if self.args["-v"] == 2:
             apps.append(ConsoleOutput(actions=['.']))
-        elif self.args.verbose:
+        elif self.args["-v"] == 1:
             apps.append(ConsoleOutput(output_streams=False))
 
         self.manager.start(apps=apps)
@@ -182,7 +212,7 @@ class Server(object):
         self.cfg = cfg
 
         self.plugins_dir = cfg.dget('gaffer', 'plugins_dir',
-                self.args.plugins_dir)
+                self.args["--plugins-dir"])
 
         # you can setup multiple endpoints in the config
         endpoints_str = cfg.dget('gaffer', 'http_endpoints', '')
@@ -301,42 +331,17 @@ def run():
     # default plugins dir
     plugins_dir = os.path.join(user_path(), "plugins")
 
-    # define the argument parser
-    parser = argparse.ArgumentParser(description='Run some watchers.')
-    parser.add_argument('config', help='configuration file',
-            nargs='?')
+    doc = __doc__.replace("<PLUGIN_DIR>", plugins_dir)
+    args = docopt(doc, version=__version__)
 
-    parser.add_argument('-c', '--config', dest='config_file',
-            help='configuration file')
-    parser.add_argument('-p', '--plugins-dir', dest='plugins_dir',
-            help="default plugin dir", default=plugins_dir),
-
-    parser.add_argument('-v', dest='verbose', action='store_true',
-            help="verbose mode")
-    parser.add_argument('-vv', dest='verboseful', action='store_true',
-            help="like verbose mode but output stream too")
-    parser.add_argument('--daemon', dest='daemonize', action='store_true',
-            help="Start gaffer in the background")
-    parser.add_argument('--pidfile', dest='pidfile')
-    parser.add_argument('--bind', dest='bind',
-            default='127.0.0.1:5000', help="default HTTP binding"),
-    parser.add_argument('--certfile', dest='certfile',
-            help="SSL certificate file for the default binding"),
-    parser.add_argument('--keyfile', dest='keyfile',
-            help="SSL key file for the default binding"),
-    parser.add_argument('--backlog', dest='backlog', type=int,
-            default=128, help="default backlog"),
-
-    args = parser.parse_args()
-
-    if args.daemonize:
+    if args["--daemon"]:
         daemonize()
 
     setproctitle_("gafferd")
 
     pidfile = None
-    if args.pidfile:
-        pidfile = Pidfile(args.pidfile)
+    if args["--pidfile"]:
+        pidfile = Pidfile(args["--pidfile"])
 
         try:
             pidfile.create(os.getpid())
@@ -344,12 +349,16 @@ def run():
             print(str(e))
             sys.exit(1)
 
-    s = Server(args)
+
 
     try:
+        s = Server(args)
         s.run()
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        print(str(e))
+        sys.exit(1)
     finally:
         if pidfile is not None:
             pidfile.unlink()

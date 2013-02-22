@@ -50,13 +50,12 @@ class Command(object):
     def run(self, args, opts):
         raise NotImplementedError
 
-    def parse_concurrency(self, pargs):
-        if not pargs.concurrency:
+    def parse_concurrency(self, args):
+        if not args["--concurrency"]:
             return {}
 
         settings = {}
-        lsettings = pargs.concurrency.split(",")
-        for setting in lsettings:
+        for setting in args["--concurrency"]:
             kv = setting.split("=")
             if len(kv) == 2:
                 key = kv[0].strip()

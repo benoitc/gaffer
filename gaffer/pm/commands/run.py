@@ -13,58 +13,28 @@ from ...sig_handler import SigHandler
 
 
 class Run(Command):
-    """\
-        Run one-off command
-        -------------------
+    """
+    usage: gaffer run [-c concurrency|--concurrency concurrency] [<args>...]
 
-        gaffer run is used to run one-off commands using the same
-        environment as your defined processes.
-
-        Command line:
-        -------------
-
-        ::
-
-            $ gaffer run /some/script
-
-
-
-        Options
-        +++++++
-
-        **-c**, **--concurrency**:
-
-            Specify the number of each process type to run. The value
-            passed in should be in the format process=num,process=num
-
-        **--env**
-            Specify one or more .env files to load
-
-        **-f**, **--procfile**:
-            Specify an alternate Procfile to load
-
-        **-d**, **--directory**:
-
-            Specify an alternate application root. This defaults to the
-            directory containing the Procfile
+      -h, --help
+      -c concurrency,--concurrency concurrency  Specify the number processesses
+                                                to run.
     """
 
     name = "run"
+    short_descr = "run one-off commands"
 
-    def run(self, procfile, pargs):
-        args = pargs.args
+    def run(self, procfile, server, args):
 
         m = Manager()
         m.start(apps=[SigHandler(), ConsoleOutput()])
-        if not args:
-            raise RuntimeError("command is missing")
 
-        if pargs.concurrency and pargs.concurrency is not None:
-            numprocesses = int(pargs.concurrency)
-        else:
+        if not args['--concurrency']:
             numprocesses = 1
+        else:
+            numprocesses = int(args['--concurrency'])
 
-        cmd_str = " ".join(args)
+        cmd_str = " ".join(args['<args>'])
         cmd, args = procfile.parse_cmd(cmd_str)
         name = os.path.basename(cmd)
         appname = procfile.get_appname()
@@ -73,5 +43,5 @@ class Run(Command):
                 redirect_output=['out', 'err'])
 
         config = ProcessConfig(name, cmd, **params)
-        m.add_template(config, sessionid=appname)
+        m.load(config, sessionid=appname)
         m.run()
