@@ -153,7 +153,7 @@ class ProcessState(object):
     def __get_numprocesses(self):
         return atomic_read(self._numprocesses)
     def __set_numprocesses(self, n):
-        self._numprocesses = compare_and_swap(self._numprocesses, n)
+        self._numprocesses = n
     numprocesses = property(__get_numprocesses, __set_numprocesses,
             doc="""return the max numbers of processes that we keep
             alive for this command""")
