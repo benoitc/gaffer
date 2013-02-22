@@ -240,3 +240,60 @@ def test_simple_job():
     assert results[0] == (1, 1, "default.dummy")
     assert cmd0.result() == {"ok": True}
     assert cmd1.result()["jobs"][0] == "default.dummy"
+
+
+def test_remove_job():
+    m, s, socket = init()
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+
+    results = []
+    def cb(event, cmd):
+        jobs = m.jobs()
+        results.append((cmd, jobs))
+
+    assert s.version == __version__
+
+    socket.bind("command_success", cb)
+    socket.send_command("load", config.to_dict(), start=False)
+    socket.send_command("unload", "dummy")
+
+    def stop(h):
+        h.close()
+        socket.close()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.4, 0.0)
+    m.run()
+
+    assert len(results) == 2
+    cmd0, jobs0 = results[0]
+    cmd1, jobs1 = results[1]
+
+    assert cmd0.result()["ok"] == True
+    assert cmd1.result()["ok"] == True
+    assert len(jobs0) == 1
+    assert jobs0[0] == "default.dummy"
+    assert len(jobs1) == 0
+
+
+def test_notfound():
+    m, s, socket = init()
+
+    assert s.jobs() == []
+    cmd = socket.send_command("info", "dummy")
+
+    def stop(h):
+        h.close()
+        socket.close()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.2, 0.0)
+    m.run()
+
+    assert cmd is not None
+    assert cmd.error() is not None
+    assert cmd.error()["errno"] == 404
+    assert cmd.error()["reason"] == "not_found"

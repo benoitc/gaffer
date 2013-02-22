@@ -508,7 +508,7 @@ class GafferSocket(WebSocket):
 
     def unbind(self, event, listener):
         """ unbind to a global event """
-        self._emitter.unsubscribe(evenet, callback)
+        self._emitter.unsubscribe(event, callback)
 
     def bind_all(self, callback):
         """ bind to all global events """

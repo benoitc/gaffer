@@ -52,8 +52,8 @@ class WSCommand(Command):
         msg = {"event": "gaffer:command_success", "data": data}
         self.ws.write_message(msg)
 
-    def reply_error(self, exc_type, exc_value=None, exc_tb=None):
-        data = {"id": self.identity, "error": str(exc_value)}
+    def reply_error(self, error):
+        data = {"id": self.identity, "error": error}
         msg = {"event": "gaffer:command_error", "data": data}
         self.ws.write_message(msg)
 
@@ -139,9 +139,6 @@ class ChannelConnection(SockJSConnection):
             elif msg.event == "CMD":
                 command = WSCommand(self, msg)
                 self.ctl.process_command(command)
-        except ProcessError as e:
-            return self.write_message(_error_msg(event="command_error",
-                reason=e.reason, errno=e.errno))
         except SubscriptionError as e:
             return self.write_message(_error_msg(event="subscription_error",
                 reason=str(e)))
