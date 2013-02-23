@@ -15,7 +15,8 @@ class Scale(Command):
     name = "ps:scale"
     short_descr = "scaling your process"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
+        procfile, server = config.get("procfile", "server")
         appname = args["--app"]
         if not appname or appname == ".":
             appname = procfile.get_appname()

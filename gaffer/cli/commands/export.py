@@ -23,17 +23,15 @@ class Export(Command):
     name = "export"
     short_descr = "export a Procfile"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
         concurrency = self.parse_concurrency(args)
-
         if args['--format'] == "json":
-
             if not args['<name>']:
                 print("you should provide a process type to export")
                 sys.exit(1)
 
             try:
-                obj = procfile.as_dict(args["<name>"], concurrency)
+                obj = config.procfile.as_dict(args["<name>"], concurrency)
             except KeyError:
                 raise KeyError("%r is not found" % args["<name>"])
 
@@ -42,11 +40,9 @@ class Export(Command):
                     json.dump(obj, f, indent=True)
 
             else:
-                print(obj)
                 print(json.dumps(obj, indent=True))
         else:
-            print(concurrency)
-            config = procfile.as_configparser(concurrency)
+            config = config.procfile.as_configparser(concurrency)
             if args['--out']:
                 with open(args['--out'], 'w') as f:
                     config.write(f, space_around_delimiters=True)

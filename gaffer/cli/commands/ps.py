@@ -15,8 +15,11 @@ class Ps(Command):
     name = "ps"
     short_descr = "list your processes informations"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
         balance = copy.copy(GAFFER_COLORS)
+
+        # get procfile and server
+        procfile, server = config.get("procfile", "server")
 
         appname = args['<appname>']
         if not appname or appname == ".":

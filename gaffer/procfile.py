@@ -25,7 +25,7 @@ class Procfile(object):
     """ Procfile object to parse a procfile and a list of given
     environnment files. """
 
-    def __init__(self, procfile, envs=None):
+    def __init__(self, procfile, root=None, envs=None):
         """ main constructor
 
         Attrs:
@@ -35,7 +35,11 @@ class Procfile(object):
           global procfile environment"""
 
         self.procfile = procfile
-        self.root = os.path.dirname(procfile) or "."
+
+        if not root:
+            self.root = os.path.dirname(procfile) or "."
+        else:
+            self.root = root
 
         # set default env
         default_env = os.path.join(self.root, '.env')

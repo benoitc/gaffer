@@ -41,7 +41,7 @@ class Command(object):
         return copy.copy(self)
 
 
-    def run(self, args, opts):
+    def run(self, config, args):
         raise NotImplementedError
 
     def parse_concurrency(self, args):

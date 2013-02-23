@@ -26,7 +26,8 @@ class Load(Command):
     name = "load"
     short_descr = "load a Procfile application"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
+        procfile, server = config.get("procfile", "server")
         appname = args['<appname>']
         if not appname or appname == ".":
             # get the default appname
