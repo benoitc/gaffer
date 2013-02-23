@@ -68,7 +68,6 @@ class ProcfileManager(object):
             # get the server
             server = Server(self.args["--endpoint"])
 
-            print(cmd_args)
             # finally launch the command
             cmd = self.commands[cmdname]
             try:

@@ -1,4 +1,4 @@
-from gaffer.pm.commands import (
+from gaffer.cli.commands import (
         start,
         run,
         export,
@@ -7,4 +7,4 @@ from gaffer.pm.commands import (
         scale,
         ps)
 
-from gaffer.pm.commands.base import get_commands
+from gaffer.cli.commands.base import get_commands
