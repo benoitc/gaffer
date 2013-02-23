@@ -3,10 +3,8 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import copy
-import os
 
 from .base import Command
-from ...httpclient import Server
 from ...console_output import colored, GAFFER_COLORS
 
 class Ps(Command):

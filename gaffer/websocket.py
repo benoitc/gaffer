@@ -12,7 +12,6 @@ import os
 import re
 import socket
 import struct
-import sys
 import threading
 import time
 import uuid
@@ -21,7 +20,7 @@ import pyuv
 import tornado.escape
 from tornado import iostream
 from tornado.httputil import HTTPHeaders
-from tornado.util import bytes_type, b
+from tornado.util import bytes_type
 
 from .tornado_pyuv import IOLoop, install
 install()
@@ -342,8 +341,8 @@ class Channel(object):
     def bind(self, event, callback):
         self._emitter.subscribe(event, callback)
 
-    def unbind(self, event, listener):
-        self._emitter.unsubscribe(evenet, callback)
+    def unbind(self, event, callback):
+        self._emitter.unsubscribe(event, callback)
 
     def bind_all(self, callback):
         self._emitter.subscribe(".", callback)
@@ -506,7 +505,7 @@ class GafferSocket(WebSocket):
         """ bind to a global event """
         self._emitter.subscribe(event, callback)
 
-    def unbind(self, event, listener):
+    def unbind(self, event, callback):
         """ unbind to a global event """
         self._emitter.unsubscribe(event, callback)
 
@@ -553,8 +552,11 @@ class GafferSocket(WebSocket):
         elif event == "gaffer:subscription_error":
             self._emitter.publish("subscription_error", msg)
 
+            # get topic
+            topic = msg['topic']
+
             # remove the channel from the subscribed list
-            if "topic" in self.channels:
+            if topic in self.channels:
                 channel = self.channels.pop(topic)
                 channel.close()
 

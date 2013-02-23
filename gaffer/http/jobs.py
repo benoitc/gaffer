@@ -104,10 +104,6 @@ class JobHandler(CorsHandler):
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
 
-        appname = args[0]
-        name = args[1]
-
-
         try:
             info = m.info("%s.%s" % (args[0], args[1]))
         except ProcessError:
@@ -164,17 +160,17 @@ class JobHandler(CorsHandler):
 
 
     def fetch_body(self, name):
-        settings = json.loads(self.request.body.decode('utf-8'))
-        if "cmd" not in settings:
+        config = json.loads(self.request.body.decode('utf-8'))
+        if "cmd" not in config:
             raise ValueError("invalid process config")
 
-        if 'name' in settings:
-            if settings.get('name') != name:
+        if 'name' in config:
+            if config.get('name') != name:
                 raise ValueError("template name conflict with the path")
 
-            del settings['name']
+            del config['name']
 
-        cmd = settings.pop("cmd")
+        cmd = config.pop("cmd")
         return cmd, config
 
 
@@ -244,8 +240,6 @@ class PidsJobHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
-        appname = args[0]
-        name = args[1]
 
         try:
             pids = m.pids("%s.%s" % (args[0], args[1]))

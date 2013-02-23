@@ -7,7 +7,6 @@
 
 """
 import re
-import textwrap
 import sys
 
 __all__ = ['docopt']

@@ -2,9 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import sys
-
-from .error import ProcessError, CommandError, CommandNotFound
+from .error import ProcessError, CommandError
 from .process import ProcessConfig
 
 COMMANDS_TABLE= {

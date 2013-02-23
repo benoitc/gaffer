@@ -4,6 +4,7 @@
 
 from functools import partial
 
+from .error import TopicError
 from .events import EventEmitter
 
 class EventChannel(object):
@@ -151,7 +152,7 @@ class Topic(object):
                 state = self.manager._get_locked_state(self.target)
                 for proc in state.running:
                     proc.unmonitor(self._dispatch_data)
-        elif source == "STREAM":
+        elif self.source == "STREAM":
             if self.pid:
                 proc = self.manager.get_process(self.pid)
                 proc.unmonitor_io(".", self._dispatch_events)

@@ -8,8 +8,6 @@ import json
 from .sockjs import SockJSConnection
 from ..controller import Command, Controller
 from ..sync import increment, decrement
-from ..error import ProcessError
-
 
 class MessageError(Exception):
     """ raised on message error """

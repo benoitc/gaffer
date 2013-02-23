@@ -5,7 +5,6 @@
 import os
 
 from .base import Command
-from ...httpclient import Server
 from ...process import ProcessConfig
 
 

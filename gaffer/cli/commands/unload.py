@@ -2,10 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import sys
-
 from .base import Command
-from ...httpclient import Server
 
 class UnLoad(Command):
     """
