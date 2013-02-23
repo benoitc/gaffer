@@ -27,20 +27,14 @@ class CommandMeta(type):
             return super_new(cls, name, bases, attrs)
         attrs["order"] = len(KNOWN_COMMANDS)
         new_class = super_new(cls, name, bases, attrs)
-        new_class.fmt_desc()
         KNOWN_COMMANDS.append(new_class)
         return new_class
 
-    def fmt_desc(cls):
-        desc = textwrap.dedent(cls.__doc__).strip()
-        setattr(cls, "desc",  desc)
-        setattr(cls, "short", desc.splitlines()[0])
 
 class Command(object):
 
     name = None
-    options = []
-    properties = []
+    short_descr = None
     order = 0
 
     def copy(self):
