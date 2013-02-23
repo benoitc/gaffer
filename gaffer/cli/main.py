@@ -4,7 +4,7 @@
 """
 usage: gaffer [--version] [-f procfile|--procfile procfile]
               [-d root|--directory root] [-e path|--env path]...
-              [--endpoint endpoint] <command> [<args>...]
+              [--gafferd-http-address url] <command> [<args>...]
 
 Options
 
@@ -15,7 +15,7 @@ Options
                                         This defaults to the  directory
                                         containing the Procfile [default: .]
     -e path,--env path                  Specify one or more .env files to load
-    --endpoint endpoint                 gafferd node URL to connect
+    --gafferd-http-address url          gafferd node HTTP address to connect
                                         [default: http://127.0.0.1:5000]
 
 """
@@ -66,7 +66,7 @@ class ProcfileManager(object):
             self._init_procfile()
 
             # get the server
-            server = Server(self.args["--endpoint"])
+            server = Server(self.args["--gafferd-http-address"])
 
             # finally launch the command
             cmd = self.commands[cmdname]
