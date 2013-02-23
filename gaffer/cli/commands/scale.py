@@ -7,12 +7,12 @@ from ...httpclient import GafferNotFound
 
 class Scale(Command):
     """
-    usage: gaffer scale [--app=appname] (<args>)...
+    usage: gaffer ps:scale [--app=appname] (<args>)...
 
       --app=appname  name of the procfile applicatino. [default: .]
     """
 
-    name = "scale"
+    name = "ps:scale"
     short_descr = "scaling your process"
 
     def run(self, procfile, server, args):
