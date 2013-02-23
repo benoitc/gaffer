@@ -36,8 +36,6 @@ import json
 from threading import RLock
 import time
 
-import pyuv
-
 from tornado.httpclient import HTTPError
 
 from .httpclient import HTTPClient
@@ -177,7 +175,7 @@ class WebHooks(object):
             try:
                 client.fetch(url, method="POST", headers=headers,
                         body=body)
-            except HTTPError as e:
+            except HTTPError:
                 # for now we ignore all http errors.
                 pass
 

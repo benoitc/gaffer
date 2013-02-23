@@ -11,7 +11,7 @@ import time
 
 import pyuv
 
-from .sync import add, sub, increment, atomic_read, compare_and_swap
+from .sync import add, sub, increment, atomic_read
 from .util import nanotime
 
 class ProcessTracker(object):

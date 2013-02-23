@@ -4,6 +4,7 @@
 
 from io import StringIO
 import json
+import sys
 
 from .base import Command
 

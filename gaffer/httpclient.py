@@ -35,12 +35,10 @@ Example of usage::
 import json
 import signal
 
-import pyuv
 import six
 from tornado import httpclient
 
 from .eventsource import Watcher
-from .events import EventEmitter
 from .loop import patch_loop, get_loop
 from .process import ProcessConfig
 from .tornado_pyuv import IOLoop

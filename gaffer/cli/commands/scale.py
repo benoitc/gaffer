@@ -2,10 +2,8 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import os
-
 from .base import Command
-from ...httpclient import Server, GafferNotFound
+from ...httpclient import GafferNotFound
 
 class Scale(Command):
     """
@@ -34,7 +32,7 @@ class Scale(Command):
                             (name,ret))
 
                 except GafferNotFound as e:
-                    print(e)
+                    print("Ignore %s: %s" % (name, str(e)))
                     pass
 
 

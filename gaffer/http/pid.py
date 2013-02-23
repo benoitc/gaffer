@@ -2,7 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import json
 import signal
 
 import six
