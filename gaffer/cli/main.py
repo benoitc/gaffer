@@ -53,6 +53,10 @@ class Config(object):
         return tuple(ret)
 
     @property
+    def use_procfile(self):
+        return isinstance(self.procfile, Procfile)
+
+    @property
     def gafferd_address(sef):
         return self.args["--gafferd-http-address"]
 
