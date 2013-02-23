@@ -24,7 +24,7 @@ class Run(Command):
     name = "run"
     short_descr = "run one-off commands"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
 
         m = Manager()
         m.start(apps=[SigHandler(), ConsoleOutput()])

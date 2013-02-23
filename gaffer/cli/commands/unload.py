@@ -16,7 +16,8 @@ class UnLoad(Command):
     name = "unload"
     short_descr = "unload a Procfile application from a gafferd node"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
+        procfile, server = config.get("procfile", "server")
         appname = args['<appname>']
         if not appname or appname == ".":
             # get the default appname

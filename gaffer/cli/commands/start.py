@@ -23,7 +23,7 @@ class Start(Command):
     name = "start"
     short_descr = "start a process"
 
-    def run(self, procfile, server, args):
+    def run(self, config, args):
         concurrency = self.parse_concurrency(args)
 
         m = Manager()
