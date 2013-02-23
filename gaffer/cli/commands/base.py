@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import copy
-import textwrap
+import re
 
 try:
     from collections import OrderedDict
@@ -30,6 +30,7 @@ class CommandMeta(type):
         KNOWN_COMMANDS.append(new_class)
         return new_class
 
+VALID_APPNAME = re.compile(r'^[a-z][a-z0-9_+-]*$')
 
 class Command(object):
 
@@ -39,7 +40,6 @@ class Command(object):
 
     def copy(self):
         return copy.copy(self)
-
 
     def run(self, config, args):
         raise NotImplementedError
@@ -59,5 +59,30 @@ class Command(object):
                     continue
                 settings[key] = val
         return settings
+
+    def default_appname(self, config, args):
+        if args['--app']:
+            appname = args['--app']
+
+        elif config.procfile is not None:
+            appname = config.procfile.get_appname()
+        else:
+            appname = "default"
+
+        if not VALID_APPNAME.match(appname):
+            raise ValueError("Invalid APP name: %r" % appname)
+
+        return appname
+
+    def parse_name(self, name, default="default"):
+        if "." in name:
+            appname, name = name.split(".", 1)
+        elif "/" in name:
+            appname, name = name.split("/", 1)
+        else:
+            appname = default
+
+        return appname, name
+
 
 Command = CommandMeta('Command', (Command,), {})
