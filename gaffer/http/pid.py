@@ -108,34 +108,15 @@ class ProcessIdSignalHandler(CorsHandler):
 
         # decode object
         obj = escape.json_decode(self.request.body)
-
         try:
-            signum = self._get_signal(obj)
-        except (KeyError, AttributeError):
+            p.kill(obj.get('signal'))
+        except ValueError:
             self.set_status(400)
             return self.write({"error": "bad_signal"})
 
 
-        p.kill(signum)
         self.set_status(202)
         self.write({"ok": True})
-
-    def _get_signal(self, obj):
-        sig = obj['signal']
-
-        if isinstance(sig, six.string_types):
-            signame = sig.upper()
-            if not signame.startswith('SIG'):
-                signame = "SIG%s" % signame
-            try:
-                signum = getattr(signal, signame)
-            except AttributeError:
-                raise ValueError("invalid signal name")
-        else:
-            signum = sig
-
-        return signum
-
 
 class ProcessIdStatsHandler(CorsHandler):
 

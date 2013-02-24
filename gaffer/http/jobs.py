@@ -260,17 +260,13 @@ class SignalJobHandler(CorsHandler):
         m = self.settings.get('manager')
 
         try:
-            sig = self.get_signal_value()
+            m.kill("%s.%s" % (args[0], args[1]), self.get_signal_value())
         except ValueError:
             self.set_status(400)
             return self.write({"error": "bad_request"})
-
-        try:
-             m.kill("%s.%s" % (args[0], args[1]), sig)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
-
 
         self.send_status(202)
         self.write({"ok": True})

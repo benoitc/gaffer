@@ -27,6 +27,7 @@ from .error import ProcessConflict, ProcessNotFound
 from .pubsub import Topic
 from .state import ProcessState, ProcessTracker
 from .sync import increment
+from .util import parse_signal_value
 
 
 class Manager(object):
@@ -540,9 +541,9 @@ class Manager(object):
             self._stopall(state)
 
 
-    def kill(self, pid, signum):
+    def kill(self, pid, sig):
         """ send a signal to a process """
-
+        signum = parse_signal_value(sig)
         with self._lock:
             p = self._get_pid(pid)
 
@@ -553,9 +554,9 @@ class Manager(object):
             p.kill(signum)
 
 
-    def killall(self, name, signum):
+    def killall(self, name, sig):
         """ send a signal to all processes of a job """
-
+        signum = parse_signal_value(sig)
         sessionid, name = self._parse_name(name)
         pname = "%s.%s" % (sessionid, name)
         with self._lock:

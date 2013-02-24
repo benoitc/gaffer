@@ -6,6 +6,7 @@ import grp
 import os
 import pwd
 import resource
+import signal
 import socket
 import string
 import time
@@ -217,3 +218,29 @@ def from_nanotime(n):
 
 def substitute_env(s, env):
     return string.Template(s).substitute(env)
+
+def parse_signal_value(sig):
+    if sig is None:
+        raise ValueError("invalid signal")
+
+    # value passed is a string
+    if isinstance(sig, six.string_types):
+        if sig.isdigit():
+            # if number in the string, try to parse it
+            try:
+                return int(sig)
+            except ValueError:
+                raise ValueError("invalid signal")
+
+        # else try to get the signal number from its name
+        signame = sig.upper()
+        if not signame.startswith('SIG'):
+            signame = "SIG%s" % signame
+        try:
+            signum = getattr(signal, signame)
+        except AttributeError:
+            raise ValueError("invalid signal name")
+        return signum
+
+    # signal is a number, just return it
+    return sig
