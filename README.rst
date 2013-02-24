@@ -6,10 +6,12 @@ Application deployement, monitoring and supervision made simple.
 Gaffer is a set of Python modules and tools to easily maintain and
 interact with your applications.
 
-.. image::
-    https://secure.travis-ci.org/benoitc/gaffer.png?branch=master
-    :alt: Build Status
-    :target: https://travis-ci.org/benoitc/gaffer
+Build status
+------------
+
+- **Master**: <a href="https://travis-ci.org/benoitc/gaffer"><img src="https://secure.travis-ci.org/benoitc/gaffer.png?branch=master"></a>
+- **Developer**: <a href="https://travis-ci.org/benoitc/gaffer"><img src="https://secure.travis-ci.org/benoitc/gaffer.png?branch=develop"></a>
+
 
 Features
 --------
