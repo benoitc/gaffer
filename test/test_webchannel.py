@@ -28,7 +28,6 @@ def start_manager():
     http_handler = HttpHandler(endpoints=[http_endpoint])
     m = Manager()
     m.start(apps=[http_handler])
-    time.sleep(0.5)
     return m
 
 def get_server(loop):
@@ -71,6 +70,7 @@ def test_basic():
             elif event == "gaffer:event":
                 # if message type is an event then it should contain a data
                 # property
+                print("oc")
                 assert "data" in msg
                 data = msg['data']
 
@@ -82,20 +82,22 @@ def test_basic():
                 # we only collect `(eventtype, joblabel)` tuples
                 messages.append((data['event'], data['name']))
 
-
     m = start_manager()
+    s = get_server(m.loop)
+
+    print(TEST_URL)
     ws = TestClient(m.loop, TEST_URL)
     ws.start()
-    s = get_server(m.loop)
-    assert s.version == __version__
+    # subscribe
+    ws.write_message(json.dumps({"event": "SUB", "data": {"topic":
+        "EVENTS"}}))
 
-    submsg = json.dumps({"event": "SUB", "data": {"topic": "EVENTS"}})
-    ws.write_message(submsg)
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
 
 
     def do_events(h):
+        print(ws._started)
         m.load(config)
         m.scale("dummy", 1)
         m.unload("dummy")
@@ -106,7 +108,7 @@ def test_basic():
         m.stop()
 
     t = pyuv.Timer(m.loop)
-    t.start(do_events, 0.4, 0.0)
+    t.start(do_events, 0.2, 0.0)
     t1 = pyuv.Timer(m.loop)
     t1.start(stop, 0.8, 0.0)
 
@@ -129,8 +131,6 @@ def test_basic_socket():
     socket = s.socket()
     socket.start()
 
-    assert s.version == __version__
-
     messages =[]
     def cb(event, data):
         messages.append((event, data['name']))
@@ -140,9 +140,10 @@ def test_basic_socket():
     socket['EVENTS'].bind_all(cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
 
     def do_events(h):
+        h.close()
         m.load(config)
         m.scale("dummy", 1)
         m.unload("dummy")
@@ -173,8 +174,6 @@ def test_stats():
     # get a gaffer socket
     socket = s.socket()
     socket.start()
-
-    assert s.version == __version__
 
     monitored = []
     def cb(event, info):
@@ -209,8 +208,6 @@ def test_stats():
 
 def test_simple_job():
     m, s, socket = init()
-
-    assert s.jobs() == []
 
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
@@ -251,8 +248,6 @@ def test_remove_job():
         jobs = m.jobs()
         results.append((cmd, jobs))
 
-    assert s.version == __version__
-
     socket.bind("command_success", cb)
     socket.send_command("load", config.to_dict(), start=False)
     socket.send_command("unload", "dummy")
@@ -279,8 +274,6 @@ def test_remove_job():
 
 def test_notfound():
     m, s, socket = init()
-
-    assert s.jobs() == []
     cmd = socket.send_command("info", "dummy")
 
     def stop(h):

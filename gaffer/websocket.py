@@ -94,6 +94,8 @@ class WebSocket(object):
         self._fragmented_message_buffer = None
         self._fragmented_message_opcode = None
         self._waiting = None
+        self._pending_messages = []
+        self._started = False
 
         self.key = base64.b64encode(os.urandom(16))
 
@@ -134,13 +136,18 @@ class WebSocket(object):
             opcode = 0x1
         message = tornado.escape.utf8(message)
         assert isinstance(message, bytes_type)
-        self._write_frame(True, opcode, message)
+
+        if not self._started:
+            self._pending_messages.append(message)
+        else:
+            self._write_frame(True, opcode, message)
 
     def ping(self):
         self._write_frame(True, 0x9, b'')
 
     def close(self):
         """Closes the WebSocket connection."""
+        self._started = False
 
         if not self.server_terminated:
             if not self.stream.closed():
@@ -196,6 +203,12 @@ class WebSocket(object):
         # Sec-WebSocket-Accept should be derived from our key.
         accept = base64.b64encode(hashlib.sha1(self.key + WS_MAGIC).digest())
         assert headers['Sec-WebSocket-Accept'] == tornado.escape.native_str(accept)
+
+        self._started = True
+        if self._pending_messages:
+            for msg in self._pending_messages:
+                self.write_message(msg)
+            self._pending_messages = []
 
         self._async_callback(self.on_open)()
         self._receive_frame()
@@ -278,6 +291,7 @@ class WebSocket(object):
         """Instantly aborts the WebSocket connection by closing the socket"""
         self.client_terminated = True
         self.server_terminated = True
+        self._started = False
         self.stream.close()
         self.close()
 
@@ -436,16 +450,12 @@ class GafferSocket(WebSocket):
         # define status
         self.active = False
         self.closed = False
-        self.started = False
 
         # dict to maintain opened channels
         self.channels = dict()
 
         # dict to maintain commands
         self.commands = dict()
-
-        # pending messages waiting that the websocket open
-        self._pending_messages = []
 
         # emitter for global events
         self._emitter = EventEmitter(loop)
@@ -536,23 +546,11 @@ class GafferSocket(WebSocket):
 
     ### websocket methods
 
-    def write_message(self, msg):
-        if not self.started:
-            self._pending_messages.append(msg)
-        else:
-            super(GafferSocket, self).write_message(msg)
-
     def on_open(self):
         # start the heartbeat
         self._heartbeat.start(self.on_heartbeat, self.heartbeat_timeout,
                 self.heartbeat_timeout)
         self._heartbeat.unref()
-
-        self.started = True
-        if self._pending_messages:
-            for msg in self._pending_messages:
-                self.write_message(msg)
-            self._pending_messages = []
 
     def on_close(self):
         self.active = False
