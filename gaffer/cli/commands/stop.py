@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+import sys
 
 from .base import Command
 from ...httpclient import GafferNotFound
@@ -31,7 +32,7 @@ class Stop(Command):
 
                 apps = server.sessions()
                 if appname not in apps:
-                    raise RuntimeError("%r not found" % appname)
+                    raise RuntimeError("%r not found\n" % appname)
 
                 #  stop all the jobs the complete app
                 server.jobs_walk(lambda s, job: self._stop(s, job))
@@ -48,7 +49,7 @@ class Stop(Command):
                     try:
                         process = server.get_process(int(name))
                     except GafferNotFound:
-                        sys.stderr.write("%r not found" % name)
+                        sys.stderr.write("%r not found\n" % name)
                         sys.stderr.flush()
                         continue
                     process.stop()
@@ -64,7 +65,7 @@ class Stop(Command):
                     try:
                         job = server.get_job(pname)
                     except GafferNotFound:
-                        sys.stderr.write("%r not found" % name)
+                        sys.stderr.write("%r not found\n" % name)
                         sys.stderr.flush()
                         continue
                     job.stop()

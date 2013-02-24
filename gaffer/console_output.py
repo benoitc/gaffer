@@ -70,7 +70,7 @@ colored = _color.output
 class ConsoleOutput(object):
     """ The application that need to be added to the gaffer manager """
 
-    DEFAULT_ACTIONS = ['spawn', 'reap', 'exit', 'stop_pid']
+    DEFAULT_ACTIONS = ['start', 'stop', 'spawn', 'reap', 'exit', 'stop_pid']
 
     def __init__(self, colorize=True, output_streams=True, actions=None):
         self.output_streams = output_streams
@@ -103,17 +103,17 @@ class ConsoleOutput(object):
         if not 'os_pid' in msg:
             line = self._print(name, '%s %s' % (event, name))
         else:
-            os_pid = msg['os_pid']
+            pid = msg['pid']
             if event == "spawn":
-                p = self.manager.get_process(msg['pid'])
-                line = self._print(name, 'spawn process with pid %s' % os_pid)
+                p = self.manager.get_process(pid)
+                line = self._print(name, 'spawn process with pid %s' % pid)
 
                 if p.redirect_output and self.output_streams:
                     for output in p.redirect_output:
                         p.monitor_io(output, self._on_output)
             else:
                 line = self._print(name,
-                        '%s process with pid %s' % (event, os_pid))
+                        '%s process with pid %s' % (event, pid))
         self._write(name, line)
 
     def _on_output(self, event, msg):
