@@ -2,7 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import json
 import os
 import sys
 
@@ -41,20 +40,9 @@ class UnLoad(Command):
         elif args['--from-file']:
             # unload from a JSON config file
             fname = args['--from-file']
-            if not os.path.isfile(fname):
-                raise RuntimeError("%r not found" % fname)
-            # open the config file
-            with open(fname, 'rb') as f:
-                content = f.read()
 
-            # parse the config
-            if isinstance(content, bytes):
-                content = content.decode('utf-8')
-            obj = json.loads(content)
-            if "jobs" in obj:
-                configs = obj['jobs']
-            else:
-                configs = [obj]
+            # load configs
+            configs = self.load_jsonconfig(fname)
 
             # finally unload all jobs from the give config
             for conf in configs:

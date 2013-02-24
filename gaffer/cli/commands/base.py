@@ -3,6 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import copy
+import json
 import os
 import re
 
@@ -115,5 +116,34 @@ class Command(object):
                 return True
 
             return False
+
+    def load_jsonconfig(self, fname):
+        if fname == "-":
+            content = []
+            while True:
+                data = sys.stdin.readline()
+                if not data:
+                    break
+                content.append(data)
+            content = ''.join(content)
+        else:
+            if not os.path.isfile(fname):
+                raise RuntimeError("%r not found" % fname)
+
+            with open(fname, 'rb') as f:
+                content = f.read()
+
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+
+        # parse the config
+        obj = json.loads(content)
+        if "jobs" in obj:
+            configs = obj['jobs']
+        else:
+            configs = [obj]
+
+        return configs
+
 
 Command = CommandMeta('Command', (Command,), {})

@@ -2,7 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import json
 import os
 import sys
 
@@ -43,32 +42,8 @@ class Load(Command):
         fname = args['<file>']
         server = config.get("server")
 
-        # load raw config
-        if fname == "-":
-            content = []
-            while True:
-                data = sys.stdin.readline()
-                if not data:
-                    break
-                content.append(data)
-            content = ''.join(content)
-        else:
-            if not os.path.isfile(fname):
-                raise RuntimeError("%r not found" % fname)
-
-            with open(fname, 'rb') as f:
-                content = f.read()
-
-        if isinstance(content, bytes):
-            content = content.decode('utf-8')
-
-        # parse the config
-        obj = json.loads(content)
-
-        if "jobs" in obj:
-            configs = obj['jobs']
-        else:
-            configs = [obj]
+        # load configs
+        configs = self.load_jsonconfig(fname)
 
         for conf in configs:
             try:
