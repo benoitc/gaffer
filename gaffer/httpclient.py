@@ -335,31 +335,25 @@ class Job(object):
         self.sessionid = sessionid or 'default'
         if not isinstance(config, ProcessConfig):
             self.name = config
+            self._config = None
         else:
             self.name = config['name']
-
-        self.cached_config = None
+            self._config = config
 
     @property
     def config(self):
-        if not self.cached_config:
-            resp = self.request("get", "/jobs/%s/%s" % (self.sessionid,
-                self.name))
-            config_dict = self.json_body(resp)['config']
-            self._config = ProcessConfig.from_dict(config_dict)
-        return self.cached_config
+        if not self._config:
+            self._config = self.fetch_config()
+        return self._config
+
+    def fetch_config(self):
+        resp = self.server.request("get", "/jobs/%s/%s" % (self.sessionid,
+             self.name))
+        config_dict = self.server.json_body(resp)['config']
+        return ProcessConfig.from_dict(config_dict)
 
     def __str__(self):
         return self.name
-
-    def __getattr__(self, key):
-        try:
-            return self.__dict__[key]
-        except KeyError as e:
-            raise AttributeError(str(e))
-
-        if key in self.config:
-            return self.config[key]
 
     @property
     def active(self):
