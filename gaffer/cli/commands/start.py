@@ -31,7 +31,7 @@ class Start(Command):
 
                 apps = server.sessions()
                 if appname not in apps:
-                    raise RuntimeError("%r not found" % appname)
+                    raise RuntimeError("%r not found\n" % appname)
 
                 #  stop all the jobs the complete app
                 server.jobs_walk(lambda s, job: self._start(s, job))
@@ -54,7 +54,7 @@ class Start(Command):
                 try:
                     job = server.get_job(pname)
                 except GafferNotFound:
-                    sys.stderr.write("%r not found" % name)
+                    sys.stderr.write("%r not found\n" % name)
                     sys.stderr.flush()
                     continue
                 job.start()
@@ -65,4 +65,5 @@ class Start(Command):
             job.start()
             print("job %r started" % job.name)
         except GafferNotFound:
-            pass
+            sys.stderr.write("%r not found\n" % job.name)
+            sys.stderr.flush()

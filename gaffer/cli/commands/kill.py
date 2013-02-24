@@ -32,26 +32,20 @@ class kill(Command):
             try:
                 process = server.get_process(int(name))
             except GafferNotFound:
-                sys.stderr.write("%r not found" % name)
-                sys.stderr.flush()
-                return
+                raise RuntimeError("%r not found" % name)
             process.kill(args['<sig>'])
         else:
             # we want to stop a job
             appname, job_name = self.parse_name(name, appname)
             if (self.use_procfile(config, appname) and
                     job_name not in procfile.cfg):
-                sys.stderr.write("%r not found" % name)
-                sys.stderr.flush()
-                return
+                raise RuntimeError("%r not found" % name)
 
             pname = "%s.%s" % (appname, name)
             try:
                 job = server.get_job(pname)
             except GafferNotFound:
-                sys.stderr.write("%r not found" % name)
-                sys.stderr.flush()
-                return
+                raise RuntimeError("%r not found" % name)
             job.kill(args['<sig>'])
 
         print("%r sent to %r" % (args['<sig>'], name))
