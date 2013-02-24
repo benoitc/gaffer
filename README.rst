@@ -9,9 +9,20 @@ interact with your applications.
 Build status
 ------------
 
-- **Master**: <a href="https://travis-ci.org/benoitc/gaffer"><img src="https://secure.travis-ci.org/benoitc/gaffer.png?branch=master"></a>
-- **Developer**: <a href="https://travis-ci.org/benoitc/gaffer"><img src="https://secure.travis-ci.org/benoitc/gaffer.png?branch=develop"></a>
+- **Master branch**:**
 
+.. image::
+    https://secure.travis-ci.org/benoitc/gaffer.png?branch=master
+    :alt: Build Status
+    :target: https://travis-ci.org/benoitc/gaffer
+
+
+- **Develop branch**:
+
+.. image::
+    https://secure.travis-ci.org/benoitc/gaffer.png?branch=develop
+    :alt: Build Status
+    :target: https://travis-ci.org/benoitc/gaffer
 
 Features
 --------
