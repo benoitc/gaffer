@@ -372,7 +372,7 @@ class ProcessConfig(object):
         else:
             self.settings[key] = value
 
-    def __contain__(self, key):
+    def __contains__(self, key):
         if key in ('name', 'cmd'):
             return True
 

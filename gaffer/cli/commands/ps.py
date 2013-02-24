@@ -9,7 +9,11 @@ from ...console_output import colored, GAFFER_COLORS
 
 class Ps(Command):
     """
-    usage: gaffer ps [<appname>]
+    usage: gaffer ps [--app APP]
+
+
+      -h, --help
+      --app APP  application name
     """
 
     name = "ps"
@@ -17,26 +21,27 @@ class Ps(Command):
 
     def run(self, config, args):
         balance = copy.copy(GAFFER_COLORS)
+        appname = self.default_appname(config, args)
+        server = config.get("server")
 
-        # get procfile and server
-        procfile, server = config.get("procfile", "server")
-
-        appname = args['<appname>']
-        if not appname or appname == ".":
-            # get the default groupname
-            appname = procfile.get_appname()
-
-        for name, cmd_str in procfile.processes():
+        for pname in server.jobs(appname):
             try:
-                job = server.get_job("%s.%s" % (appname, name))
+                job = server.get_job(pname)
             except:
                 # we just ignore
                 continue
 
+            appname, name = self.parse_name(pname)
+
             color, balance = self.get_color(balance)
             stats = job.stats()
 
-            lines = ["=== %s: `%s`" % (name, cmd_str),
+            # recreate cmd line
+            cmd = job.config['cmd']
+            if 'args' in job.config:
+                cmd = " ".join([cmd] + job.config['args'])
+
+            lines = ["=== %s: `%s`" % (name, cmd),
                      "Total CPU: %.2f Total MEM: %.2f" % (stats['cpu'],
                          stats['mem']),
                      ""]
