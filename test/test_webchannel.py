@@ -70,7 +70,6 @@ def test_basic():
             elif event == "gaffer:event":
                 # if message type is an event then it should contain a data
                 # property
-                print("oc")
                 assert "data" in msg
                 data = msg['data']
 
@@ -85,7 +84,6 @@ def test_basic():
     m = start_manager()
     s = get_server(m.loop)
 
-    print(TEST_URL)
     ws = TestClient(m.loop, TEST_URL)
     ws.start()
     # subscribe
@@ -97,7 +95,6 @@ def test_basic():
 
 
     def do_events(h):
-        print(ws._started)
         m.load(config)
         m.scale("dummy", 1)
         m.unload("dummy")
