@@ -18,7 +18,7 @@ class Reload(Command):
     """
 
     name = "reload"
-    short_descr = "unload a job from a gafferd node"
+    short_descr = "reload a job from a gafferd node"
 
     def run(self, config, args):
         appname = self.default_appname(config, args)
