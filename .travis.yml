@@ -10,3 +10,4 @@ script: py.test
 branches:
   only:
     - master
+    - develop
