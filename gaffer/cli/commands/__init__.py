@@ -6,6 +6,7 @@ from gaffer.cli.commands import (
         unload,
         reload,
         ps,
-        scale)
+        scale,
+        stop)
 
 from gaffer.cli.commands.base import get_commands
