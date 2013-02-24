@@ -7,6 +7,7 @@ import os
 import sys
 
 from .base import Command
+from ...httpclient import GafferConflict
 from ...process import ProcessConfig
 
 
@@ -53,7 +54,7 @@ class Load(Command):
             content = ''.join(content)
         else:
             if not os.path.isfile(fname):
-                raise RuntimeError("%r not found")
+                raise RuntimeError("%r not found" % fname)
 
             with open(fname, 'rb') as f:
                 content = f.read()
@@ -62,35 +63,41 @@ class Load(Command):
             content = content.decode('utf-8')
 
         # parse the config
-        conf = json.loads(content)
-        try:
-            name = conf.pop('name')
-            cmd = conf.pop('cmd')
-        except KeyError:
-            raise ValueError("invalid job config")
+        obj = json.loads(content)
 
-        # parse job name and eventually extract the appname
-        appname, name = self.parse_name(name, self.default_appname(config,
-            args))
+        if "jobs" in obj:
+            configs = obj['jobs']
+        else:
+            configs = [obj]
 
-        # always force the appname if specified
-        if args['--app']:
-            appname = args['--app']
+        for conf in configs:
+            try:
+                name = conf.pop('name')
+                cmd = conf.pop('cmd')
+            except KeyError:
+                raise ValueError("invalid job config")
 
+            # parse job name and eventually extract the appname
+            appname, name = self.parse_name(name, self.default_appname(config,
+                args))
 
-        # finally load the config
-        pname = "%s.%s" % (appname, name)
-        start = conf.get('start', True)
-        pconfig = ProcessConfig(name, cmd, **conf)
-        server.load(pconfig, sessionid=appname, start=start)
-        print("%r has been loaded in %s" % (pname, server.uri))
+            # always force the appname if specified
+            if args['--app']:
+                appname = args['--app']
+
+            # finally load the config
+            pname = "%s.%s" % (appname, name)
+            start = conf.get('start', True)
+            pconfig = ProcessConfig(name, cmd, **conf)
+            try:
+                server.load(pconfig, sessionid=appname, start=start)
+                print("%r has been loaded in %s" % (pname, server.uri))
+            except GafferConflict:
+                print("%r already loaded" % pname)
 
     def load_procfile(self, config, args):
         procfile, server = config.get("procfile", "server")
         appname = self.default_appname(config, args)
-
-        # manage appname conflicts
-        appname = self.find_appname(appname, server)
 
         # parse the concurrency settings
         concurrency = self.parse_concurrency(args)
@@ -104,25 +111,9 @@ class Load(Command):
                     cwd=os.path.abspath(procfile.root))
 
             config = ProcessConfig(name, cmd, **params)
-            server.load(config, sessionid=appname)
+            try:
+                server.load(config, sessionid=appname)
+            except GafferConflict:
+                print("%r already loaded" % name)
+
         print("%r has been loaded in %s" % (appname, server.uri))
-
-    def find_appname(self, a, s):
-        tries = 0
-        while True:
-            sessions = s.sessions()
-            if a not in sessions:
-                return a
-
-            if tries > 3:
-                raise RuntimeError(
-                        "%r is conflicting, try to pass a new one" % a
-                      )
-
-            i = 0
-            while True:
-                a = "%s-%s" % (a, i)
-                if a not in sessions:
-                    break
-            tries += 1
-            return a

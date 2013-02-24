@@ -96,4 +96,24 @@ class Command(object):
         return (config.use_procfile and
                 appname == config.procfile.get_appname())
 
+    def confirm(self, prompt, resp=True):
+        if resp:
+            prompt = '%s [%s]|%s: ' % (prompt, 'y', 'n')
+        else:
+            prompt = '%s [%s]|%s: ' % (prompt, 'n', 'y')
+
+        while True:
+            ret = input(prompt).lower()
+            if not ret:
+                return resp
+
+            if ret not in ('y', 'n'):
+                print('please enter y or n.')
+                continue
+
+            if ret == "y":
+                return True
+
+            return False
+
 Command = CommandMeta('Command', (Command,), {})
