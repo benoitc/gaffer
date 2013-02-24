@@ -7,6 +7,7 @@ from gaffer.cli.commands import (
         start,
         stop,
         kill,
+        logs,
         dev_start,
         dev_run,
         export)

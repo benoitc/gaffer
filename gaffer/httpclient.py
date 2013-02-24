@@ -264,8 +264,6 @@ class Server(object):
         options = self.options.copy()
         if heartbeat and heartbeat is not None:
             options['heartbeat'] = heartbeat
-
-        print(url)
         return GafferSocket(self.loop, url, **options)
 
     def _parse_name(self, name):
