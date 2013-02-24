@@ -131,7 +131,9 @@ class ConsoleOutput(object):
         if self.colorize:
             sys.stdout.write(colored(self._get_process_color(name), lines))
         else:
-            sys.stdout.write(''.joint(lines))
+            if not isinstance(lines, list):
+                lines = [lines]
+            sys.stdout.write("".join(lines))
         sys.stdout.flush()
 
     def _print(self, name, line):

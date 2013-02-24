@@ -436,6 +436,7 @@ class GafferSocket(WebSocket):
         # define status
         self.active = False
         self.closed = False
+        self.started = False
 
         # dict to maintain opened channels
         self.channels = dict()
@@ -443,13 +444,18 @@ class GafferSocket(WebSocket):
         # dict to maintain commands
         self.commands = dict()
 
+        # pending messages waiting that the websocket open
+        self._pending_messages = []
+
         # emitter for global events
         self._emitter = EventEmitter(loop)
-
         self._heartbeat = pyuv.Timer(loop)
         super(GafferSocket, self).__init__(loop, url, **kwargs)
 
     def start(self):
+        if self.active:
+            return
+
         super(GafferSocket, self).start()
         self.active = True
 
@@ -530,11 +536,23 @@ class GafferSocket(WebSocket):
 
     ### websocket methods
 
+    def write_message(self, msg):
+        if not self.started:
+            self._pending_messages.append(msg)
+        else:
+            super(GafferSocket, self).write_message(msg)
+
     def on_open(self):
         # start the heartbeat
         self._heartbeat.start(self.on_heartbeat, self.heartbeat_timeout,
                 self.heartbeat_timeout)
         self._heartbeat.unref()
+
+        self.started = True
+        if self._pending_messages:
+            for msg in self._pending_messages:
+                self.write_message(msg)
+            self._pending_messages = []
 
     def on_close(self):
         self.active = False
@@ -585,7 +603,7 @@ class GafferSocket(WebSocket):
                 channel = self.channels[topic]
                 channel.send(event, data)
 
-    def on_heartbeat(self):
+    def on_heartbeat(self, h):
         # on heartbeat send a nop message to the channel
         # it will maintain the connection open
         self.write_message(json.dumps({"event": "NOP"}))
