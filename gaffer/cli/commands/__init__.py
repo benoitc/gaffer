@@ -4,7 +4,8 @@ from gaffer.cli.commands import (
         export,
         load,
         unload,
-        scale,
-        ps)
+        reload,
+        ps,
+        scale)
 
 from gaffer.cli.commands.base import get_commands

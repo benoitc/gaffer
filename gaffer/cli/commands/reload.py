@@ -3,14 +3,13 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import os
-import sys
 
 from .base import Command
 from ...httpclient import GafferNotFound
 
-class UnLoad(Command):
+class Reload(Command):
     """
-    usage: gaffer unload [<jobs>]... [--app APP] [--from-file JSON]
+    usage: gaffer reload [<jobs>]... [--app APP] [--from-file JSON]
                          [--no-input]
 
       --app APP         name of the procfile application.
@@ -18,7 +17,7 @@ class UnLoad(Command):
       --from-file JSON  unload from a JSON config file
     """
 
-    name = "unload"
+    name = "reload"
     short_descr = "unload a job from a gafferd node"
 
     def run(self, config, args):
@@ -28,15 +27,15 @@ class UnLoad(Command):
         if not args['<jobs>'] and not args['--from-file']:
             # unload from a procfile
             if not args["--no-input"]:
-                if not self.confirm("Do you want to unload %r?" % appname):
+                if not self.confirm("Do you want to reload %r?" % appname):
                     return
             apps = server.sessions()
             if appname not in apps:
                 raise RuntimeError("%r not found" % appname)
 
             # unload the complete app
-            server.jobs_walk(lambda s, job: self._unload(server, job, appname))
-            print("==> app %r unloaded" % appname)
+            server.jobs_walk(lambda s, job: self._reload(s, job, appname))
+            print("==> app %r reloaded" % appname)
         elif args['--from-file']:
             # unload from a JSON config file
             fname = args['--from-file']
@@ -61,13 +60,13 @@ class UnLoad(Command):
                 # unload the job
                 pname = "%s.%s" % (appname, name)
                 if not args["--no-input"]:
-                    if not self.confirm("Do you want to unload %r?" %
+                    if not self.confirm("Do you want to reload %r?" %
                             pname):
                         continue
 
                 try:
-                    server.unload(name, appname)
-                    print("job %r unloaded" % pname)
+                    server.reload(name, appname)
+                    print("job %r reloaded" % pname)
                 except GafferNotFound:
                     sys.stderr.write("%r not found in %r\n" % (name,
                         appname))
@@ -83,22 +82,23 @@ class UnLoad(Command):
                     continue
 
                 if not args["--no-input"]:
-                    if not self.confirm("Do you want to unload %r?" %
+                    if not self.confirm("Do you want to reload %r?" %
                             job_name):
                         continue
 
                 # unload the job
                 try:
-                    server.unload(name, appname)
-                    print("job %r unloaded" % job_name)
+                    server.reload(name, appname)
+                    print("job %r reloaded" % job_name)
                 except GafferNotFound:
                     sys.stderr.write("%r not found in %r\n" % (job_name,
                         appname))
                     sys.stderr.flush()
 
-    def _unload(self, server, job, appname):
+    def _reload(self, server, job, appname):
         try:
-            server.unload(job, appname)
+            server.reload(job, appname)
+            print("job %r reloaded" % job.name)
         except GafferNotFound:
             sys.stderr.write("%r not found in %r\n" % (job.name, appname))
             sys.stderr.flush()
