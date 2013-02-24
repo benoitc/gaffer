@@ -1,0 +1,4 @@
+{
+    "name": "testapp.dummy",
+    "cmd": "python -u ./dummy_basic.py"
+}

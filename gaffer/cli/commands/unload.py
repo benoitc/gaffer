@@ -72,6 +72,11 @@ class UnLoad(Command):
 
                 # unload the job
                 pname = "%s.%s" % (appname, name)
+                if not args["--no-input"]:
+                    if not self.confirm("Do you want to unload %r?" %
+                            pname):
+                        continue
+
                 try:
                     server.unload(name, appname)
                     print("job %r unloaded" % pname)
@@ -99,7 +104,7 @@ class UnLoad(Command):
                     server.unload(name, appname)
                     print("job %r unloaded" % job_name)
                 except GafferNotFound:
-                    sys.stderr.write("%r not found in %r\n" % (job.name,
+                    sys.stderr.write("%r not found in %r\n" % (job_name,
                         appname))
                     sys.stderr.flush()
 
