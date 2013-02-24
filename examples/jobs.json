@@ -1,0 +1,12 @@
+{
+    "jobs": [
+        {
+            "name": "testapp.dummy",
+            "cmd": "python -u ./dummy_basic.py"
+        },
+        {
+            "name": "testapp.dummy1",
+            "cmd": "python -u ./dummy_basic.py"
+        }
+    ]
+}
