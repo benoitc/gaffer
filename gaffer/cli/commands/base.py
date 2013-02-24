@@ -6,6 +6,7 @@ import copy
 import json
 import os
 import re
+import shlex
 
 try:
     from collections import OrderedDict
@@ -144,6 +145,5 @@ class Command(object):
             configs = [obj]
 
         return configs
-
 
 Command = CommandMeta('Command', (Command,), {})

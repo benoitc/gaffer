@@ -1,12 +1,12 @@
 from gaffer.cli.commands import (
-        start,
-        run,
-        export,
         load,
         unload,
         reload,
         ps,
         scale,
-        stop)
+        stop,
+        dev_start,
+        dev_run,
+        export)
 
 from gaffer.cli.commands.base import get_commands
