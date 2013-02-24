@@ -42,7 +42,7 @@ from .eventsource import Watcher
 from .loop import patch_loop, get_loop
 from .process import ProcessConfig
 from .tornado_pyuv import IOLoop
-from .util import quote, quote_plus
+from .util import quote, quote_plus, parse_signal_value
 from .websocket import GafferSocket
 
 class GafferNotFound(Exception):
@@ -326,11 +326,16 @@ class Process(object):
 
     def kill(self, sig):
         """ Send a signal to the pid """
-        path = "/%s/signal" % (self.pid, sig)
-        body = json.dumps({"signal", sig})
-        headers = {"Content-Type": "application/json"}
 
-        self.server.request("post", path, body=body, headers=headers)
+        # we parse the signal at the client level to reduce the time we pass
+        # in the server.
+        signum =  parse_signal_value(sig)
+
+        # make the request
+        body = json.dumps({"signal": signum})
+        headers = {"Content-Type": "application/json"}
+        self.server.request("post", "/%s/signal" % self.pid, body=body,
+                headers=headers)
         return True
 
 class Job(object):
@@ -430,18 +435,12 @@ class Job(object):
         result = self.server.json_body(resp)
         return result['numprocesses']
 
-    def kill(self, num_or_str):
+    def kill(self, sig):
         """ send a signal to all processes of this template """
-        if isinstance(num_or_str, six.string_types):
-            signame = num_or_str.upper()
-            if not signame.startswith('SIG'):
-                signame = "SIG%s" % signame
-            try:
-                signum = getattr(signal, signame)
-            except AttributeError:
-                raise ValueError("invalid signal name")
-        else:
-            signum = num_or_str
+
+        # we parse the signal at the client level to reduce the time we pass
+        # in the server.
+        signum =  parse_signal_value(sig)
 
         body = json.dumps({"signal": signum})
         self.server.request("post", "/jobs/%s/%s/signal" % (self.sessionid,
