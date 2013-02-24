@@ -9,33 +9,34 @@ class Scale(Command):
     """
     usage: gaffer ps:scale [--app=appname] (<args>)...
 
-      --app=appname  name of the procfile applicatino. [default: .]
+      --app=appname  name of the procfile application.
     """
 
     name = "ps:scale"
     short_descr = "scaling your process"
 
     def run(self, config, args):
-        procfile, server = config.get("procfile", "server")
-        appname = args["--app"]
-        if not appname or appname == ".":
-            appname = procfile.get_appname()
-
+        appname = self.default_appname(config, args)
+        server, procfile = config.get("server", "procfile")
+        use_procfile = self.use_procfile(config, appname)
         ops = self.parse_scaling(args["<args>"])
+
         for name, op, val in ops:
-            if name in procfile.cfg:
-                pname = "%s.%s" % (appname, name)
+            appname, name = self.parse_name(name, default=appname)
+            pname = "%s.%s" % (appname, name)
 
-                try:
-                    job = server.get_job(pname)
-                    ret = job.scale("%s%s" % (op, val))
-                    print("Scaling %s processes... done, now running %s" %
-                            (name,ret))
+            # if we are using a procfile check first if the app contains this
+            # job. We don't need to make an HTTP request in this case.
+            if use_procfile and name not in procfile.cfg:
+                continue
 
-                except GafferNotFound as e:
-                    print("Ignore %s: %s" % (name, str(e)))
-                    pass
-
+            try:
+                job = server.get_job(pname)
+                ret = job.scale("%s%s" % (op, val))
+                print("Scaling %s processes... done, now running %s" %
+                        (pname,ret))
+            except GafferNotFound as e:
+                print("%r not found" % pname)
 
     def parse_scaling(self, args):
         ops = []

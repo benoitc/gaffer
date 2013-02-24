@@ -3,6 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import copy
+import os
 import re
 
 try:
@@ -64,6 +65,13 @@ class Command(object):
         if args['--app']:
             appname = args['--app']
 
+            # appname is relative to current dir
+            if appname == ".":
+                if config.use_procfile:
+                    appname = config.procfile.get_appname()
+                else:
+                    appname = os.path.split(os.getcwd())[1]
+
         elif config.procfile is not None:
             appname = config.procfile.get_appname()
         else:
@@ -84,5 +92,8 @@ class Command(object):
 
         return appname, name
 
+    def use_procfile(self, config, appname):
+        return (config.use_procfile and
+                appname == config.procfile.get_appname())
 
 Command = CommandMeta('Command', (Command,), {})

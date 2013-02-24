@@ -51,6 +51,9 @@ class Procfile(object):
         self.cfg = self.parse(self.procfile)
         self.env = self.get_env(self.envs)
 
+        # used to cache the appname
+        self._appname = None
+
     def processes(self):
         """ iterator over the configuration """
         return self.cfg.items()
@@ -83,11 +86,14 @@ class Procfile(object):
         return env
 
     def get_appname(self):
-        if self.root == ".":
-            path = os.getcwd()
-        else:
-            path = self.root
-        return os.path.split(path)[1]
+        if not self._appname:
+            if self.root == ".":
+                path = os.getcwd()
+            else:
+                path = self.root
+            self._appname = os.path.split(path)[1]
+
+        return self._appname
 
     def as_dict(self, name, concurrency_settings=None):
         """ return a procfile line as a JSON object usable with
