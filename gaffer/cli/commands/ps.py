@@ -31,6 +31,9 @@ class Ps(Command):
                 # we just ignore
                 continue
 
+            if not job.active:
+                continue
+
             appname, name = self.parse_name(pname)
 
             color, balance = self.get_color(balance)
