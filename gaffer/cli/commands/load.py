@@ -18,7 +18,6 @@ class Load(Command):
     Args
 
         <file>  Path to a job configuration  or stdin ``-``
-
     Options
 
     -h, --help
@@ -70,6 +69,8 @@ class Load(Command):
             except GafferConflict:
                 print("%r already loaded" % pname)
 
+        print("%r has been loaded" % fname)
+
     def load_procfile(self, config, args):
         procfile, server = config.get("procfile", "server")
         appname = self.default_appname(config, args)
@@ -91,4 +92,4 @@ class Load(Command):
             except GafferConflict:
                 print("%r already loaded" % name)
 
-        print("%r has been loaded in %s" % (appname, server.uri))
+        print("==> %r has been loaded in %s" % (appname, server.uri))

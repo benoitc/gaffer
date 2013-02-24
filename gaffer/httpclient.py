@@ -233,6 +233,12 @@ class Server(object):
         self.request("delete", "/jobs/%s/%s" % (sessionid, name))
         return True
 
+    def reload(self, name, sessionid=None):
+        sessionid = self._sessionid(sessionid)
+        self.request("post", "/jobs/%s/%s/state" % (sessionid, name),
+                body="2")
+        return True
+
     def get_job(self, name):
         sessionid, name = self._parse_name(name)
         resp = self.request("get", "/jobs/%s/%s" % (sessionid, name))
