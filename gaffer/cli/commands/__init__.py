@@ -1,8 +1,10 @@
 from gaffer.cli.commands import (
+        apps,
         load,
         unload,
         reload,
         ps,
+        info,
         scale,
         start,
         stop,

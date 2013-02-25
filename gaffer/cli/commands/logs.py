@@ -12,8 +12,9 @@ from ...httpclient import GafferNotFound
 class Logs(Command):
 
     """
-    usage: gaffer logs  [--app APP] [--no-color]
+    usage: gaffer logs  [--ps JOB] [--app APP] [--no-color]
 
+      --ps JOB      job name
       --app APP     name of the procfile application.
       --no-color    return with colors
     """
@@ -33,7 +34,13 @@ class Logs(Command):
         socket.start()
 
         socket.subscribe('EVENTS')
-        socket['EVENTS'].bind("job.%s." % appname, self._on_event)
+
+        if args['--ps']:
+            pattern = "job.%s.%s." % (appname, args['--ps'])
+        else:
+            pattern = "job.%s." % appname
+
+        socket['EVENTS'].bind(pattern, self._on_event)
 
         while True:
             try:
