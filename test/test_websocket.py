@@ -7,7 +7,7 @@ import pyuv
 import tornado.web
 from tornado.httpserver import HTTPServer
 from tornado import netutil
-from gaffer.node.http import sockjs
+from gaffer.gafferd.http import sockjs
 from gaffer.tornado_pyuv import IOLoop
 from gaffer.websocket import WebSocket
 

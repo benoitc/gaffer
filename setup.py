@@ -68,6 +68,6 @@ setup(name='gaffer',
       entry_points="""
 
       [console_scripts]
-      gafferd=gaffer.node.gafferd:run
+      gafferd=gaffer.gafferd.main:run
       gaffer=gaffer.cli.main:main
       """)

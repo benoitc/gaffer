@@ -6,4 +6,4 @@ version_info = (0, 4, 4)
 __version__ = ".".join(map(str, version_info))
 
 from gaffer.manager import Manager
-from gaffer.node.plugins import Plugin
+from gaffer.gafferd.plugins import Plugin
