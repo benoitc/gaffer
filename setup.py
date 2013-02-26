@@ -60,7 +60,7 @@ setup(name='gaffer',
           'pyuv>=0.8.3',
           'six',
           'psutil',
-          'tornado==2.4',
+          'tornado==2.4.1',
           'colorama',
           'setproctitle'
       ],
