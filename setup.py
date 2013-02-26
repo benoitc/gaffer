@@ -69,5 +69,5 @@ setup(name='gaffer',
 
       [console_scripts]
       gafferd=gaffer.gafferd.main:run
-      gaffer=gaffer.cli.main:main
+      gaffer=gaffer.gaffer_cli.main:main
       """)

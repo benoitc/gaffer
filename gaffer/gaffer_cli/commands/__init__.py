@@ -1,4 +1,4 @@
-from gaffer.cli.commands import (
+from gaffer.gaffer_cli.commands import (
         apps,
         load,
         unload,
@@ -14,4 +14,4 @@ from gaffer.cli.commands import (
         dev_run,
         export)
 
-from gaffer.cli.commands.base import get_commands
+from gaffer.gaffer_cli.commands.base import get_commands
