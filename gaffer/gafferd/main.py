@@ -48,14 +48,9 @@ from ..sig_handler import SigHandler
 from ..state import FlappingInfo
 from ..util import daemonize, setproctitle_
 from ..webhooks import WebHooks
-from .http import HttpHandler, HttpEndpoint
+from .http import HttpHandler
 from .plugins import PluginManager
 from .util import user_path
-
-ENDPOINT_DEFAULTS = dict(
-        uri = None,
-        backlog = 128,
-        ssl_options = {})
 
 PROCESS_DEFAULTS = dict(
         group = None,
@@ -107,31 +102,9 @@ class Server(object):
         self.manager = Manager()
         self.plugin_manager = PluginManager(self.plugins_dir)
 
-    def default_endpoint(self):
-        params = ENDPOINT_DEFAULTS.copy()
-
-        if self.args["--backlog"]:
-            try:
-                params['backlog'] = int(self.args["--backlog"])
-            except ValueError:
-                raise RuntimeError("backlog should be an integer")
-
-        if self.args["--certfile"]:
-            params['ssl_options']['certfile'] = self.args["--certfile"]
-
-        if self.args["--keyfile"]:
-            params['ssl_options']['keyfile'] = self.args["--keyfile"]
-
-        if not params['ssl_options']:
-            del params['ssl_options']
-
-        params['uri'] = self.args["--bind"] or '127.0.0.1:5000'
-        return HttpEndpoint(**params)
-
     def set_defaults(self):
         self.plugins_dir = self.args["--plugins-dir"]
         self.webhooks = []
-        self.endpoints = [self.default_endpoint()]
         self.processes = []
 
     def run(self):
@@ -140,8 +113,22 @@ class Server(object):
 
         # setup the http api
         static_sites = self.plugin_manager.get_sites()
-        http_handler = HttpHandler(endpoints=self.endpoints,
-                handlers=static_sites)
+        if self.args["--backlog"]:
+            try:
+                backlog = int(self.args["--backlog"])
+            except ValueError:
+                raise RuntimeError("backlog should be an integer")
+        else:
+            backlog = 128
+
+        if (self.args["--certfile"] is not None and
+                self.args["--keyfile"] is not None):
+            ssl_options = {'certfile': self.args["--certfile"],
+                           'keyfile': self.args["--keyfile"]}
+        else:
+            ssl_options = None
+        http_handler = HttpHandler(uri=self.args['--bind'], backlog=backlog,
+                ssl_options=ssl_options, handlers=static_sites)
 
         # setup gaffer apps
         apps = [SigHandler(),
@@ -213,35 +200,11 @@ class Server(object):
         self.plugins_dir = cfg.dget('gaffer', 'plugins_dir',
                 self.args["--plugins-dir"])
 
-        # you can setup multiple endpoints in the config
-        endpoints_str = cfg.dget('gaffer', 'http_endpoints', '')
-        endpoints_names = endpoints_str.split(",")
-
-        endpoints = []
         processes = []
         webhooks = []
         envs = {}
         for section in cfg.sections():
-            if section.startswith('endpoint:'):
-                name = section.split("endpoint:", 1)[1]
-                if name in endpoints_names:
-                    kwargs = ENDPOINT_DEFAULTS.copy()
-
-                    for key, val in cfg.items(section):
-                        if key == "bind":
-                            kwargs['uri'] = val
-                        elif key == "backlog":
-                            kwargs = cfg.dgetint(section, key, 128)
-                        elif key == "certfile":
-                            kwargs['ssl_options'][key] = val
-                        elif key == "keyfile":
-                            kwargs['ssl_options'][key] = val
-
-                    if not kwargs['ssl_options']:
-                        kwargs['ssl_options'] = None
-                    if kwargs.get('uri') is not None:
-                        endpoints.append(HttpEndpoint(**kwargs))
-            elif section.startswith('process:') or section.startswith('job:'):
+            if section.startswith('process:') or section.startswith('job:'):
                 if section.startswith('process:'):
                     prefix = "process:"
                 else:
@@ -318,11 +281,6 @@ class Server(object):
         # sort processes by priority
         processes = sorted(processes, key=lambda p: p[3]['priority'])
 
-        if not endpoints:
-            # we create a default endpoint
-            endpoints = [self.default_endpoint()]
-
-        self.endpoints = endpoints
         self.webhooks = webhooks
         self.processes = processes
 
@@ -347,8 +305,6 @@ def run():
         except RuntimeError as e:
             print(str(e))
             sys.exit(1)
-
-
 
     try:
         s = Server(args)

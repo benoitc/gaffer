@@ -47,72 +47,16 @@ DEFAULT_HANDLERS = [
         (r'/wstreams/([0-9^/]+)$', http_handlers.WStreamHandler)
 ]
 
-class HttpEndpoint(object):
-
-    def __init__(self, uri='127.0.0.1:5000', backlog=128,
-            ssl_options=None):
-        # uri should be a list
-        if isinstance(uri, six.string_types):
-            self.uri = uri.split(",")
-        else:
-            self.uri = uri
-        self.backlog = backlog
-        self.ssl_options = ssl_options
-        self.server = None
-        self.loop = None
-        self.io_loop = None
-
-    def __str__(self):
-        return ",".join(self.uri)
-
-    def start(self, io_loop, app):
-        self.io_loop = io_loop
-        self.app = app
-        self._start_server()
-
-    def _start_server(self):
-        self.server = HTTPServer(self.app, io_loop=self.io_loop,
-                ssl_options=self.ssl_options)
-
-        # bind the handler to needed interface
-        for uri in self.uri:
-            addr = parse_address(uri)
-            if isinstance(addr, six.string_types):
-                sock = netutil.bind_unix_socket(addr)
-            elif is_ipv6(addr[0]):
-                sock = netutil.bind_sockets(addr[1], address=addr[0],
-                        family=socket.AF_INET6, backlog=self.backlog)
-            else:
-                sock = netutil.bind_sockets(addr[1], backlog=self.backlog)
-
-            if isinstance(sock, list):
-                for s in sock:
-                    self.server.add_socket(s)
-            else:
-                self.server.add_socket(sock)
-
-        # start the server
-        self.server.start()
-
-    def stop(self):
-        self.server.stop()
-        self.io_loop.close(True)
-
-    def restart(self):
-        self.server.stop()
-        self._start_server()
-
 class HttpHandler(object):
     """ simple gaffer application that gives an HTTP API access to gaffer.
+    """
 
-    This application can listen on multiple endpoints (tcp or unix
-    sockets) with different options. Each endpoint can also listen on
-    different interfaces """
+    def __init__(self, uri='127.0.0.1:5000', backlog=128, ssl_options=None,
+            handlers=None, **settings):
 
-    def __init__(self, endpoints=[], handlers=None, **settings):
-        self.endpoints = endpoints or []
-        if not endpoints: # if no endpoints passed add a default
-            self.endpoints.append(HttpEndpoint())
+        self.uri = uri
+        self.backlog = backlog
+        self.ssl_options = ssl_options
 
         # set http handlers
         self.handlers = copy.copy(DEFAULT_HANDLERS)
@@ -138,16 +82,39 @@ class HttpHandler(object):
         self.app = Application(handlers, manager=self.manager,
                 **self.settings)
 
-        # start endpoints
-        for endpoint in self.endpoints:
-            endpoint.start(self.io_loop, self.app)
+
+        # start the server
+        self._start_server()
 
     def stop(self):
-        for endpoint in self.endpoints:
-            endpoint.stop()
+        self.server.stop()
+        self.io_loop.close(True)
 
-        self.io_loop.close()
 
     def restart(self):
-        for endpoint in self.endpoints:
-            endpoint.restart()
+        self.server.stop()
+        self._start_server()
+
+    def _start_server(self):
+        self.server = HTTPServer(self.app, io_loop=self.io_loop,
+                ssl_options=self.ssl_options)
+
+        # initialize the socket
+        addr = parse_address(self.uri)
+        if isinstance(addr, six.string_types):
+            raise RuntimeError("unix addresses aren't supported")
+
+        if is_ipv6(addr[0]):
+            sock = netutil.bind_sockets(addr[1], address=addr[0],
+                    family=socket.AF_INET6, backlog=self.backlog)
+        else:
+            sock = netutil.bind_sockets(addr[1], backlog=self.backlog)
+
+        if isinstance(sock, list):
+            for s in sock:
+                self.server.add_socket(s)
+        else:
+            self.server.add_socket(sock)
+
+        # start the server
+        self.server.start()

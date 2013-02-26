@@ -47,23 +47,6 @@ def test_basic():
     m.stop()
     m.run()
 
-def test_multiple_handers():
-    http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
-    http_endpoint2 = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT2))
-    http_handler = HttpHandler(endpoints=[http_endpoint, http_endpoint2])
-    m = Manager()
-    m.start(apps=[http_handler])
-    time.sleep(0.2)
-
-    s = Server("http://%s:%s" % (TEST_HOST, TEST_PORT), loop=m.loop)
-    s2 = Server("http://%s:%s" % (TEST_HOST, TEST_PORT2), loop=m.loop)
-    assert TEST_PORT != TEST_PORT2
-    assert s.version == __version__
-    assert s2.version == __version__
-
-    m.stop()
-    m.run()
-
 def test_simple_job():
     m, s = init()
 
