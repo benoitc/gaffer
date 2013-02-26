@@ -292,5 +292,14 @@ def test_sessions():
     assert stopped == ['gb.a', 'ga.a']
     assert ga2 == ['ga.b']
 
+def test_job_notfound():
+    m, s = init()
+
+    with pytest.raises(GafferNotFound):
+        s.jobs("unknown_sessionid")
+
+    m.stop()
+    m.run()
+
 if __name__ == "__main__":
     test_template()

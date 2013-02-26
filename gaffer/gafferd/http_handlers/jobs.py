@@ -36,7 +36,13 @@ class JobsHandler(CorsHandler):
         self.preflight()
         m = self.settings.get('manager')
         sessionid = args[0]
-        jobs = list(m.jobs(sessionid))
+
+        try:
+            jobs = list(m.jobs(sessionid))
+        except ProcessError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
+
 
         # send response
         self.set_header('Content-Type', 'application/json')
