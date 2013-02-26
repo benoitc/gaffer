@@ -10,7 +10,7 @@ import pyuv
 
 from gaffer import __version__
 from gaffer.manager import Manager
-from gaffer.gafferd.http import HttpEndpoint, HttpHandler
+from gaffer.gafferd.http import HttpHandler
 from gaffer.httpclient import (Server, Job, Process,
         GafferNotFound, GafferConflict)
 from gaffer.process import ProcessConfig
@@ -20,12 +20,10 @@ from test_manager import dummy_cmd
 TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
 
-TEST_PORT2 = (os.getpid() % 31000) + 1023
-
+TEST_URI = "%s:%s" % (TEST_HOST, TEST_PORT)
 
 def start_manager():
-    http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
-    http_handler = HttpHandler(endpoints=[http_endpoint])
+    http_handler = HttpHandler(uri=TEST_URI)
     m = Manager()
     m.start(apps=[http_handler])
     time.sleep(0.2)

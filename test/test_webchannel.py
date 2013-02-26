@@ -8,7 +8,7 @@ import time
 import pyuv
 
 from gaffer import __version__
-from gaffer.gafferd.http import HttpEndpoint, HttpHandler
+from gaffer.gafferd.http import HttpHandler
 from gaffer.httpclient import (Server, Job, Process,
         GafferNotFound, GafferConflict)
 from gaffer.manager import Manager
@@ -24,8 +24,7 @@ TEST_URL = "ws://%s:%s/channel/websocket" % (TEST_HOST, str(TEST_PORT))
 
 
 def start_manager():
-    http_endpoint = HttpEndpoint(uri="%s:%s" % (TEST_HOST, TEST_PORT))
-    http_handler = HttpHandler(endpoints=[http_endpoint])
+    http_handler = HttpHandler(uri="%s:%s" % (TEST_HOST, TEST_PORT))
     m = Manager()
     m.start(apps=[http_handler])
     return m
