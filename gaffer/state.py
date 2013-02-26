@@ -31,6 +31,7 @@ class ProcessTracker(object):
 
     def stop(self):
         self._check_timer.stop()
+        self.processes = []
 
     def close(self):
         self.processes = []
@@ -69,7 +70,6 @@ class ProcessTracker(object):
                 p = heapq.heappop(self.processes)
                 now = nanotime()
                 delta = p.graceful_time - now
-
                 if delta > 0:
                     # we have anything to do, put the process back in
                     # the heap and return

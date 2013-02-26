@@ -58,6 +58,7 @@ class DummyProcess(object):
             if sig is not None:
                 if sig in self.QUIT_SIGNALS:
                     self.handle_quit()
+                    break
                 elif sig == signal.SIGHUP:
                     self.handle_hup()
 

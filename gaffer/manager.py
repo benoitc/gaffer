@@ -526,15 +526,14 @@ class Manager(object):
             state.remove(p)
 
             # notify we stop this pid
-            self._publish("proc.%s.stop" % p.pid, pid=p.pid, name=p.name)
+            self._publish("stop_process", pid=p.pid, name=p.name)
 
-            # then stop the job
+            # then stop the process
             p.stop()
 
             # track this process to make sure it's killed after the
             # graceful time
             self._tracker.check(p, state.graceful_timeout)
-
 
     def stopall(self, name):
         """ stop all processes of a job. Processes are just exiting and will
@@ -726,7 +725,6 @@ class Manager(object):
                         state.stopped = True
                         self._stopall(state)
 
-
             self._tracker.on_done(self._shutdown)
 
     def _restart(self):
@@ -767,13 +765,13 @@ class Manager(object):
             except IndexError:
                 break
 
-            if p.pid in self.running:
-                # there is no reason to not have the pid there but make sure
-                # it won't be the case
-                self.running.pop(p.pid)
+            if p.pid not in self.running:
+                continue
+
+            self.running.pop(p.pid)
 
             # notify we stop this pid
-            self._publish("proc.%s.stop" % p.pid, pid=p.pid, name=p.name)
+            self._publish("stop_process", pid=p.pid, name=p.name)
 
             # stop the process
             p.stop()
@@ -805,9 +803,6 @@ class Manager(object):
 
         self._publish("spawn", name=p.name, pid=pid, os_pid=p.os_pid)
         self._publish("job.%s.spawn" % p.name, name=p.name, pid=pid,
-            os_pid=p.os_pid)
-
-        self._publish("proc.%s.spawn" % pid, name=p.name, pid=pid,
             os_pid=p.os_pid)
 
     def _spawn_processes(self, state):
@@ -949,4 +944,3 @@ class Manager(object):
 
             self._publish("exit", **ev_details)
             self._publish("job.%s.exit" % process.name, **ev_details)
-            self._publish("proc.%s.exit" % process.pid, **ev_details)

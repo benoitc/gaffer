@@ -79,10 +79,8 @@ class IOLoop(object):
 
     def _close_loop_handles(self):
         def cb(handle):
-            try:
+            if not handle.closed:
                 handle.close()
-            except Exception:
-                pass
         self._loop.walk(cb)
 
     def close(self, all_fds=False, all_handlers=False):
@@ -122,7 +120,9 @@ class IOLoop(object):
         poll.start(poll_events, self._handle_poll_events)
 
     def remove_handler(self, fd):
-        self._handlers.pop(fd, None)
+        items = self._handlers.pop(fd, None)
+        if items is not None:
+            items[0].close()
 
     def set_blocking_signal_threshold(self, seconds, action):
         raise NotImplementedError

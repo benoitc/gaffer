@@ -3,8 +3,11 @@
 # This file is part of gaffer. See the NOTICE for more information.
 """
 usage: gafferd [--version] [-v | -vv] [-c CONFIG|--config=CONFIG]
-[--plugins-dir=PLUGINS_DIR] [--daemon] [--pidfile=PIDFILE] [--bind=ADDRESS]
-[--certfile=CERTFILE] [--keyfile=KEYFILE] [--backlog=BACKLOG][CONFIG]
+               [--plugins-dir=PLUGINS_DIR] [--daemon] [--pidfile=PIDFILE]
+               [--bind=ADDRESS] [--lookupd-address=LOOKUP]...
+               [--broadcast-address=ADDR]
+               [--certfile=CERTFILE] [--keyfile=KEYFILE]
+               [--backlog=BACKLOG] [CONFIG]
 
 Args
 
@@ -19,8 +22,12 @@ Options
     --plugins-dir=PLUGINS_DIR   default plugin dir [default: <PLUGIN_DIR>]
     --daemon                    Start gaffer in daemon mode
     --pidfile=PIDFILE
-    --bind=ADDRESS              default HTTP binding [default: 127.0.0.1:5000]
+    --bind=ADDRESS              default HTTP binding [default: 0.0.0.0:5000]
+    --lookupd-address=LOOKUP    lookupd HTTP address
+    --broadcast-address=ADDR    the address for this node. This is registered
+                                with gaffer_lookupd (defaults to OS hostname)
     --certfile=CERTFILE         SSL certificate file for the default binding
+    --keyfile=KEYFILE           SSL key file
     --backlog=BACKLOG           default backlog [default: 128].
 
 """
@@ -127,8 +134,11 @@ class Server(object):
                            'keyfile': self.args["--keyfile"]}
         else:
             ssl_options = None
-        http_handler = HttpHandler(uri=self.args['--bind'], backlog=backlog,
-                ssl_options=ssl_options, handlers=static_sites)
+        http_handler = HttpHandler(uri=self.args['--bind'],
+                lookupd_addresses=self.args['--lookupd-address'],
+                broadcast_address=self.args['--broadcast-address'],
+                backlog=backlog, ssl_options=ssl_options,
+                handlers=static_sites)
 
         # setup gaffer apps
         apps = [SigHandler(),

@@ -12,6 +12,7 @@ import string
 import time
 
 import six
+from tornado import netutil
 
 if six.PY3:
     def bytestring(s):
@@ -164,7 +165,23 @@ def is_ipv6(addr):
         return False
     return True
 
+def bind_sockets(addr, backlog=128, allows_unix_socket=False):
+    # initialize the socket
+    addr = parse_address(addr)
+    if isinstance(addr, six.string_types):
+        if not allows_unix_socket:
+            raise RuntimeError("unix addresses aren't supported")
 
+        sock = netutil.bind_unix_socket(addr)
+    elif is_ipv6(addr[0]):
+        sock = netutil.bind_sockets(addr[1], address=addr[0],
+                family=socket.AF_INET6, backlog=backlog)
+    else:
+        sock = netutil.bind_sockets(addr[1], backlog=backlog)
+    return sock
+
+def hostname():
+    return socket.getfqdn(socket.gethostname())
 
 def get_maxfd():
     maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
@@ -244,3 +261,14 @@ def parse_signal_value(sig):
 
     # signal is a number, just return it
     return sig
+
+def parse_job_name(name, default='default'):
+    if "." in name:
+        appname, name = name.split(".", 1)
+    elif "/" in name:
+        appname, name = name.split("/", 1)
+    else:
+        appname = default
+
+    return appname, name
+
