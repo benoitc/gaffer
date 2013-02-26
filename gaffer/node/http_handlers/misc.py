@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 
-from .. import __version__
+from ... import __version__
 from .util import CorsHandler
 
 class WelcomeHandler(CorsHandler):

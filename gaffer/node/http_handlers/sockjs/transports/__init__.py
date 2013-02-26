@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import gaffer.http.sockjs.transports.pollingbase
+import gaffer.node.http_handlers.sockjs.transports.pollingbase
 
 from .xhr import XhrPollingTransport, XhrSendHandler
 from .jsonp import JSONPTransport, JSONPSendHandler

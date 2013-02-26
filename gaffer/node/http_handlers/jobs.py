@@ -5,8 +5,8 @@
 import json
 
 
-from ..error import ProcessError
-from ..process import ProcessConfig
+from ...error import ProcessError
+from ...process import ProcessConfig
 from .util import CorsHandler
 
 

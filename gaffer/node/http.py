@@ -6,7 +6,7 @@ import copy
 import socket
 
 # patch tornado IOLoop
-from .tornado_pyuv import IOLoop, install
+from ..tornado_pyuv import IOLoop, install
 install()
 
 import six
@@ -14,37 +14,37 @@ from tornado import netutil
 from tornado.web import Application
 from tornado.httpserver import HTTPServer
 
-from .loop import patch_loop
-from .util import parse_address, is_ipv6
-from . import http
-from .http import sockjs
+from ..loop import patch_loop
+from ..util import parse_address, is_ipv6
+from . import http_handlers
+from .http_handlers import sockjs
 
 DEFAULT_HANDLERS = [
-        (r'/', http.WelcomeHandler),
-        (r'/ping', http.PingHandler),
-        (r'/version', http.VersionHandler),
-        (r'/([0-9^/]+)', http.ProcessIdHandler),
-        (r'/([0-9^/]+)/signal$', http.ProcessIdSignalHandler),
-        (r'/([0-9^/]+)/stats$', http.ProcessIdStatsHandler),
-        (r'/pids', http.AllProcessIdsHandler),
-        (r'/sessions', http.SessionsHandler),
-        (r'/jobs', http.AllJobsHandler),
-        (r'/jobs/([^/]+)', http.JobsHandler),
-        (r'/jobs/([^/]+)/([^/]+)', http.JobHandler),
-        (r'/jobs/([^/]+)/([^/]+)/stats$', http.JobStatsHandler),
-        (r'/jobs/([^/]+)/([^/]+)/numprocesses$', http.ScaleJobHandler),
-        (r'/jobs/([^/]+)/([^/]+)/signal$', http.SignalJobHandler),
-        (r'/jobs/([^/]+)/([^/]+)/state$', http.StateJobHandler),
-        (r'/jobs/([^/]+)/([^/]+)/pids$', http.PidsJobHandler),
-        (r'/watch', http.WatcherHandler),
-        (r'/watch/([^/]+)$', http.WatcherHandler),
-        (r'/watch/([^/]+)/([^/]+)$', http.WatcherHandler),
-        (r'/watch/([^/]+)/([^/]+)/([^/]+)$', http.WatcherHandler),
-        (r'/stats', http.StatsHandler),
-        (r'/stats/([^/]+)', http.StatsHandler),
-        (r'/stats/([^/]+)/([0-9^/]+)$', http.StatsHandler),
-        (r'/streams/([0-9^/]+)/([^/]+)$', http.StreamHandler),
-        (r'/wstreams/([0-9^/]+)$', http.WStreamHandler)
+        (r'/', http_handlers.WelcomeHandler),
+        (r'/ping', http_handlers.PingHandler),
+        (r'/version', http_handlers.VersionHandler),
+        (r'/([0-9^/]+)', http_handlers.ProcessIdHandler),
+        (r'/([0-9^/]+)/signal$', http_handlers.ProcessIdSignalHandler),
+        (r'/([0-9^/]+)/stats$', http_handlers.ProcessIdStatsHandler),
+        (r'/pids', http_handlers.AllProcessIdsHandler),
+        (r'/sessions', http_handlers.SessionsHandler),
+        (r'/jobs', http_handlers.AllJobsHandler),
+        (r'/jobs/([^/]+)', http_handlers.JobsHandler),
+        (r'/jobs/([^/]+)/([^/]+)', http_handlers.JobHandler),
+        (r'/jobs/([^/]+)/([^/]+)/stats$', http_handlers.JobStatsHandler),
+        (r'/jobs/([^/]+)/([^/]+)/numprocesses$', http_handlers.ScaleJobHandler),
+        (r'/jobs/([^/]+)/([^/]+)/signal$', http_handlers.SignalJobHandler),
+        (r'/jobs/([^/]+)/([^/]+)/state$', http_handlers.StateJobHandler),
+        (r'/jobs/([^/]+)/([^/]+)/pids$', http_handlers.PidsJobHandler),
+        (r'/watch', http_handlers.WatcherHandler),
+        (r'/watch/([^/]+)$', http_handlers.WatcherHandler),
+        (r'/watch/([^/]+)/([^/]+)$', http_handlers.WatcherHandler),
+        (r'/watch/([^/]+)/([^/]+)/([^/]+)$', http_handlers.WatcherHandler),
+        (r'/stats', http_handlers.StatsHandler),
+        (r'/stats/([^/]+)', http_handlers.StatsHandler),
+        (r'/stats/([^/]+)/([0-9^/]+)$', http_handlers.StatsHandler),
+        (r'/streams/([0-9^/]+)/([^/]+)$', http_handlers.StreamHandler),
+        (r'/wstreams/([0-9^/]+)$', http_handlers.WStreamHandler)
 ]
 
 class HttpEndpoint(object):
@@ -130,7 +130,7 @@ class HttpHandler(object):
 
         # add channel routes
         user_settings = { "manager": manager }
-        channel_router = sockjs.SockJSRouter(http.ChannelConnection,
+        channel_router = sockjs.SockJSRouter(http_handlers.ChannelConnection,
                 "/channel", io_loop=self.io_loop, user_settings=user_settings)
         handlers = self.handlers + channel_router.urls
 

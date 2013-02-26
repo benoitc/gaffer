@@ -8,7 +8,7 @@ import six
 from tornado import escape
 
 from .util import CorsHandler
-from ..error import ProcessError
+from ...error import ProcessError
 
 
 class AllProcessIdsHandler(CorsHandler):

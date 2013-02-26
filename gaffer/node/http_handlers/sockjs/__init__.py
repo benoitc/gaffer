@@ -4,7 +4,7 @@
 
 # -*- coding: utf-8 -*-
 
-from gaffer import tornado_pyuv 
+from gaffer import tornado_pyuv
 tornado_pyuv.install()
 
 from .router import SockJSRouter

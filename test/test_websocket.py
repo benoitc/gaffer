@@ -7,7 +7,7 @@ import pyuv
 import tornado.web
 from tornado.httpserver import HTTPServer
 from tornado import netutil
-from gaffer.http import sockjs
+from gaffer.node.http import sockjs
 from gaffer.tornado_pyuv import IOLoop
 from gaffer.websocket import WebSocket
 
@@ -55,8 +55,8 @@ def test_basic():
     [sock] = netutil.bind_sockets(TEST_PORT, address=TEST_HOST)
     server.add_socket(sock)
 
-    server.start() 
-    ws.start() 
+    server.start()
+    ws.start()
 
     t = pyuv.Timer(loop)
     t1 = pyuv.Timer(loop)
@@ -75,7 +75,7 @@ def test_basic():
 
     t.start(init, 0.2, 0.0)
     loop.run()
-    
+
     assert h_opened == [True]
     assert c_opened == [True]
     assert h_messages == ["hello"]

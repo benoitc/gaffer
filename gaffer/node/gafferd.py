@@ -41,7 +41,6 @@ import six
 from .. import __version__
 from ..console_output import ConsoleOutput
 from ..docopt import docopt
-from ..http_handler import HttpHandler, HttpEndpoint
 from ..manager import Manager
 from ..pidfile import Pidfile
 from ..process import ProcessConfig
@@ -49,7 +48,7 @@ from ..sig_handler import SigHandler
 from ..state import FlappingInfo
 from ..util import daemonize, setproctitle_
 from ..webhooks import WebHooks
-
+from .http import HttpHandler, HttpEndpoint
 from .plugins import PluginManager
 from .util import user_path
 

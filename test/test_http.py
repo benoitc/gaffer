@@ -10,7 +10,7 @@ import pyuv
 
 from gaffer import __version__
 from gaffer.manager import Manager
-from gaffer.http_handler import HttpEndpoint, HttpHandler
+from gaffer.node.http import HttpEndpoint, HttpHandler
 from gaffer.httpclient import (Server, Job, Process,
         GafferNotFound, GafferConflict)
 from gaffer.process import ProcessConfig
