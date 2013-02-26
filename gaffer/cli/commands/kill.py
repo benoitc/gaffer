@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
-import sys
-
 from .base import Command
 from ...httpclient import GafferNotFound
 
@@ -24,7 +22,6 @@ class kill(Command):
     def run(self, config, args):
         appname = self.default_appname(config, args)
         server, procfile = config.get("server", "procfile")
-        use_procfile = self.use_procfile(config, appname)
         name = args['<proc>']
 
         if name.isdigit():

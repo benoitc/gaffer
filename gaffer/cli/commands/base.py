@@ -6,7 +6,7 @@ import copy
 import json
 import os
 import re
-import shlex
+import sys
 
 try:
     from collections import OrderedDict

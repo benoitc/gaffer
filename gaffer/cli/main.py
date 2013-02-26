@@ -57,7 +57,7 @@ class Config(object):
         return isinstance(self.procfile, Procfile)
 
     @property
-    def gafferd_address(sef):
+    def gafferd_address(self):
         return self.args["--gafferd-http-address"]
 
     def _init_procfile(self):

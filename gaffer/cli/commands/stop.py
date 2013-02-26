@@ -23,7 +23,6 @@ class Stop(Command):
     def run(self, config, args):
         appname = self.default_appname(config, args)
         server, procfile = config.get("server", "procfile")
-        use_procfile = self.use_procfile(config, appname)
 
         if not args['<args>']:
             if (not args["--no-input"] and

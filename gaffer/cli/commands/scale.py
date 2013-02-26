@@ -35,7 +35,7 @@ class Scale(Command):
                 ret = job.scale("%s%s" % (op, val))
                 print("Scaling %s processes... done, now running %s" %
                         (pname,ret))
-            except GafferNotFound as e:
+            except GafferNotFound:
                 print("%r not found" % pname)
 
     def parse_scaling(self, args):

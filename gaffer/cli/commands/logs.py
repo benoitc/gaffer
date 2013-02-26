@@ -7,7 +7,6 @@ import sys
 
 from .base import Command
 from ...console_output import colored, GAFFER_COLORS
-from ...httpclient import GafferNotFound
 
 class Logs(Command):
 
@@ -58,13 +57,6 @@ class Logs(Command):
                 msg['pid']))
 
         self._write(name, line)
-
-    def _write(self, name, lines):
-        if self.colorize:
-            sys.stdout.write(colored(self._get_process_color(name), lines))
-        else:
-            sys.stdout.write(''.joint(lines))
-        sys.stdout.flush()
 
     def _write(self, name, lines):
         if not self.nocolor:

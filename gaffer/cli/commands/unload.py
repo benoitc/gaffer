@@ -2,7 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import os
 import sys
 
 from .base import Command
