@@ -272,6 +272,12 @@ class Manager(object):
             except KeyError:
                 raise ProcessNotFound()
 
+            if not session:
+                try:
+                    del self._sessions[sessionid]
+                except KeyError:
+                    pass
+
             # notify that we unload the process
             self._publish("unload", name=pname)
 

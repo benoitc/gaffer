@@ -93,6 +93,7 @@ def test_remove_job():
     s.unload("dummy")
     assert len(s.jobs()) == 0
     assert len(m.jobs()) == 0
+    assert len(m.sessions) == 0
     m.stop()
     m.run()
 
