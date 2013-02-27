@@ -68,7 +68,7 @@ class WatcherHandler(CorsHandler):
 
         # subscribe to events
         self._pattern = pattern
-        m.subscribe(pattern, self._on_event)
+        m.events.subscribe(pattern, self._on_event)
 
 
     def _on_heartbeat(self, handle):
@@ -87,7 +87,7 @@ class WatcherHandler(CorsHandler):
     def _handle_disconnect(self):
         self._closed = True
         m = self.settings.get('manager')
-        m.unsubscribe(self._pattern, self._on_event)
+        m.events.unsubscribe(self._pattern, self._on_event)
         if self._heartbeat is not None:
             self._heartbeat.close()
 

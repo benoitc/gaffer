@@ -23,6 +23,7 @@ import sys
 from colorama import  Fore, Style, init
 init()
 
+from .loop import patch_loop
 
 GAFFER_COLORS = ['cyan', 'yellow', 'green', 'magenta', 'red', 'blue',
 'intense_cyan', 'intense_yellow', 'intense_green', 'intense_magenta',
@@ -69,7 +70,7 @@ colored = _color.output
 class ConsoleOutput(object):
     """ The application that need to be added to the gaffer manager """
 
-    DEFAULT_ACTIONS = ['spawn', 'reap', 'exit', 'stop_pid']
+    DEFAULT_ACTIONS = ['start', 'stop', 'spawn', 'reap', 'exit', 'stop_pid']
 
     def __init__(self, colorize=True, output_streams=True, actions=None):
         self.output_streams = output_streams
@@ -81,56 +82,58 @@ class ConsoleOutput(object):
         self._process_colors = {}
 
     def start(self, loop, manager):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self.manager = manager
 
         for action in self.subscribed:
-            self.manager.subscribe(action, self._on_process)
+            self.manager.events.subscribe(action, self._on_process)
 
     def stop(self):
         for action in self.subscribed:
-            self.manager.unsubscribe(".", self._on_process)
+            self.manager.events.unsubscribe(action, self._on_process)
 
     def restart(self, start):
         self.stop()
         for action in self.subscribed:
-            self.manager.subscribe(action, self._on_process)
+            self.manager.events.subscribe(action, self._on_process)
 
     def _on_process(self, event, msg):
-        if not 'os_pid' in msg:
-            name = msg['name']
-            line = self._print(name, '%s %s' % (event, name))
-            return
-
-        os_pid = msg['os_pid']
         name = msg['name']
 
-        if event == "spawn":
-            p = self.manager.get_process(msg['pid'])
-            line = self._print(name, 'spawn process with pid %s' % os_pid)
-
-            if p.redirect_output and self.output_streams:
-                for output in p.redirect_output:
-                    p.monitor_io(output, self._on_output)
+        if not 'os_pid' in msg:
+            line = self._print(name, '%s %s' % (event, name))
         else:
-            line = self._print(name,
-                    '%s process with pid %s' % (event, os_pid))
+            pid = msg['pid']
+            if event == "spawn":
+                p = self.manager.get_process(pid)
+                line = self._print(name, 'spawn process with pid %s' % pid)
+
+                if p.redirect_output and self.output_streams:
+                    for output in p.redirect_output:
+                        p.monitor_io(output, self._on_output)
+            else:
+                line = self._print(name,
+                        '%s process with pid %s' % (event, pid))
         self._write(name, line)
 
     def _on_output(self, event, msg):
         data =  msg['data'].decode('utf-8')
+        name = msg['name']
+
         lines = []
         for line in data.splitlines():
             line = line.strip()
             if line:
-                lines.append(self._print(msg['name'], line))
-        self._write(msg['name'], lines)
+                lines.append(self._print(name, line))
+        self._write(name, lines)
 
     def _write(self, name, lines):
         if self.colorize:
             sys.stdout.write(colored(self._get_process_color(name), lines))
         else:
-            sys.stdout.write(''.joint(lines))
+            if not isinstance(lines, list):
+                lines = [lines]
+            sys.stdout.write("".join(lines))
         sys.stdout.flush()
 
     def _print(self, name, line):

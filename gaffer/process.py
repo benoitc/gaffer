@@ -8,23 +8,25 @@ The process module wrap a process and IO redirection
 
 
 from datetime import timedelta
+from functools import partial
 import os
 import signal
 import shlex
 
 import pyuv
 import psutil
-from psutil.error import AccessDenied, NoSuchProcess
+from psutil.error import AccessDenied
 import six
 
 from .events import EventEmitter
+from .loop import patch_loop
 from .util import (bytestring, getcwd, check_uid, check_gid,
         bytes2human, substitute_env)
 from .sync import atomic_read, increment, decrement
 
 pyuv.Process.disable_stdio_inheritance()
 
-def get_process_info(process=None, interval=0):
+def get_process_stats(process=None, interval=0):
 
     """Return information about a process. (can be an pid or a Process object)
 
@@ -32,23 +34,24 @@ def get_process_info(process=None, interval=0):
     """
     if process is None:
         process = psutil.Process(os.getpid())
-    info = {}
+
+    stats = {}
     try:
         mem_info = process.get_memory_info()
-        info['mem_info1'] = bytes2human(mem_info[0])
-        info['mem_info2'] = bytes2human(mem_info[1])
+        stats['mem_info1'] = bytes2human(mem_info[0])
+        stats['mem_info2'] = bytes2human(mem_info[1])
     except AccessDenied:
-        info['mem_info1'] = info['mem_info2'] = "N/A"
+        stats['mem_info1'] = stats['mem_info2'] = "N/A"
 
     try:
-        info['cpu'] = process.get_cpu_percent(interval=interval)
+        stats['cpu'] = process.get_cpu_percent(interval=interval)
     except AccessDenied:
-        info['cpu'] = "N/A"
+        stats['cpu'] = "N/A"
 
     try:
-        info['mem'] = round(process.get_memory_percent(), 1)
+        stats['mem'] = round(process.get_memory_percent(), 1)
     except AccessDenied:
-        info['mem'] = "N/A"
+        stats['mem'] = "N/A"
 
     try:
         cpu_times = process.get_cpu_times()
@@ -59,38 +62,9 @@ def get_process_info(process=None, interval=0):
     except AccessDenied:
         ctime = "N/A"
 
-    info['ctime'] = ctime
+    stats['ctime'] = ctime
+    return stats
 
-    try:
-        info['pid'] = process.pid
-    except AccessDenied:
-        info['pid'] = 'N/A'
-
-    try:
-        info['username'] = process.username
-    except AccessDenied:
-        info['username'] = 'N/A'
-
-    try:
-        info['nice'] = process.nice
-    except AccessDenied:
-        info['nice'] = 'N/A'
-    except NoSuchProcess:
-        info['nice'] = 'Zombie'
-
-    try:
-        cmdline = os.path.basename(shlex.split(process.cmdline[0])[0])
-    except (AccessDenied, IndexError):
-        cmdline = "N/A"
-
-    info['cmdline'] = cmdline
-
-    info['children'] = []
-    for child in process.get_children():
-        info['children'].append(get_process_info(psutil.Process(child),
-            interval=interval))
-
-    return info
 
 class RedirectIO(object):
 
@@ -148,8 +122,8 @@ class RedirectIO(object):
             return
 
         label = getattr(handle, 'label')
-        msg = dict(event=label, name=self.process.name,
-                pid=self.process.id, data=data)
+        msg = dict(event=label, name=self.process.name, pid=self.process.pid,
+                data=data)
         self._emitter.publish(label, msg)
 
 
@@ -194,8 +168,8 @@ class RedirectStdin(object):
             return
 
         label = getattr(handle, 'label')
-        msg = dict(event=label, name=self.process.name,
-                pid=self.process.id, data=data)
+        msg = dict(event=label, name=self.process.name, pid=self.process.pid,
+                data=data)
         self._emitter.publish(label, msg)
 
 
@@ -220,19 +194,17 @@ class Stream(RedirectStdin):
         if not data:
             return
 
-        msg = dict(event='READ', name=self.process.name,
-                pid=self.process.id, data=data)
+        msg = dict(event='READ', name=self.process.name, pid=self.process.pid,
+                data=data)
         self._emitter.publish('READ', msg)
 
 
 class ProcessWatcher(object):
     """ object to retrieve process stats """
 
-    def __init__(self, loop, pid):
+    def __init__(self, loop, process):
         self.loop = loop
-        self.pid = pid
-        self._process = psutil.Process(pid)
-
+        self.process = process
         self._last_info = None
         self.on_refresh_cb = None
         self._active = 0
@@ -268,10 +240,16 @@ class ProcessWatcher(object):
 
     def _async_refresh(self, handle):
         self._last_info = self.refresh()
-        self._emitter.publish("stat", self._last_info)
+
+        # create the message
+        msg = self._last_info.copy()
+        msg.update({'pid': self.process.pid, 'os_pid': self.process.os_pid})
+
+        # publish it
+        self._emitter.publish("stat", msg)
 
     def refresh(self, interval=0):
-        return get_process_info(self._process, interval=interval)
+        return get_process_stats(self.process._pprocess, interval=interval)
 
     def _start(self):
         if not self.active:
@@ -281,6 +259,149 @@ class ProcessWatcher(object):
             # process.
             self._timer.start(self._async_refresh, 0.1, 0.1)
             self._active = increment(self._active)
+
+
+class ProcessConfig(object):
+    """ object to maintain a process config """
+
+    DEFAULT_PARAMS = {
+            "args": None,
+            "env": None,
+            "uid": None,
+            "gid": None,
+            "cwd": None,
+            "shell": False,
+            "redirect_output": [],
+            "redirect_input": False,
+            "custom_streams": [],
+            "custom_channels": []}
+
+    def __init__(self, name, cmd, **settings):
+        """
+        Initialize the ProcessConfig object
+
+        Args:
+
+        - **name**: name of the process
+        - **cmd**: program command, string)
+
+        Settings:
+
+        - **args**: the arguments for the command to run. Can be a list or
+          a string. If **args** is  a string, it's splitted using
+          :func:`shlex.split`. Defaults to None.
+        - **env**: a mapping containing the environment variables the command
+          will run with. Optional
+        - **uid**: int or str, user id
+        - **gid**: int or st, user group id,
+        - **cwd**: working dir
+        - **shell**: boolean, run the script in a shell. (UNIX
+          only),
+        - **os_env**: boolean, pass the os environment to the program
+        - **numprocesses**: int the number of OS processes to launch for
+          this description
+        - **flapping**: a FlappingInfo instance or, if flapping detection
+          should be used. flapping parameters are:
+
+          - **attempts**: maximum number of attempts before we stop the
+            process and set it to retry later
+          - **window**: period in which we are testing the number of
+            retry
+          - **retry_in**: seconds, the time after we restart the process
+            and try to spawn them
+          - **max_retry**: maximum number of retry before we give up
+            and stop the process.
+        - **redirect_output**: list of io to redict (max 2) this is a list of custom
+          labels to use for the redirection. Ex: ["a", "b"] will
+          redirect stdout & stderr and stdout events will be labeled "a"
+        - **redirect_input**: Boolean (False is the default). Set it if
+          you want to be able to write to stdin.
+        - **graceful_timeout**: graceful time before we send a  SIGKILL
+          to the process (which definitely kill it). By default 30s.
+          This is a time we let to a process to exit cleanly.
+
+        """
+        self.name = name
+        self.cmd = cmd
+        self.settings = settings
+
+    def __str__(self):
+        return "process: %s" % self.name
+
+    def make_process(self, loop, pid, label, env=None, on_exit=None):
+        """ create a Process object from the configuration
+
+        Args:
+
+        - **loop**: main pyuv loop instance that will maintain the process
+        - **pid**: process id, generally given by the manager
+        - **label**: the job label. Usually the process type.
+          context. A context can be for example an application.
+        - **on_exit**: callback called when the process exited.
+
+        """
+
+        params = {}
+        for name, default in self.DEFAULT_PARAMS.items():
+            params[name] = self.settings.get(name, default)
+
+        os_env = self.settings.get('os_env', True)
+        if os_env:
+            env = params.get('env') or {}
+            env.update(os.environ)
+            params['env'] = env
+
+        if env is not None:
+            params['env'].update(env)
+
+        params['on_exit_cb'] = on_exit
+        return Process(loop, pid, label, self.cmd, **params)
+
+    def __getitem__(self, key):
+        if key == "name":
+            return self.name
+
+        if key == "cmd":
+            return self.cmd
+
+        return self.settings[key]
+
+    def __setitem__(self, key, value):
+        if key in ("name", "cmd"):
+            setattr(self, key, value)
+        else:
+            self.settings[key] = value
+
+    def __contains__(self, key):
+        if key in ('name', 'cmd'):
+            return True
+
+        if key in self.settings:
+            return True
+
+        return False
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def to_dict(self):
+        d = dict(name=self.name, cmd=self.cmd)
+        d.update(self.settings)
+        return d
+
+    @classmethod
+    def from_dict(cls, config):
+        d = config.copy()
+        try:
+            name = d.pop('name')
+            cmd = d.pop('cmd')
+        except KeyError:
+            raise ValueError("invalid config dict")
+
+        return cls(name, cmd, **d)
 
 class Process(object):
     """ class wrapping a process
@@ -316,14 +437,13 @@ class Process(object):
     """
 
 
-    def __init__(self, loop, id, name, cmd, group=None, args=None, env=None,
-            uid=None, gid=None, cwd=None, detach=False, shell=False,
+    def __init__(self, loop, pid, name, cmd, args=None, env=None, uid=None,
+            gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
-        self.loop = loop
-        self.id = id
+        self.loop = patch_loop(loop)
+        self.pid = pid
         self.name = name
-        self.group = group
         self.cmd = cmd
         self.env = env or {}
 
@@ -373,7 +493,8 @@ class Process(object):
         self._process = None
         self._pprocess = None
         self._process_watcher = None
-        self._cached_pid = None
+        self._os_pid = None
+        self._info = None
         self.stopped = False
         self.graceful_time = 0
 
@@ -430,7 +551,12 @@ class Process(object):
         # spawn the process
         self._process.spawn(**kwargs)
         self._running = True
-        self._cached_pid = self._process.pid
+        self._os_pid = self._process.pid
+        self._pprocess = psutil.Process(self._process.pid)
+
+        # start to cycle the cpu stats so we can have an accurate number on
+        # the first call of ``Process.stats``
+        self.loop.queue_work(partial(get_process_stats, self._pprocess, 0.1))
 
         # start redirecting IO
         self._redirect_io.start()
@@ -450,26 +576,44 @@ class Process(object):
         return self._process.closed
 
     @property
-    def pid(self):
+    def os_pid(self):
         """ return the process pid """
-        if self._cached_pid is None:
-            self._cached_pid = self._process.pid
-        return self._cached_pid
+        if self._os_pid is None:
+            self._os_pid = self._process.pid
+        return self._os_pid
 
     @property
     def info(self):
         """ return the process info. If the process is monitored it
         return the last informations stored asynchronously by the watcher"""
 
+        # info we have on this process
+        if self._info is None:
+            self._info = dict(pid=self.pid, name=self.name, cmd=self.cmd,
+                    args=self.args, env=self.env, uid=self.uid, gid=self.gid,
+                    os_pid=None, create_time=None)
+
+        if (self._info.get('create_time') is None and
+                self._pprocess is not None):
+
+            self._info.update({'os_pid': self.os_pid,
+                'create_time':self._pprocess.create_time})
+
+        self._info['active'] = self._process.active
+        return self._info
+
+    @property
+    def stats(self):
         if not self._pprocess:
-            self._pprocess = psutil.Process(self.pid)
-        return get_process_info(self._pprocess, 0.1)
+            return
+
+        return get_process_stats(self._pprocess, 0.0)
 
     @property
     def status(self):
         """ return the process status """
         if not self._pprocess:
-            self._pprocess = psutil.Process(self.pid)
+            return
         return self._pprocess.status
 
 
@@ -486,7 +630,7 @@ class Process(object):
         """
 
         if not self._process_watcher:
-            self._process_watcher = ProcessWatcher(self.loop, self.pid)
+            self._process_watcher = ProcessWatcher(self.loop, self)
 
         self._process_watcher.subscribe(listener)
 

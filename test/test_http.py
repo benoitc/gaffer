@@ -11,8 +11,9 @@ import pyuv
 from gaffer import __version__
 from gaffer.manager import Manager
 from gaffer.http_handler import HttpEndpoint, HttpHandler
-from gaffer.httpclient import (Server, Process, ProcessId,
+from gaffer.httpclient import (Server, Job, Process,
         GafferNotFound, GafferConflict)
+from gaffer.process import ProcessConfig
 
 from test_manager import dummy_cmd
 
@@ -63,64 +64,62 @@ def test_multiple_handers():
     m.stop()
     m.run()
 
-def test_processes():
+def test_simple_job():
     m, s = init()
 
-    assert s.processes() == []
+    assert s.jobs() == []
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config, start=False)
     time.sleep(0.2)
-    assert len(m.processes) == 1
-    assert len(s.processes()) == 1
-    assert s.processes()[0] == "dummy"
+    assert len(m.jobs()) == 1
+    assert len(s.jobs()) == 1
+    assert s.jobs()[0] == "default.dummy"
 
     m.stop()
     m.run()
 
-def test_process_create():
+def test_job_create():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+
+    s.load(config, start=False)
     time.sleep(0.2)
-    assert len(m.processes) == 1
-    assert len(s.processes()) == 1
-    assert s.processes()[0] == "dummy"
-    assert "dummy" in m.processes
+    assert len(m.jobs()) == 1
+    assert len(s.jobs()) == 1
+    assert s.jobs()[0] == "default.dummy"
+    assert "default.dummy" in m.jobs()
     assert len(m.running) == 0
 
     with pytest.raises(GafferConflict):
-        s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
+        s.load(config, start=False)
 
-    p = s.get_process("dummy")
-    assert isinstance(p, Process)
+    job = s.get_job("dummy")
+    assert isinstance(job, Job)
 
     m.stop()
-
     m.run()
 
-def test_process_remove():
+def test_remove_job():
     m, s = init()
-
     testfile, cmd, args, wdir = dummy_cmd()
-    s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
-
-    assert s.processes()[0] == "dummy"
-
-    s.remove_process("dummy")
-    assert len(s.processes()) == 0
-    assert len(m.processes) == 0
-
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    s.load(config, start=False)
+    assert s.jobs()[0] == "default.dummy"
+    s.unload("dummy")
+    assert len(s.jobs()) == 0
+    assert len(m.jobs()) == 0
     m.stop()
-
     m.run()
 
 def test_notfound():
     m, s = init()
 
     with pytest.raises(GafferNotFound):
-        s.get_process("dummy")
+        s.get_job("dummy")
 
     m.stop()
     m.run()
@@ -129,68 +128,70 @@ def test_process_start_stop():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
-    assert isinstance(p, Process)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    job = s.load(config, start=False)
+    assert isinstance(job, Job)
 
-    p.start()
+    job.start()
     time.sleep(0.2)
 
     assert len(m.running) == 1
-    status = p.status()
-    assert status['running'] == 1
-    assert status['active'] == True
-    assert status['max_processes'] == 1
+    info = job.info()
+    assert info['running'] == 1
+    assert info['active'] == True
+    assert info['max_processes'] == 1
 
-    p.stop()
+    job.stop()
     time.sleep(0.2)
     assert len(m.running) == 0
-    assert p.active == False
+    assert job.active == False
 
-    s.remove_process("dummy")
-    assert len(s.processes()) == 0
+    s.unload("dummy")
+    assert len(s.jobs()) == 0
 
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir, start=True)
+    job = s.load(config, start=True)
     time.sleep(0.2)
     assert len(m.running) == 1
-    assert p.active == True
+    assert job.active == True
 
-    p.restart()
+    job.restart()
     time.sleep(0.4)
     assert len(m.running) == 1
-    assert p.active == True
+    assert job.active == True
 
     m.stop()
     m.run()
 
-def test_process_add_sub():
+def test_job_scale():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    job = s.load(config)
     time.sleep(0.2)
-    assert isinstance(p, Process)
-    assert p.active == True
-    assert p.numprocesses == 1
+    assert isinstance(job, Job)
+    assert job.active == True
+    assert job.numprocesses == 1
 
 
-    p.add(3)
+    job.scale(3)
     time.sleep(0.2)
-    assert p.numprocesses == 4
-    assert p.running == 4
+    assert job.numprocesses == 4
+    assert job.running == 4
 
-    p.sub(3)
+    job.scale(-3)
     time.sleep(0.2)
-    assert p.numprocesses == 1
-    assert p.running == 1
+    assert job.numprocesses == 1
+    assert job.running == 1
 
     m.stop()
     m.run()
 
 def test_running():
     m, s = init()
-
     testfile, cmd, args, wdir = dummy_cmd()
-    s.add_process("dummy", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    job = s.load(config)
     time.sleep(0.2)
 
     assert len(m.running) == 1
@@ -207,31 +208,51 @@ def test_pids():
     m, s = init()
 
     testfile, cmd, args, wdir = dummy_cmd()
-    p = s.add_process("dummy", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    s.load(config)
     time.sleep(0.2)
 
-    p = s.get_process("dummy")
-    assert isinstance(p, Process) == True
+    job = s.get_job("dummy")
+    assert isinstance(job, Job) == True
 
     pid = s.get_process(1)
-    assert isinstance(pid, ProcessId) == True
+    assert isinstance(pid, Process) == True
     assert pid.pid == 1
-    assert pid.process.get('name') == "dummy"
-
-    assert p.pids == [1]
+    assert pid.info.get('name') == "default.dummy"
+    assert pid.name == "default.dummy"
+    assert pid.os_pid == pid.info.get('os_pid')
+    assert job.pids == [1]
 
     pid.stop()
     assert 1 not in m.running
 
     time.sleep(0.2)
-    assert p.pids == [2]
-
-
+    assert job.pids == [2]
     m.stop()
     m.run()
 
 
-def test_groups():
+def test_stats():
+    m, s = init()
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    s.load(config)
+    time.sleep(0.2)
+
+    pid = s.get_process(1)
+    assert isinstance(pid, Process) == True
+    assert pid.pid == 1
+
+    stats = pid.stats
+    assert isinstance(stats, dict) == True
+    assert "cpu" in stats
+    assert "mem_info1" in stats
+
+    pid.stop()
+    m.stop()
+    m.run()
+
+def test_sessions():
     m, s = init()
     started = []
     stopped = []
@@ -241,35 +262,54 @@ def test_groups():
         elif evtype == "stop":
             stopped.append(info['name'])
 
-    m.subscribe('start', cb)
-    m.subscribe('stop', cb)
+    m.events.subscribe('start', cb)
+    m.events.subscribe('stop', cb)
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("ga:a", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("ga:b", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("gb:a", cmd, args=args, cwd=wdir, start=False)
-    groups = sorted(s.groups())
-    ga1 = s.get_group('ga')
-    gb1 = s.get_group('gb')
-    s.start_group("ga")
-    s.stop_group("ga")
-    time.sleep(0.2)
-    m.remove_process("ga:a")
-    time.sleep(0.2)
-    ga2 = s.get_group('ga')
-    m.stop_group("gb")
+    a = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    b = ProcessConfig("b", cmd, args=args, cwd=wdir)
+
+
+    # load process config in different sessions
+    m.load(a, sessionid="ga", start=False)
+    m.load(b, sessionid="ga", start=False)
+    m.load(a, sessionid="gb", start=False)
+
+    sessions = s.sessions()
+
+    ga1 = s.jobs('ga')
+    gb1 = s.jobs('gb')
+
+    start_app = lambda mgr, job: job.start()
+    stop_app = lambda mgr, job: job.stop()
+
+    s.jobs_walk(start_app, "ga")
+    s.jobs_walk(start_app, "gb")
+
+    ga2 = []
+    def rem_cb(h):
+        s.unload("a", sessionid="ga")
+        [ga2.append(name) for name in s.jobs('ga')]
+
+    t0 = pyuv.Timer(m.loop)
+    t0.start(rem_cb, 0.2, 0.0)
+    s.jobs_walk(stop_app, "gb")
 
     def stop(handle):
-        m.unsubscribe("start", cb)
-        m.unsubscribe("stop", cb)
+        m.events.unsubscribe("start", cb)
+        m.events.unsubscribe("stop", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
-    t.start(stop, 0.4, 0.0)
+    t.start(stop, 0.6, 0.0)
     m.run()
 
-    assert groups == ['ga', 'gb']
-    assert ga1 == ['ga:a', 'ga:b']
-    assert gb1 == ['gb:a']
-    assert started == ['ga:a', 'ga:b']
-    assert stopped == ['ga:a', 'ga:b', 'gb:a']
-    assert ga2 == ['ga:b']
+    assert len(sessions) == 2
+    assert sessions == ['ga', 'gb']
+    assert ga1 == ['ga.a', 'ga.b']
+    assert gb1 == ['gb.a']
+    assert started == ['ga.a', 'ga.b', 'gb.a']
+    assert stopped == ['gb.a', 'ga.a']
+    assert ga2 == ['ga.b']
+
+if __name__ == "__main__":
+    test_template()

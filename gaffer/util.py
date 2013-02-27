@@ -6,6 +6,7 @@ import grp
 import os
 import pwd
 import resource
+import signal
 import socket
 import string
 import time
@@ -15,11 +16,34 @@ import six
 if six.PY3:
     def bytestring(s):
         return s
+
+    def ord_(c):
+        return c
+
+    import urllib.parse
+    urlparse = urllib.parse.urlparse
+    quote = urllib.parse.quote
+    quote_plus = urllib.parse.quote_plus
+    unquote = urllib.parse.unquote
+    urlencode = urllib.parse.urlencode
 else:
     def bytestring(s):
         if isinstance(s, unicode):
             return s.encode('utf-8')
         return s
+
+    def ord_(c):
+        return ord(c)
+
+    import urlparse
+    urlparse = urlparse.urlparse
+
+    import urllib
+    quote = urllib.quote
+    quote_plus = urllib.quote_plus
+    unquote = urllib.unquote
+    urlencode = urllib.urlencode
+
 
 _SYMBOLS = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
 
@@ -194,3 +218,29 @@ def from_nanotime(n):
 
 def substitute_env(s, env):
     return string.Template(s).substitute(env)
+
+def parse_signal_value(sig):
+    if sig is None:
+        raise ValueError("invalid signal")
+
+    # value passed is a string
+    if isinstance(sig, six.string_types):
+        if sig.isdigit():
+            # if number in the string, try to parse it
+            try:
+                return int(sig)
+            except ValueError:
+                raise ValueError("invalid signal")
+
+        # else try to get the signal number from its name
+        signame = sig.upper()
+        if not signame.startswith('SIG'):
+            signame = "SIG%s" % signame
+        try:
+            signum = getattr(signal, signame)
+        except AttributeError:
+            raise ValueError("invalid signal name")
+        return signum
+
+    # signal is a number, just return it
+    return sig
