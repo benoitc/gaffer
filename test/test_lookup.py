@@ -134,6 +134,8 @@ def test_registry_add_job():
     assert list(jobs) == ['a.job1']
     assert jobs['a.job1'][0] == job
     assert len(n1.sessions) == 1
+    session = r.find_session('a')
+    assert session[0].name == "a.job1"
 
     with pytest.raises(AlreadyRegistered):
         r.add_job(c1, 'a.job1')

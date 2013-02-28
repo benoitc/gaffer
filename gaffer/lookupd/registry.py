@@ -261,6 +261,20 @@ class Registry(object):
 
             return sessions
 
+    def find_session(self, sessionid):
+        with self._lock:
+            all_jobs = []
+            for _, node in self.nodes.items():
+                # if the node isn't identified, continue
+                if node is None:
+                    continue
+                for session, jobs in node.sessions.items():
+                    if sessionid == session:
+                        for _, job in jobs.items():
+                            all_jobs.append(job)
+                        break
+            return all_jobs
+
     def node_by_hostname(self, hostname):
         """ get a node by its identity """
         with self._lock:
