@@ -2,9 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import signal
-
-import six
 from tornado import escape
 
 from .util import CorsHandler

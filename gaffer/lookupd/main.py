@@ -20,7 +20,6 @@ Options
     --backlog=BACKLOG           default backlog [default: 128].
 """
 import os
-import socket
 import sys
 
 # patch tornado IOLoop
@@ -28,7 +27,6 @@ from ..tornado_pyuv import IOLoop, install
 install()
 
 import pyuv
-import six
 
 from .. import __version__
 from ..docopt import docopt

@@ -13,7 +13,6 @@
 import time
 import hashlib
 import random
-import sys
 
 from tornado.web import asynchronous
 

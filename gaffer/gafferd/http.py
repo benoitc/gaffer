@@ -4,14 +4,11 @@
 
 import copy
 import logging
-import socket
-from threading import RLock
 
 # patch tornado IOLoop
 from ..tornado_pyuv import IOLoop, install
 install()
 
-import six
 from tornado.web import Application
 from tornado.httpserver import HTTPServer
 

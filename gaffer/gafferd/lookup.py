@@ -145,7 +145,7 @@ class LookupClient(WebSocket):
         if self.exit_cb is not None:
             try:
                 self.exit_cb(self)
-            except Exception as e:
+            except Exception:
                 LOGGER.exception('exception calling exit callback for %r',
                         self)
 

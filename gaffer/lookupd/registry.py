@@ -157,8 +157,6 @@ class GafferNode(object):
                 version=self.version)
 
 
-
-
 class Registry(object):
 
     def __init__(self, loop=None):
