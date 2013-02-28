@@ -14,8 +14,8 @@ install()
 
 from gaffer.gafferd.http import HttpHandler
 from gaffer.gafferd.lookup import LookupClient
-from gaffer.gaffer_lookupd.http import http_server
-from gaffer.gaffer_lookupd.registry import (RemoteJob, GafferNode, Registry,
+from gaffer.lookupd.http import http_server
+from gaffer.lookupd.registry import (RemoteJob, GafferNode, Registry,
         NoIdent, JobNotFound, AlreadyIdentified, IdentExists,
         AlreadyRegistered)
 from gaffer.loop import patch_loop

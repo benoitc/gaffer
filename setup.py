@@ -69,6 +69,6 @@ setup(name='gaffer',
 
       [console_scripts]
       gafferd=gaffer.gafferd.main:run
-      gaffer=gaffer.gaffer_cli.main:main
-      gaffer_lookupd=gaffer.gaffer_lookupd.main:main
+      gaffer=gaffer.cli.main:main
+      gaffer_lookupd=gaffer.lookupd.main:main
       """)

@@ -135,7 +135,6 @@ class JobsHandler(CorsHandler):
             sources = [{"hostname": job.node.hostname,
                         "pids": job.pids,
                         "node_info": job.node.infodict()} for job in jobs]
-
             all_jobs.append({"name": job_name, "sources": sources})
 
         self.write({"nb_jobs": len(all_jobs), "jobs": all_jobs})
