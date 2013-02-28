@@ -12,6 +12,7 @@ from gaffer.cli.commands import (
         logs,
         lookup,
         lookup_job,
+        lookup_session,
         lookup_sessions,
         lookup_jobs,
         lookup_nodes,

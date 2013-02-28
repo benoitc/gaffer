@@ -107,6 +107,11 @@ class LookupServer(BaseClient):
         resp = self.request("get", "/findJob", name=job_name)
         return self.json_body(resp)
 
+    def find_session(self, sessionid):
+        """ find all jobs for a session on this lookupd server """
+        resp = self.request("get", "/findSession", sessionid=sessionid)
+        return self.json_body(resp)
+
     def lookup(self, heartbeat=None):
         """ return a direct websocket connection this node allowing you to
         listen on events.

@@ -10,16 +10,18 @@ from .base import Command
 
 import pyuv
 
-class LookupJobs(Command):
+class LookupSession(Command):
     """
-    usage: gaffer lookup:jobs (-L ADDR|--lookupd-address=ADDR)...
+    usage: gaffer lookup:session <sid> (-L ADDR|--lookupd-address=ADDR)...
+
+      <sid>  a session id (or application name)
 
       -h, --help
       -L ADDR --lookupd-address=ADDR  lookupd HTTP address
     """
 
-    name = "lookup:jobs"
-    short_descr = "list all jobs in  lookupd servers"
+    name = "lookup:session"
+    short_descr = "list all jobs for a session in lookupd servers"
 
 
     def run(self, config, args):
@@ -29,7 +31,7 @@ class LookupJobs(Command):
         all_jobs = {}
         for addr in lookupd_addresses:
             s = LookupServer(addr, loop=loop)
-            resp = s.jobs()
+            resp = s.find_session(args['<sid>'])
 
             for job in resp['jobs']:
                 job_name = job['name']

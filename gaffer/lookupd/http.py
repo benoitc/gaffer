@@ -35,6 +35,7 @@ def http_server(io_loop, listener, ssl_options=None, registration_db=None):
             (r'/sessions/([^/]+)', SessionsHandler),
             (r'/jobs', JobsHandler),
             (r'/findJob', FindJobHandler),
+            (r'/findSession', FindSessionHandler),
             (r'/ws', LookupWebSocket)] + lookup_router.urls
 
     # initialize the server
@@ -165,3 +166,35 @@ class FindJobHandler(CorsHandler):
                 "node_info": job.node.infodict()})
 
         self.write({"sources": jobs})
+
+
+class FindSessionHandler(CorsHandler):
+
+    def get(self, *args, **kwargs):
+        self.preflight()
+        db = self.settings.get('registration_db')
+
+        sid = self.get_argument("sessionid")
+        found = []
+        try:
+            found = db.find_session(sid)
+        except JobNotFound:
+            pass
+
+        # first order jobs by name
+        jobs = {}
+        for job in found:
+            if job.name not in jobs:
+                jobs[job.name] = []
+
+            source = {"hostname": job.node.hostname,
+                      "pids": job.pids,
+                      "node_info": job.node.infodict()}
+            jobs[job.name].append(source)
+
+        # create result array
+        all_jobs = [{"name": name, "sources": sources} \
+                for name, sources in jobs.items()]
+
+
+        self.write({"nb_jobs": len(all_jobs), "jobs": all_jobs})
