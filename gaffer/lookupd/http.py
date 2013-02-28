@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
+import json
 
 from tornado.web import Application
 from tornado.httpserver import HTTPServer
@@ -68,7 +69,7 @@ class PingHandler(CorsHandler):
 
 class LookupConnection(sockjs.SockJSConnection):
 
-    def on_open(self):
+    def on_open(self, info):
         self.db = self.session.server.settings.get('registration_db')
         self.db.bind_all(self.on_event)
 
@@ -76,6 +77,11 @@ class LookupConnection(sockjs.SockJSConnection):
         self.db.unbind_all(self.on_event)
 
     def on_event(self, event, message):
+        if event in ('add_node', 'remove_node', 'identify', ):
+            message = message.infodict()
+        else:
+            message['node'] = message['node'].infodict()
+        # add event to the message
         message['event'] = event
         self.write_message(message)
 

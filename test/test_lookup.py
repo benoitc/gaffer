@@ -3,6 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 import copy
 import os
+import time
 
 import pytest
 import pyuv
@@ -14,6 +15,8 @@ install()
 
 from gaffer.gafferd.http import HttpHandler
 from gaffer.gafferd.lookup import LookupClient
+from gaffer.httpclient import GafferNotFound
+from gaffer.lookupd.client import LookupServer
 from gaffer.lookupd.http import http_server
 from gaffer.lookupd.registry import (RemoteJob, GafferNode, Registry,
         NoIdent, JobNotFound, AlreadyIdentified, IdentExists,
@@ -21,7 +24,7 @@ from gaffer.lookupd.registry import (RemoteJob, GafferNode, Registry,
 from gaffer.loop import patch_loop
 from gaffer.manager import Manager
 from gaffer.process import ProcessConfig
-from gaffer.util import bind_sockets
+from gaffer.util import bind_sockets, hostname
 
 from test_manager import dummy_cmd
 
@@ -440,5 +443,158 @@ def test_lookup_manager():
     assert isinstance(emitted[6][1], GafferNode)
     assert emitted[6][1].sessions == {}
 
+def test_lookup_client():
+    # intiallize the lookupd server
+    loop = pyuv.Loop.default_loop()
+    r = Registry(loop)
+    sock = bind_sockets(LOOKUPD_ADDR)
+    io_loop = IOLoop(_loop=loop)
+    server = http_server(io_loop, sock, registration_db=r)
+    server.start()
+
+    lookup_address = "http://%s" % LOOKUPD_ADDR
+    client = LookupServer(lookup_address, loop)
+
+
+    # start the manager with the HTTP API
+    http_handler = HttpHandler(uri=GAFFERD_ADDR,
+            lookupd_addresses=[lookup_address])
+    m = Manager(loop=loop)
+    m.start(apps=[http_handler])
+    time.sleep(0.1)
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+
+    t = pyuv.Timer(loop)
+
+    def do_stop(h):
+        server.stop()
+        io_loop.close(True)
+
+    def stop_server(m):
+        t.start(do_stop, 0.1, 0.0)
+
+
+    results = []
+    def collect_info2(h):
+        results.append(client.sessions())
+        results.append(client.jobs())
+        m.stop(stop_server)
+
+    def collect_info(h):
+        results.append(client.nodes())
+        results.append(client.sessions())
+        results.append(client.jobs())
+        results.append(client.find_job("default.dummy"))
+        m.unload("dummy")
+        h.start(collect_info2, 0.3, 0.0)
+
+    t0 = pyuv.Timer(loop)
+    t0.start(collect_info, 0.3, 0.0)
+
+    loop.run()
+    assert len(results) == 6
+
+    host = hostname()
+
+    assert "nodes" in results[0]
+    nodes = results[0]['nodes']
+    assert len(nodes) == 1
+
+    assert "hostname" in nodes[0]
+    assert nodes[0]['hostname'] == host
+
+    assert "sessions" in results[1]
+    assert "nb_sessions" in results[1]
+    assert results[1]["nb_sessions"] == 1
+    sessions = results[1]["sessions"]
+    assert isinstance(sessions, list)
+    assert len(sessions) == 1
+    session = sessions[0]
+    assert session['sessionid'] == "default"
+    assert "jobs" in session
+    jobs = session["jobs"]
+    assert isinstance(jobs, dict)
+    assert "default.dummy" in jobs
+    job = jobs["default.dummy"]
+    assert isinstance(job, list)
+    assert job[0]["hostname"] == host
+    assert job[0]["pids"] == [1]
+    node_info = job[0]["node_info"]
+    assert node_info["hostname"] == host
+
+    assert "jobs" in results[2]
+    assert "nb_jobs" in results[2]
+    assert results[2]["nb_jobs"] == 1
+    job1 = results[2]["jobs"][0]
+    job1["name"] == "default.dummy"
+    assert len(job1["sources"]) == 1
+    assert job1["sources"] == job
+
+    assert "sources" in results[3]
+    assert len(results[3]["sources"]) == 1
+    assert results[3]["sources"] == job
+
+    assert results[4]["sessions"] == []
+    assert results[4]["nb_sessions"] == 0
+
+    assert results[5]["jobs"] == []
+    assert results[5]["nb_jobs"] == 0
+
+
+def test_lookup_client_events():
+    # intiallize the lookupd server
+    loop = pyuv.Loop.default_loop()
+    r = Registry(loop)
+    sock = bind_sockets(LOOKUPD_ADDR)
+    io_loop = IOLoop(_loop=loop)
+    server = http_server(io_loop, sock, registration_db=r)
+    server.start()
+
+    lookup_address = "http://%s" % LOOKUPD_ADDR
+    client = LookupServer(lookup_address, loop)
+    channel = client.lookup()
+
+    emitted = []
+    def cb(event, msg):
+        emitted.append((event, msg))
+    channel.bind_all(cb)
+    channel.start()
+
+    http_handler = HttpHandler(uri=GAFFERD_ADDR,
+        lookupd_addresses=[lookup_address])
+    m = Manager(loop=loop)
+    t = pyuv.Timer(loop)
+    t0 = pyuv.Timer(loop)
+
+    def do_stop(h):
+        channel.close()
+        server.stop()
+        io_loop.close(True)
+
+    def stop_server(m):
+        t.start(do_stop, 0.4, 0.0)
+
+    def wait(h):
+        m.stop(stop_server)
+
+    def on_manager(h):
+        # start the manager with the HTTP API
+        m.start(apps=[http_handler])
+        testfile, cmd, args, wdir = dummy_cmd()
+        config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+        m.load(config)
+        m.stop_process(1)
+        m.unload("dummy")
+        h.start(wait, 0.3, 0.0)
+
+    t0.start(on_manager, 0.3, 0.0)
+    loop.run()
+    actions = [line[0] for line in emitted]
+    assert len(emitted) == 7
+    assert list(actions) == ['add_node', 'identify', 'add_job', 'add_process',
+            'remove_process', 'remove_job', 'remove_node']
+
 if __name__ == "__main__":
-    test_lookup_manager()
+    test_lookup_client_events()

@@ -151,9 +151,15 @@ class EventEmitter(object):
         self._events = {}
         self._wildcards = set()
 
-        self._event_dispatcher.close()
-        self._wevent_dispatcher.close()
-        self._spinner.close()
+        # close handlers
+        if not self._event_dispatcher.closed:
+            self._event_dispatcher.close()
+
+        if not self._wevent_dispatcher.closed:
+            self._wevent_dispatcher.close()
+
+        if not self._spinner.closed:
+            self._spinner.close()
 
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**

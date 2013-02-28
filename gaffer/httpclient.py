@@ -103,10 +103,9 @@ class HTTPClient(object):
         response.rethrow()
         return response
 
-
-class Server(object):
-    """ Server, main object to connect to a gaffer node. Most of the
-    calls are blocking. (but running in the loop) """
+class BaseClient(object):
+    """ base resource object used to abstract request call and response
+    retrieving """
 
     def __init__(self, uri, loop=None, **options):
         if loop is not None:
@@ -145,11 +144,16 @@ class Server(object):
                     resp = e.response
                 else:
                     raise
-
         return resp
 
     def json_body(self, resp):
         return json.loads(resp.body.decode('utf-8'))
+
+
+
+class Server(BaseClient):
+    """ Server, main object to connect to a gaffer node. Most of the
+    calls are blocking. (but running in the loop) """
 
     @property
     def version(self):
