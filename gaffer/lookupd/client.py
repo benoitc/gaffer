@@ -14,7 +14,6 @@ from ..websocket import WebSocket
 class LookupChannel(WebSocket):
 
     def __init__(self, server, url, **kwargs):
-        print(url)
         self.server = server
         loop = patch_loop(server.loop)
 

@@ -21,7 +21,7 @@ class LookupSessions(Command):
     """
 
     name = "lookup:sessions"
-    short_descr = "find a job on different lookupd servers"
+    short_descr = "list all sessions in lookupd servers"
 
 
     def run(self, config, args):

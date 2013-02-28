@@ -10,9 +10,11 @@ from gaffer.cli.commands import (
         stop,
         kill,
         logs,
+        lookup,
         lookup_job,
         lookup_sessions,
         lookup_jobs,
+        lookup_nodes,
         dev_start,
         dev_run,
         export)

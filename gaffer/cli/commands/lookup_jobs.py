@@ -55,4 +55,3 @@ class LookupJobs(Command):
                         (broadcast_address, hostname, version))
             lines.append("")
             print("\n".join(lines))
-
