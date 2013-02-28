@@ -153,11 +153,11 @@ class FindJobHandler(CorsHandler):
         db = self.settings.get('registration_db')
 
         job_name = self.get_argument("name")
+        found = []
         try:
             found = db.find_job(job_name)
         except JobNotFound:
-            self.set_status(404)
-            return self.write({"error": "not_found"})
+            pass
 
         jobs = []
         for job in found:

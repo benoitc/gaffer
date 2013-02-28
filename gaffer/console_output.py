@@ -20,7 +20,7 @@ import copy
 from datetime import datetime
 import sys
 
-from colorama import  Fore, Style, init
+from colorama import Fore, Back, Style, init
 init()
 
 from .loop import patch_loop
@@ -65,6 +65,10 @@ class Color(object):
 
 _color = Color()
 colored = _color.output
+
+def status_bar(s):
+    print(''.join([Style.BRIGHT, Fore.WHITE, Back.BLACK, s,
+        Style.RESET_ALL]))
 
 
 class ConsoleOutput(object):

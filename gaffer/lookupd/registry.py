@@ -259,20 +259,19 @@ class Registry(object):
                             sessions[sessionid][job.name] = []
                         sessions[sessionid][job.name].append(job)
 
-                # We got the node we wanted, exit
-                if with_node != '*':
-                    break
             return sessions
 
     def node_by_hostname(self, hostname):
         """ get a node by its identity """
         with self._lock:
+            nodes = []
             for node in self.nodes:
                 if node is None:
                     continue
 
                 if node.hostname == hostname:
-                    return node
+                    nodes.append(node)
+            return nodes
 
     def find_job(self, job_name):
         """ find a job in the registry, return a list of all remote job
