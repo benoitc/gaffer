@@ -990,8 +990,6 @@ class Manager(object):
             if process.pid in self.running:
                 self.running.pop(process.pid)
 
-            print("exit %s" % process.pid)
-
             sessionid, name = self._parse_name(process.name)
             try:
                 state = self._get_state(sessionid, name)
