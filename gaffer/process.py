@@ -600,7 +600,9 @@ class Process(object):
         if self._info is None:
             self._info = dict(pid=self.pid, name=self.name, cmd=self.cmd,
                     args=self.args, env=self.env, uid=self.uid, gid=self.gid,
-                    os_pid=None, create_time=None, commited=self.once)
+                    os_pid=None, create_time=None, commited=self.once,
+                    redirect_output=self.redirect_output,
+                    redirect_input=self.redirect_input)
 
         if (self._info.get('create_time') is None and
                 self._pprocess is not None):
