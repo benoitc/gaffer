@@ -67,7 +67,7 @@ class LookupSessions(Command):
     def _on_event(self, event, msg):
         if event == "add_node":
             line = self._print(event, "add node")
-        if event == "identify":
+        elif event == "identify":
             uri = "http://%s:%s" % (msg['broadcast_address'], msg['port'])
             line = self._print(event, "identify %s" % uri)
         elif event == "remove_node":
