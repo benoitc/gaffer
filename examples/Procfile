@@ -1,2 +1,2 @@
-dummy: python -u dummy_basic.py
+dummy: python -u dummy.py
 dummy1: python -u dummy_basic.py

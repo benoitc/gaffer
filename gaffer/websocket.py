@@ -299,7 +299,6 @@ class WebSocket(object):
         if self.client_terminated:
             return
 
-
         if opcode == 0x1:
             # UTF-8 data
             try:

@@ -33,6 +33,12 @@ class Subscription(object):
             self.source, self.target = parts[0].upper(), parts[1].lower()
             if self.target.isdigit():
                 self.pid = int(self.target)
+                self.target = self.pid
+            elif self.source == "STREAM" and "." in self.target:
+                pid, target = self.target.split(".", 1)
+                if pid.isdigit():
+                    self.pid = int(pid)
+                    self.target = target
 
     def __str__(self):
         return "subscription: %s" % self.topic
@@ -119,6 +125,13 @@ class ChannelConnection(SockJSConnection):
         self.ctl = Controller(self.manager)
         self._subscriptions = {}
 
+    def on_close(self):
+        if self._subscriptions:
+            for _, sub in self._subscriptions.items():
+                self.stop_subcription(sub)
+
+            self._subscriptions = []
+
     def on_message(self, raw):
         try:
             msg = Message(raw)
@@ -197,10 +210,18 @@ class ChannelConnection(SockJSConnection):
             if not sub.pid:
                 raise SubscriptionError("invalid_topic")
 
-            sub.callback = partial(self._dispatch_event, sub.topic)
-
+            sub.callback = partial(self._dispatch_output, sub.topic)
             proc = self.manager.get_process(sub.pid)
-            proc.monitor_io(sub.target, sub.callback)
+
+            if not proc.redirect_output:
+                raise SubscriptionError("no_redirection_output")
+
+            if sub.target == sub.pid:
+                target = proc.redirect_output[0]
+            else:
+                target = sub.target
+
+            proc.monitor_io(target, sub.callback)
         else:
             raise SubscriptionError("invalid_topic")
 
@@ -224,7 +245,12 @@ class ChannelConnection(SockJSConnection):
         elif sub.source == "STREAM":
             if sub.pid:
                 proc = self.manager.get_process(sub.pid)
-                proc.unmonitor_io(".", sub.callback)
+                if sub.target == sub.pid:
+                    target = proc.redirect_output[0]
+                else:
+                    target = sub.target
+
+                proc.unmonitor_io(target, sub.callback)
 
     def _dispatch_event(self, topic, evtype, ev):
         data = { "event": evtype, "topic": topic}
@@ -240,6 +266,16 @@ class ChannelConnection(SockJSConnection):
 
         evtype = evtype.split("proc.%s." % sub.target, 1)[1]
         self._dispatch_event(topic, evtype, ev)
+
+    def _dispatch_output(self, topic, evtype, ev):
+        if isinstance( ev['data'], bytes):
+            ev['data'] =  ev['data'].decode("utf-8")
+
+        data = { "event": evtype, "topic": topic}
+        data.update(ev)
+        msg = { "event": "gaffer:event", "data": data}
+        self.write_message(msg)
+
 
     def write_message(self, msg):
         if isinstance(msg, dict):

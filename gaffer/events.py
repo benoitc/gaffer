@@ -133,7 +133,7 @@ class EventEmitter(object):
 
     This object offer a common interface to all events emitters """
 
-    def __init__(self, loop, max_size=200):
+    def __init__(self, loop, max_size=10000):
         self.loop = patch_loop(loop)
         self._events = {}
         self._wildcards = set()
