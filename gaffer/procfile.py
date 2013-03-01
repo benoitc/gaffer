@@ -25,7 +25,7 @@ class Procfile(object):
     """ Procfile object to parse a procfile and a list of given
     environnment files. """
 
-    def __init__(self, procfile, envs=None):
+    def __init__(self, procfile, root=None, envs=None):
         """ main constructor
 
         Attrs:
@@ -35,7 +35,11 @@ class Procfile(object):
           global procfile environment"""
 
         self.procfile = procfile
-        self.root = os.path.dirname(procfile) or "."
+
+        if not root:
+            self.root = os.path.dirname(procfile) or "."
+        else:
+            self.root = root
 
         # set default env
         default_env = os.path.join(self.root, '.env')
@@ -46,6 +50,9 @@ class Procfile(object):
         # initialize value
         self.cfg = self.parse(self.procfile)
         self.env = self.get_env(self.envs)
+
+        # used to cache the appname
+        self._appname = None
 
     def processes(self):
         """ iterator over the configuration """
@@ -78,12 +85,15 @@ class Procfile(object):
                             env[k] = v
         return env
 
-    def get_groupname(self):
-        if self.root == ".":
-            path = os.getcwd()
-        else:
-            path = self.root
-        return os.path.split(path)[1]
+    def get_appname(self):
+        if not self._appname:
+            if self.root == ".":
+                path = os.getcwd()
+            else:
+                path = self.root
+            self._appname = os.path.split(path)[1]
+
+        return self._appname
 
     def as_dict(self, name, concurrency_settings=None):
         """ return a procfile line as a JSON object usable with
@@ -108,7 +118,7 @@ class Procfile(object):
         dconf = OrderedDict()
         for k, v in self.cfg.items():
             cmd, args = self.parse_cmd(v)
-            name = "%s:%s" % (self.get_groupname(), k)
+            name = "%s:%s" % (self.get_appname(), k)
 
             dconf["process:%s" % name] = OrderedDict([("cmd", cmd),
                 ("args", " ".join(args)), ("priority", ln),

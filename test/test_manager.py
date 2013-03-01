@@ -3,6 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 from collections import deque
+from functools import partial
 import os
 import signal
 import sys
@@ -10,9 +11,11 @@ import time
 from tempfile import mkstemp
 
 import pyuv
+import pytest
 
+from gaffer.error import ProcessError, ProcessNotFound
 from gaffer.manager import Manager
-from gaffer.process import Process
+from gaffer.process import ProcessConfig, Process
 from gaffer.state import FlappingInfo
 
 def tmpfile():
@@ -56,75 +59,81 @@ def test_simple():
     m.stop(on_stop)
     m.run()
 
-def test_simple_process():
+def test_simple_job():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, start=False)
-    state = m.get_process_state("dummy")
+
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+
+    m.load(config, start=False)
+    state = m._get_locked_state("dummy")
 
     assert state.numprocesses == 1
-    assert state.name == "dummy"
+    assert state.name == "default.dummy"
     assert state.cmd == cmd
-    assert state.settings['args'] == args
-    assert state.settings['cwd'] == wdir
+    assert state.config['args'] == args
+    assert state.config['cwd'] == wdir
 
-    m.remove_process("dummy")
-    assert m.get_process_state("dummy") == None
+    m.unload("dummy")
+
+    with pytest.raises(ProcessError):
+        m._get_locked_state("dummy")
+
     m.stop()
     m.run()
 
-def test_start_stop_process():
+def test_start_stop_job():
+    res = []
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir)
-    state = m.get_process_state("dummy")
-
-    assert len(state.running) == 1
-
-    m.stop_process("dummy")
-    assert len(state.running) == 0
-
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    state = m._get_locked_state("dummy")
+    res.append(len(state.running))
+    m.stop_job("dummy")
+    res.append(len(state.running))
     m.stop()
     m.run()
+
+    assert res == [1, 0]
 
 
 def test_start_multiple():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=2)
-    state = m.get_process_state("dummy")
-
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=2)
+    m.load(config)
+    state = m._get_locked_state("dummy")
     assert len(state.running) == 2
-
     m.stop()
-
     m.run()
 
-def test_ttin():
+def test_scalein():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
-    state = m.get_process_state("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
     assert len(state.running) == 1
-    ret = m.ttin("dummy", 1)
+    ret = m.scale("dummy", 1)
     assert ret == 2
 
     time.sleep(0.2)
     assert len(state.running) == 2
 
-    ret = m.ttin("dummy", 1)
+    ret = m.scale("dummy", 1)
     assert ret == 3
 
     time.sleep(0.2)
     assert len(state.running) == 3
 
 
-    ret = m.ttin("dummy", 3)
+    ret = m.scale("dummy", 3)
     assert ret == 6
 
     time.sleep(0.2)
@@ -133,23 +142,23 @@ def test_ttin():
     m.stop()
     m.run()
 
-def test_ttou():
+def test_scaleout():
     m = Manager()
     m.start()
-
     testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_process_state("dummy")
 
     assert len(state.running) == 4
-    ret = m.ttou("dummy", 1)
+    ret = m.scale("dummy", -1)
     assert ret == 3
 
     time.sleep(0.2)
     assert len(state.running) == 3
 
-    ret = m.ttou("dummy", 2)
+    ret = m.scale("dummy", -2)
     assert ret == 1
 
     time.sleep(0.2)
@@ -161,53 +170,53 @@ def test_numprocesses():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_process_state("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
     assert len(state.running) == 4
     state.numprocesses = 0
     assert state.numprocesses == 0
 
-    m.manage_process("dummy")
+    m.manage("dummy")
     time.sleep(0.2)
     assert len(state.running) == 0
     m.stop()
-
     m.run()
 
 def test_process_id():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_process_state("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    state = m._get_locked_state("dummy")
 
-    processes = state.list_processes()
-    assert isinstance(processes, list)
+    res = []
+    def cb(m, p):
+        res.append(p.pid)
 
-    p = processes[0]
-    assert isinstance(p, Process)
-    assert p.id == 1
-
-    p = processes[2]
-    assert p.id == 3
-
+    res2 = [p.pid for p in m.list("dummy")]
+    m.walk(cb, "dummy")
     m.stop()
     m.run()
+
+    assert res == [1, 2, 3, 4]
+    assert res == res2
 
 def test_restart_process():
     results = []
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_process_state("dummy")
-    results.append(state.pids)
-    m.restart_process("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+
+    results.append(m.pids("dummy"))
+    m.reload("dummy")
 
     def cb(handle):
-        state = m.get_process_state("dummy")
-        results.append(state.pids)
+        results.append(m.pids("dummy"))
         m.stop()
 
     t = pyuv.Timer(m.loop)
@@ -221,13 +230,12 @@ def test_restart_manager():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    state = m.get_process_state("dummy")
-    results.append(state.pids)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    results.append(m.pids("dummy"))
 
     def cb(manager):
-        state = m.get_process_state("dummy")
-        results.append(state.pids)
+        results.append(m.pids("dummy"))
         m.stop()
 
     m.restart()
@@ -241,15 +249,19 @@ def test_send_signal():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir)
-    time.sleep(0.2)
-    state = m.get_process_state("dummy")
-    processes = state.list_processes()
-    m.send_signal("dummy", signal.SIGHUP)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
     time.sleep(0.2)
 
-    m.send_signal(processes[0].id, signal.SIGHUP)
-    m.stop_process("dummy")
+    m.killall("dummy", signal.SIGHUP)
+    time.sleep(0.2)
+
+
+    with pytest.raises(ProcessError) as e:
+        m.killall("dummy1", signal.SIGHUP)
+        assert e.errno == 404
+
+    m.stop_job("dummy")
 
     def stop(handle):
         handle.stop()
@@ -261,23 +273,31 @@ def test_send_signal():
 
     with open(testfile, 'r') as f:
         res = f.read()
-        assert res == 'STARTHUPHUPQUITSTOP'
+        assert res == 'STARTHUPQUITSTOP'
 
 def test_flapping():
     m = Manager()
     m.start()
     states = []
     cmd, args, wdir = crash_cmd()
+
+    # create flapping info object
     flapping = FlappingInfo(attempts=1., window=1, retry_in=0.1,
             max_retry=1)
-    m.add_process("crashing", cmd, args=args, cwd=wdir, flapping=flapping)
-    m.add_process("crashing2", cmd, args=args, cwd=wdir)
+
+    # load conf
+    conf1 = ProcessConfig("crashing", cmd, args=args, cwd=wdir,
+            flapping=flapping)
+    conf2 = ProcessConfig("crashing2", cmd, args=args, cwd=wdir)
+    m.load(conf1)
+    m.load(conf2)
+
     time.sleep(0.2)
 
     def cb(handle):
-        state = m.get_process("crashing")
+        state = m._get_locked_state("crashing")
         states.append(state.stopped)
-        state2 = m.get_process("crashing2")
+        state2 = m._get_locked_state("crashing2")
         states.append(state2.stopped)
         m.stop()
 
@@ -296,23 +316,23 @@ def test_events():
         emitted.append((ev, msg['name']))
 
     # subscribe to all events
-    m.on('.', cb)
+    m.events.subscribe('.', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    m.ttin("dummy", 1)
-    m.remove_process("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    m.scale("dummy", 1)
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
     m.run()
 
-
-    assert ('create', 'dummy') in emitted
-    assert ('start', 'dummy') in emitted
-    assert ('update', 'dummy') in emitted
-    assert ('stop', 'dummy') in emitted
-    assert ('delete', 'dummy') in emitted
+    assert ('load', 'default.dummy') in emitted
+    assert ('start', 'default.dummy') in emitted
+    assert ('update', 'default.dummy') in emitted
+    assert ('stop', 'default.dummy') in emitted
+    assert ('unload', 'default.dummy') in emitted
 
 def test_process_events():
     emitted = []
@@ -323,20 +343,21 @@ def test_process_events():
         emitted.append(ev)
 
     # subscribe to all events
-    m.on('proc.dummy', cb)
+    m.events.subscribe('job.default.dummy', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir)
-    m.stop_process("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
     m.run()
 
-    assert 'proc.dummy.start' in emitted
-    assert 'proc.dummy.spawn' in emitted
-    assert 'proc.dummy.stop' in emitted
-    assert 'proc.dummy.exit' in emitted
+    assert 'job.default.dummy.start' in emitted
+    assert 'job.default.dummy.spawn' in emitted
+    assert 'job.default.dummy.stop' in emitted
+    assert 'job.default.dummy.exit' in emitted
 
 def test_process_exit_event():
     emitted = []
@@ -347,11 +368,12 @@ def test_process_exit_event():
         emitted.append(msg)
 
     # subscribe to all events
-    m.on('proc.dummy.exit', cb)
+    m.events.subscribe('job.default.dummy.exit', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir)
-    m.stop_process("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
+    m.unload("dummy")
 
     time.sleep(0.2)
     m.stop()
@@ -367,41 +389,50 @@ def test_process_stats():
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir)
+    m.load(config)
     time.sleep(0.2)
-    info = m.get_process_stats("dummy")
-    info_by_id = m.get_process_stats(1)
-    pid = m.running[1].pid
+    info = m.stats("dummy")
+    info_by_id = m.get_process(1).info
+    os_pid = m.running[1].os_pid
     m.stop()
     m.run()
 
     assert isinstance(info, dict)
     assert isinstance(info_by_id, dict)
-    assert "pid" in info_by_id
-    assert info_by_id["pid"] == pid
-    assert info['name'] == "dummy"
+    assert "os_pid" in info_by_id
+    assert info_by_id["os_pid"] == os_pid
+    assert info['name'] == "default.dummy"
     assert len(info['stats']) == 1
-    assert info['stats'][0]['pid'] == info_by_id['pid']
+    assert info['stats'][0]['os_pid'] == info_by_id['os_pid']
 
 def test_processes_stats():
+
+    def collect_cb(inf, m, name):
+        inf.append(m.stats(name))
+
     m = Manager()
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
     testfile1, cmd1, args1, wdir1 = dummy_cmd()
-    m.add_process("a", cmd, args=args, cwd=wdir)
+    configa = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    m.load(configa)
+
     time.sleep(0.2)
-    infos = list(m.processes_stats())
-    m.add_process("b", cmd, args=args, cwd=wdir)
-    infos2 = list(m.processes_stats())
+    infos = []
+    infos2 = []
+    m.jobs_walk(partial(collect_cb, infos))
+    configb = ProcessConfig("b", cmd, args=args, cwd=wdir)
+    m.load(configb)
+    m.jobs_walk(partial(collect_cb, infos2))
     m.stop()
     m.run()
 
     assert len(infos) == 1
     assert len(infos2) == 2
-
-    assert infos[0]['name'] == "a"
-    assert infos2[0]['name'] == "a"
-    assert infos2[1]['name'] == "b"
+    assert infos[0]['name'] == "default.a"
+    assert infos2[0]['name'] == "default.a"
+    assert infos2[1]['name'] == "default.b"
 
 def test_monitor():
     m = Manager()
@@ -411,13 +442,14 @@ def test_monitor():
 
     m.start()
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("a", cmd, args=args, cwd=wdir)
+    configa = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    m.load(configa)
     time.sleep(0.2)
-    pid = m.running[1].pid
-    m.monitor("a", cb)
+    os_pid = m.running[1].os_pid
+    m.monitor(cb, "a")
 
     def stop(handle):
-        m.unmonitor("a", cb)
+        m.unmonitor(cb, "a")
         m.stop()
 
     t = pyuv.Timer(m.loop)
@@ -428,7 +460,7 @@ def test_monitor():
     res = monitored[0]
     assert res[0] == "stat"
     assert "cpu" in res[1]
-    assert res[1]["pid"] == pid
+    assert res[1]["os_pid"] == os_pid
 
 def test_priority():
     m = Manager()
@@ -437,24 +469,32 @@ def test_priority():
         started.append(info['name'])
 
     m.start()
-    m.subscribe('start', cb)
+    m.events.subscribe('start', cb)
 
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("a", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("d", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("b", cmd, args=args, cwd=wdir, start=False)
-    m.start_processes()
+    a = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    b = ProcessConfig("b", cmd, args=args, cwd=wdir)
+    c = ProcessConfig("c", cmd, args=args, cwd=wdir)
+
+
+    m.load(a, start=False)
+    m.load(b, start=False)
+    m.load(c, start=False)
+
+    # start all processes
+    m.jobs_walk(lambda mgr, label: mgr.start_job(label))
+
     def stop(handle):
-        m.unsubscribe("start", cb)
+        m.events.unsubscribe("start", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
     t.start(stop, 0.4, 0.0)
     m.run()
 
-    assert started == ["a", "d", "b"]
+    assert started == ["default.a", "default.b", "default.c"]
 
-def test_group():
+def test_sessions():
     m = Manager()
     started = []
     stopped = []
@@ -464,35 +504,58 @@ def test_group():
         elif evtype == "stop":
             stopped.append(info['name'])
 
+    start_job = lambda mgr, label: mgr.start_job(label)
+    stop_job = lambda mgr, label: mgr.stop_job(label)
+
     m.start()
-    m.subscribe('start', cb)
-    m.subscribe('stop', cb)
+    m.events.subscribe('start', cb)
+    m.events.subscribe('stop', cb)
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("ga:a", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("ga:b", cmd, args=args, cwd=wdir, start=False)
-    m.add_process("gb:a", cmd, args=args, cwd=wdir, start=False)
-    groups = sorted(m.get_groups())
-    ga1 = m.get_group('ga')
-    gb1 = m.get_group('gb')
-    m.start_group("ga")
-    m.stop_group("ga")
-    time.sleep(0.2)
-    m.remove_process("ga:a")
-    ga2 = m.get_group('ga')
-    m.stop_group("gb")
+    a = ProcessConfig("a", cmd, args=args, cwd=wdir)
+    b = ProcessConfig("b", cmd, args=args, cwd=wdir)
+
+
+    # load process config in different sessions
+    m.load(a, sessionid="ga", start=False)
+    m.load(b, sessionid="ga", start=False)
+    m.load(a, sessionid="gb", start=False)
+
+
+    sessions = m.sessions
+
+    ga1 = m.jobs('ga')
+    gb1 = m.jobs('gb')
+
+    m.jobs_walk(start_job, "ga")
+    m.jobs_walk(start_job, "gb")
+
+    ga2 = []
+    def rem_cb(h):
+        m.unload("a", sessionid="ga")
+        [ga2.append(name) for name in m.jobs('ga')]
+
+
+    t0 = pyuv.Timer(m.loop)
+    t0.start(rem_cb, 0.2, 0.0)
+    m.jobs_walk(stop_job, "gb")
 
     def stop(handle):
-        m.unsubscribe("start", cb)
-        m.unsubscribe("stop", cb)
+        m.events.unsubscribe("start", cb)
+        m.events.unsubscribe("stop", cb)
         m.stop()
 
     t = pyuv.Timer(m.loop)
     t.start(stop, 0.6, 0.0)
     m.run()
 
-    assert groups == ['ga', 'gb']
-    assert ga1 == ['ga:a', 'ga:b']
-    assert gb1 == ['gb:a']
-    assert started == ['ga:a', 'ga:b']
-    assert stopped == ['ga:a', 'ga:b', 'gb:a']
-    assert ga2 == ['ga:b']
+    assert len(sessions) == 2
+    assert sessions == ['ga', 'gb']
+    assert ga1 == ['ga.a', 'ga.b']
+    assert gb1 == ['gb.a']
+    assert started == ['ga.a', 'ga.b', 'gb.a']
+    assert stopped == ['gb.a', 'ga.a']
+    assert ga2 == ['ga.b']
+
+
+if __name__ == "__main__":
+    test_sessions()

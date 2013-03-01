@@ -5,15 +5,13 @@
 from collections import deque
 import heapq
 import operator
-import os
 import signal
 from threading import RLock
 import time
 
 import pyuv
 
-from .process import Process
-from .sync import add, sub, increment, atomic_read, compare_and_swap
+from .sync import add, sub, increment, atomic_read
 from .util import nanotime
 
 class ProcessTracker(object):
@@ -33,11 +31,13 @@ class ProcessTracker(object):
 
     def stop(self):
         self._check_timer.stop()
+        self.processes = []
 
     def close(self):
         self.processes = []
         self._done_cb = None
-        self._check_timer.close()
+        if not self._check_timer.closed:
+            self._check_timer.close()
 
     def check(self, process, graceful_timeout=10000000000):
         process.graceful_time = graceful_timeout + nanotime()
@@ -70,7 +70,6 @@ class ProcessTracker(object):
                 p = heapq.heappop(self.processes)
                 now = nanotime()
                 delta = p.graceful_time - now
-
                 if delta > 0:
                     # we have anything to do, put the process back in
                     # the heap and return
@@ -83,6 +82,7 @@ class ProcessTracker(object):
                         p.kill(signal.SIGKILL)
                     except:
                         pass
+
                     # and close it. (maybe we should just close it)
                     p.close()
 
@@ -105,35 +105,26 @@ class FlappingInfo(object):
         self.retries = 0
 
 class ProcessState(object):
-    """ object used by the manager to maintain the process state """
+    """ object used by the manager to maintain the process state for a
+    session. """
 
-    DEFAULT_PARAMS = {
-            "group": None,
-            "args": None,
-            "env": None,
-            "uid": None,
-            "gid": None,
-            "cwd": None,
-            "detach": False,
-            "shell": False,
-            "redirect_output": [],
-            "redirect_input": False,
-            "custom_streams": [],
-            "custom_channels": []}
 
-    def __init__(self, name, cmd, **settings):
+    def __init__(self, config, sessionid, env=None):
+        self.config = config
+        self.sessionid = sessionid
+        self.env = env
+
         self.running = deque()
         self.stopped = False
-        self.setup(name, cmd, **settings)
+        self.setup()
 
-    def setup(self, name, cmd, **settings):
-        self.name = name
-        self.cmd = cmd
-        self.settings = settings
-        self._numprocesses = self.settings.get('numprocesses', 1)
+    def setup(self):
+        self.name = "%s.%s" % (self.sessionid, self.config.name)
+        self.cmd = self.config.cmd
+        self._numprocesses = self.config.get('numprocesses', 1)
 
         # set flapping
-        self.flapping = self.settings.get('flapping')
+        self.flapping = self.config.get('flapping')
         if isinstance(self.flapping, dict):
             try:
                 self.flapping = FlappingInfo(**self.flapping)
@@ -141,7 +132,6 @@ class ProcessState(object):
                 self.flapping = None
 
         self.flapping_timer = None
-
         self.stopped = False
 
     @property
@@ -150,61 +140,51 @@ class ProcessState(object):
 
     @property
     def graceful_timeout(self):
-        return nanotime(self.settings.get('graceful_timeout', 10.0))
-
-    @property
-    def group(self):
-        return self.settings.get('group')
+        return nanotime(self.config.get('graceful_timeout', 10.0))
 
     def __str__(self):
         return "state: %s" % self.name
 
     def make_process(self, loop, id, on_exit):
         """ create an OS process using this template """
-        params = {}
-        for name, default in self.DEFAULT_PARAMS.items():
-            params[name] = self.settings.get(name, default)
-
-        os_env = self.settings.get('os_env', True)
-        if os_env:
-            env = params.get('env') or {}
-            env.update(os.environ)
-            params['env'] = env
-
-        params['on_exit_cb'] = on_exit
-
-        return Process(loop, id, self.name, self.cmd, **params)
-
-    @property
-    def group(self):
-        return self.settings.get('group')
+        return self.config.make_process(loop, id, self.name, env=self.env,
+                on_exit=on_exit)
 
     def __get_numprocesses(self):
         return atomic_read(self._numprocesses)
     def __set_numprocesses(self, n):
-        self._numprocesses = compare_and_swap(self._numprocesses, n)
+        self._numprocesses = n
     numprocesses = property(__get_numprocesses, __set_numprocesses,
             doc="""return the max numbers of processes that we keep
             alive for this command""")
 
     @property
     def pids(self):
-        return [p.id for p in self.running]
+        return [p.pid for p in self.running]
 
     def reset(self):
         """ reset this template to default values """
-        self.numprocesses = self.settings.get('numprocesses', 1)
+        self.numprocesses = self.config.get('numprocesses', 1)
         # reset flapping
         if self.flapping and self.flapping is not None:
             self.flapping.reset()
 
-    def ttin(self, i=1):
+    def update(self, config, env=None):
+        """ update a state """
+        self.config = config
+        self.env = env
+
+        # update the number of preocesses
+        self.numprocesses = max(self.config.get('numprocesses', 1),
+                self.numprocesses)
+
+    def incr(self, i=1):
         """ increase the maximum number of running processes """
 
         self._numprocesses = add(self._numprocesses, i)
         return self._numprocesses
 
-    def ttou(self, i=1):
+    def decr(self, i=1):
         """ decrease the maximum number of running processes """
         self._numprocesses = sub(self._numprocesses, i)
         return self._numprocesses
@@ -226,49 +206,6 @@ class ProcessState(object):
 
     def list_processes(self):
         return list(self.running)
-
-    def stats(self):
-        """ return stats from alll running process using this template
-        """
-        infos = []
-        lmem = []
-        lcpu = []
-        for p in self.running:
-            info = p.info
-            info['id'] = p.id
-            infos.append(info)
-            lmem.append(info['mem'])
-            lcpu.append(info['cpu'])
-
-        if 'N/A' in lmem or not lmem:
-            mem, max_mem, min_mem = "N/A"
-        else:
-            max_mem = max(lmem)
-            min_mem = min(lmem)
-            mem = sum(lmem)
-
-        if 'N/A' in lcpu or not lcpu:
-            cpu, max_cpu, min_cpu = "N/A"
-        else:
-            max_cpu = max(lcpu)
-            min_cpu = min(lcpu)
-            cpu = sum(lcpu)
-
-        ret = dict(name=self.name, stats=infos, mem=mem, max_mem=max_mem,
-                min_mem=min_mem, cpu=cpu, max_cpu=max_cpu,
-                min_cpu=min_cpu)
-        return ret
-
-    def monitor(self, listener):
-        """ start monitoring in all processes of the process template """
-        for p in self.running:
-            p.monitor(listener)
-
-    def unmonitor(self, listener):
-        """ unmonitor all processes maintained by this process template
-        """
-        for p in self.running:
-            p.unmonitor(listener)
 
     def check_flapping(self):
         """ main function used to check the flapping """

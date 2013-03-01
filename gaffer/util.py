@@ -6,20 +6,45 @@ import grp
 import os
 import pwd
 import resource
+import signal
 import socket
 import string
 import time
 
 import six
+from tornado import netutil
 
 if six.PY3:
     def bytestring(s):
         return s
+
+    def ord_(c):
+        return c
+
+    import urllib.parse
+    urlparse = urllib.parse.urlparse
+    quote = urllib.parse.quote
+    quote_plus = urllib.parse.quote_plus
+    unquote = urllib.parse.unquote
+    urlencode = urllib.parse.urlencode
 else:
     def bytestring(s):
         if isinstance(s, unicode):
             return s.encode('utf-8')
         return s
+
+    def ord_(c):
+        return ord(c)
+
+    import urlparse
+    urlparse = urlparse.urlparse
+
+    import urllib
+    quote = urllib.quote
+    quote_plus = urllib.quote_plus
+    unquote = urllib.unquote
+    urlencode = urllib.urlencode
+
 
 _SYMBOLS = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
 
@@ -140,7 +165,23 @@ def is_ipv6(addr):
         return False
     return True
 
+def bind_sockets(addr, backlog=128, allows_unix_socket=False):
+    # initialize the socket
+    addr = parse_address(addr)
+    if isinstance(addr, six.string_types):
+        if not allows_unix_socket:
+            raise RuntimeError("unix addresses aren't supported")
 
+        sock = netutil.bind_unix_socket(addr)
+    elif is_ipv6(addr[0]):
+        sock = netutil.bind_sockets(addr[1], address=addr[0],
+                family=socket.AF_INET6, backlog=backlog)
+    else:
+        sock = netutil.bind_sockets(addr[1], backlog=backlog)
+    return sock
+
+def hostname():
+    return socket.getfqdn(socket.gethostname())
 
 def get_maxfd():
     maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
@@ -194,3 +235,40 @@ def from_nanotime(n):
 
 def substitute_env(s, env):
     return string.Template(s).substitute(env)
+
+def parse_signal_value(sig):
+    if sig is None:
+        raise ValueError("invalid signal")
+
+    # value passed is a string
+    if isinstance(sig, six.string_types):
+        if sig.isdigit():
+            # if number in the string, try to parse it
+            try:
+                return int(sig)
+            except ValueError:
+                raise ValueError("invalid signal")
+
+        # else try to get the signal number from its name
+        signame = sig.upper()
+        if not signame.startswith('SIG'):
+            signame = "SIG%s" % signame
+        try:
+            signum = getattr(signal, signame)
+        except AttributeError:
+            raise ValueError("invalid signal name")
+        return signum
+
+    # signal is a number, just return it
+    return sig
+
+def parse_job_name(name, default='default'):
+    if "." in name:
+        appname, name = name.split(".", 1)
+    elif "/" in name:
+        appname, name = name.split("/", 1)
+    else:
+        appname = default
+
+    return appname, name
+

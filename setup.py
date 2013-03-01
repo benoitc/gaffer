@@ -60,7 +60,7 @@ setup(name='gaffer',
           'pyuv>=0.8.3',
           'six',
           'psutil',
-          'tornado==2.4',
+          'tornado==2.4.1',
           'colorama',
           'setproctitle'
       ],
@@ -68,7 +68,7 @@ setup(name='gaffer',
       entry_points="""
 
       [console_scripts]
-      gafferd=gaffer.node.gafferd:run
-      gafferctl=gaffer.node.gafferctl:run
-      gaffer=gaffer.pm.main:main
+      gafferd=gaffer.gafferd.main:run
+      gaffer=gaffer.cli.main:main
+      gaffer_lookupd=gaffer.lookupd.main:main
       """)

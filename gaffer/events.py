@@ -121,6 +121,8 @@ from collections import deque
 
 import pyuv
 
+from .loop import patch_loop
+
 class EventEmitter(object):
     """ Many events happend in gaffer. For example a process will emist
     the events "start", "stop", "exit".
@@ -128,7 +130,7 @@ class EventEmitter(object):
     This object offer a common interface to all events emitters """
 
     def __init__(self, loop, max_size=200):
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self._events = {}
         self._wildcards = set()
 
@@ -136,7 +138,6 @@ class EventEmitter(object):
         self._wqueue = deque(maxlen=max_size)
 
         self._event_dispatcher = pyuv.Prepare(self.loop)
-        self._wevent_dispatcher = pyuv.Prepare(self.loop)
         self._spinner = pyuv.Idle(self.loop)
 
     def close(self):
@@ -149,9 +150,12 @@ class EventEmitter(object):
         self._events = {}
         self._wildcards = set()
 
-        self._event_dispatcher.close()
-        self._wevent_dispatcher.close()
-        self._spinner.close()
+        # close handlers
+        if not self._event_dispatcher.closed:
+            self._event_dispatcher.close()
+
+        if not self._spinner.closed:
+            self._spinner.close()
 
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**
@@ -160,71 +164,19 @@ class EventEmitter(object):
         """
         if "." in evtype:
             parts = evtype.split(".")
-            self._publish(parts[0], evtype, *args, **kwargs)
+            self._queue.append((parts[0], evtype, args, kwargs))
             key = []
             for part in parts:
                 key.append(part)
-                self._publish(".".join(key), evtype, *args, **kwargs)
+                self._queue.append((".".join(key), evtype, args, kwargs))
         else:
-            self._publish(evtype, evtype, *args, **kwargs)
+            self._queue.append((evtype, evtype, args, kwargs))
 
         # emit the event for wildcards events
-        self._publish_wildcards(evtype, *args, **kwargs)
+        self._wqueue.append((evtype, args, kwargs))
 
-    def _publish(self, pattern, evtype, *args, **kwargs):
-        if pattern in self._events:
-            self._queue.append((pattern, evtype, args, kwargs))
-
-            if not self._event_dispatcher.active:
-                self._event_dispatcher.start(self._send)
-                self._spinner.start(lambda h: h.stop())
-
-    def _publish_wildcards(self, evtype, *args, **kwargs):
-        if self._wildcards:
-            self._wqueue.append((evtype, args, kwargs))
-
-            if not self._wevent_dispatcher.active:
-                self._wevent_dispatcher.start(self._send_wildcards)
-                self._spinner.start(lambda h: h.stop())
-
-    def _send_wildcards(self, handle):
-        queue, self._wqueue = self._wqueue, deque(maxlen=self._wqueue.maxlen)
-        for evtype, args, kwargs in queue:
-            if self._wildcards:
-                self._wildcards = self._send_listeners(evtype,
-                        self._wildcards.copy(), *args, **kwargs)
-
-        self._wevent_dispatcher.stop()
-
-    def _send(self, handle):
-        queue, self._queue = self._queue, deque(maxlen=self._queue.maxlen)
-        for pattern, evtype, args, kwargs in queue:
-            # emit the event to all listeners
-            if pattern in self._events:
-                self._events[pattern] = self._send_listeners(evtype,
-                    self._events[pattern].copy(), *args, **kwargs)
-
-        self._event_dispatcher.stop()
-
-    def _send_listeners(self, evtype, listeners, *args, **kwargs):
-        to_remove = []
-        for once, listener in listeners:
-            try:
-                listener(evtype, *args, **kwargs)
-            except Exception as e: # we ignore all exception
-                to_remove.append(listener)
-
-            if once:
-                # once event
-                to_remove.append(listener)
-
-        if to_remove:
-            for listener in to_remove:
-                try:
-                    listeners.remove((True, listener))
-                except KeyError:
-                    pass
-        return listeners
+        # send the event for later
+        self._dispatch_event()
 
 
     def subscribe(self, evtype, listener, once=False):
@@ -269,3 +221,47 @@ class EventEmitter(object):
                 self._wildcards = set()
             else:
                 self._events[evtype] = set()
+
+    ### private methods
+
+    def _dispatch_event(self):
+        if not self._event_dispatcher.active:
+            self._event_dispatcher.start(self._send)
+            self._spinner.start(lambda h: h.stop())
+
+    def _send(self, handle):
+        queue, self._queue = self._queue, deque(maxlen=self._queue.maxlen)
+        wqueue, self._wqueue = self._wqueue, deque(maxlen=self._wqueue.maxlen)
+
+        for evtype, args, kwargs in wqueue:
+            if self._wildcards:
+                self._wildcards = self._send_listeners(evtype,
+                        self._wildcards.copy(), *args, **kwargs)
+
+        for pattern, evtype, args, kwargs in queue:
+            # emit the event to all listeners
+            if pattern in self._events:
+                self._events[pattern] = self._send_listeners(evtype,
+                    self._events[pattern].copy(), *args, **kwargs)
+
+        self._event_dispatcher.stop()
+
+    def _send_listeners(self, evtype, listeners, *args, **kwargs):
+        to_remove = []
+        for once, listener in listeners:
+            try:
+                listener(evtype, *args, **kwargs)
+            except Exception: # we ignore all exception
+                to_remove.append(listener)
+
+            if once:
+                # once event
+                to_remove.append(listener)
+
+        if to_remove:
+            for listener in to_remove:
+                try:
+                    listeners.remove((True, listener))
+                except KeyError:
+                    pass
+        return listeners

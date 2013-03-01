@@ -14,6 +14,7 @@ from tornado.web import Application, RequestHandler
 from tornado.httpserver import HTTPServer
 from tornado import netutil
 from gaffer.manager import Manager
+from gaffer.process import ProcessConfig
 from gaffer.webhooks import WebHooks
 
 from test_manager import dummy_cmd
@@ -52,9 +53,9 @@ def create_hooks(events):
     return test_hooks
 
 def test_manager_hooks():
-    hooks = create_hooks(['create', 'start', 'update', 'stop',
-        'delete', 'proc.dummy.start', 'proc.dummy.spawn',
-        'proc.dummy.stop', 'proc.dummy.exit'])
+    hooks = create_hooks(['load', 'unload', 'start', 'update', 'stop',
+        'job.default.dummy.start', 'job.default.dummy.spawn',
+        'job.default.dummy.stop', 'job.default.dummy.exit'])
     emitted = []
     loop = pyuv.Loop.default_loop()
     s = get_server(loop, emitted)
@@ -62,9 +63,10 @@ def test_manager_hooks():
     m = Manager(loop=loop)
     m.start(apps=[WebHooks(hooks)])
     testfile, cmd, args, wdir = dummy_cmd()
-    m.add_process("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
-    m.ttin("dummy", 1)
-    m.remove_process("dummy")
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    m.load(config)
+    m.scale("dummy", 1)
+    m.unload("dummy")
 
     def on_stop(manager):
         s.stop()
@@ -78,12 +80,12 @@ def test_manager_hooks():
     t.start(do_stop, 0.2, 0.0)
 
     m.run()
-    assert ('create', 'dummy') in emitted
-    assert ('start', 'dummy') in emitted
-    assert ('update', 'dummy') in emitted
-    assert ('stop', 'dummy') in emitted
-    assert ('delete', 'dummy') in emitted
-    assert ('proc.dummy.start', 'dummy') in emitted
-    assert ('proc.dummy.spawn', 'dummy') in emitted
-    assert ('proc.dummy.stop', 'dummy') in emitted
-    assert ('proc.dummy.exit', 'dummy') in emitted
+    assert ('load', 'default.dummy') in emitted
+    assert ('start', 'default.dummy') in emitted
+    assert ('update', 'default.dummy') in emitted
+    assert ('stop', 'default.dummy') in emitted
+    assert ('unload', 'default.dummy') in emitted
+    assert ('job.default.dummy.start', 'default.dummy') in emitted
+    assert ('job.default.dummy.spawn', 'default.dummy') in emitted
+    assert ('job.default.dummy.stop', 'default.dummy') in emitted
+    assert ('job.default.dummy.exit', 'default.dummy') in emitted

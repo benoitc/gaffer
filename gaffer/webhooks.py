@@ -36,11 +36,10 @@ import json
 from threading import RLock
 import time
 
-import pyuv
-
 from tornado.httpclient import HTTPError
 
 from .httpclient import HTTPClient
+from .loop import patch_loop
 from .sync import atomic_read, increment, decrement
 
 class WebHooks(object):
@@ -63,9 +62,8 @@ class WebHooks(object):
 
     def start(self, loop, manager):
         """ start the webhook app """
-        self.loop = loop
+        self.loop = patch_loop(loop)
         self.manager = manager
-        self._pool = pyuv.ThreadPool(self.loop)
         self.maybe_start_monitor()
 
     def stop(self):
@@ -156,7 +154,7 @@ class WebHooks(object):
         with self._lock:
             self._jobcount = increment(self._jobcount)
             self._queue.append((msg, urls))
-            self._pool.queue_work(self._send, self._sent)
+            self.loop.queue_work(self._send, self._sent)
 
     def _sent(self, res, exc):
         self._jobcount = decrement(self._jobcount)
@@ -177,16 +175,16 @@ class WebHooks(object):
             try:
                 client.fetch(url, method="POST", headers=headers,
                         body=body)
-            except HTTPError as e:
+            except HTTPError:
                 # for now we ignore all http errors.
                 pass
 
     def _start_monitor(self):
         with self._lock:
-            self.manager.subscribe(".", self._on_event)
+            self.manager.events.subscribe(".", self._on_event)
             self._active = increment(self._active)
 
     def _stop_monitor(self):
         with self._lock:
-            self.manager.unsubscribe(".", self._on_event)
+            self.manager.events.unsubscribe(".", self._on_event)
         self._active = decrement(self._active)
