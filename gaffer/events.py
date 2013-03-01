@@ -144,14 +144,15 @@ class EventEmitter(object):
         self._event_dispatcher = pyuv.Prepare(self.loop)
         self._event_dispatcher.start(self._send)
         self._event_dispatcher.unref()
-
         self._spinner = pyuv.Idle(self.loop)
+        self._closed = False
 
     def close(self):
         """ close the event
 
         This function clear the list of listeners and stop all idle
         callback """
+        self._closed = True
         self._wqueue.clear()
         self._queue.clear()
         self._events = {}
@@ -251,7 +252,7 @@ class EventEmitter(object):
                 self._events[pattern] = self._send_listeners(evtype,
                     self._events[pattern].copy(), *args, **kwargs)
 
-        if self._spinner.closed:
+        if self._closed:
             return
 
         self._spinner.stop()

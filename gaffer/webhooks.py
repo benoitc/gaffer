@@ -70,9 +70,6 @@ class WebHooks(object):
         """ stop the webhook app, stop monitoring to events """
         self._stop_monitor()
         self._queue.clear()
-        if self.jobcount > 0:
-            while self.jobcount > 0:
-                time.sleep(0.01)
 
     def restart(self):
         self._stop_monitor()

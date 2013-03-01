@@ -77,7 +77,7 @@ def test_manager_hooks():
 
 
     t = pyuv.Timer(loop)
-    t.start(do_stop, 0.2, 0.0)
+    t.start(do_stop, 0.4, 0.0)
 
     m.run()
     assert ('load', 'default.dummy') in emitted
