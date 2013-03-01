@@ -23,6 +23,7 @@ COMMANDS_TABLE= {
         "stats": "stats",
         "stopall": "stopall",
         "killall": "killall",
+        "commit": "commit",
         # process commands
         "process_info": "process_info",
         "process_stats": "process_stats",
@@ -143,6 +144,14 @@ class Controller(object):
 
         self.manager.stop_job(cmd.args[0])
         cmd.reply({"ok": True})
+
+    def commit(self, cmd):
+        if not cmd.args:
+            raise CommandError()
+
+        pid = self.manager.commit(cmd.args[0], *cmd.args[1:])
+        cmd.reply({"ok": True, "pid": pid})
+
 
     def scale(self, cmd):
         if len(cmd.args) < 2:

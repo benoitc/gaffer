@@ -115,6 +115,7 @@ class ProcessState(object):
         self.env = env
 
         self.running = deque()
+        self.running_out = deque()
         self.stopped = False
         self.setup()
 
@@ -136,7 +137,7 @@ class ProcessState(object):
 
     @property
     def active(self):
-        return len(self.running) > 0
+        return (len(self.running) + len(self.running_out)) > 0
 
     @property
     def graceful_timeout(self):
@@ -160,7 +161,9 @@ class ProcessState(object):
 
     @property
     def pids(self):
-        return [p.pid for p in self.running]
+        pids = [p.pid for p in self.running]
+        pids.extend([p.pid for p in self.running_out])
+        return pids
 
     def reset(self):
         """ reset this template to default values """

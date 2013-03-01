@@ -460,3 +460,21 @@ def test_kill_process():
         res = f.read()
         assert res == 'STARTHUPQUITSTOP'
 
+def test_process_commit():
+    m, ctl, config = init()
+    config['numprocesses'] = 0
+    m.load(config, start=False)
+    cmd = TestCommand("commit", ["dummy"])
+    ctl.process_command(cmd)
+    time.sleep(0.1)
+
+    state = m._get_locked_state("dummy")
+    assert len(state.running) == 0
+    assert state.numprocesses == 0
+    assert len(state.running_out) == 1
+    assert m.pids() == [1]
+
+    m.stop()
+    m.run()
+
+    assert cmd.result["pid"] == 1

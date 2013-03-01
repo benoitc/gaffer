@@ -328,3 +328,37 @@ class StateJobHandler(CorsHandler):
         else:
             raise ValueError("invalid state")
         return do
+
+
+class CommitJobHandler(CorsHandler):
+    """ /jobs/<sessionid>/<label>/commit """
+
+
+    def post(self, *args):
+        self.preflight()
+        self.set_header('Content-Type', 'application/json')
+        m = self.settings.get('manager')
+
+        try:
+            graceful_timeout, env = self.get_params()
+        except ValueError:
+            self.set_status(400)
+            return self.write({"error": "bad_request"})
+
+        try:
+            pid = m.commit("%s.%s" % (args[0], args[1]),
+                    graceful_timeout=graceful_timeout, env=env)
+        except ProcessError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
+
+        self.write({"pid": pid})
+
+    def get_params(self):
+        obj = json.loads(self.request.body.decode('utf-8'))
+        env = obj.get('env')
+        try:
+            graceful_timeout = int(obj.get('graceful_timeout', 10.0))
+        except TypeError as e:
+            raise ValueError(str(e))
+        return graceful_timeout, env

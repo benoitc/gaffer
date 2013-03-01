@@ -285,3 +285,29 @@ def test_notfound():
     assert cmd.error() is not None
     assert cmd.error()["errno"] == 404
     assert cmd.error()["reason"] == "not_found"
+
+
+def test_commit():
+    m, s, socket = init()
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir,
+            numprocesses=0)
+
+    # send a command
+    cmd0 = socket.send_command("load", config.to_dict(), start=False)
+    cmd1 = socket.send_command("commit", "dummy")
+
+    def stop(h):
+        h.close()
+        socket.close()
+        m.stop()
+
+    t = pyuv.Timer(m.loop)
+    t.start(stop, 0.3, 0.0)
+    m.run()
+
+    assert cmd0.error() == None
+    assert cmd1.error() == None
+    assert cmd0.result() == {"ok": True}
+    assert cmd1.result()["pid"] == 1

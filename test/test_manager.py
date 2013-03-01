@@ -380,10 +380,11 @@ def test_process_exit_event():
     m.run()
 
     assert len(emitted) == 1
-    assert len(emitted[0]) == 6
+    assert len(emitted[0]) == 7
 
     msg = emitted[0]
     assert "exit_status" in msg
+    assert msg['once'] == False
 
 def test_process_stats():
     m = Manager()
@@ -556,6 +557,53 @@ def test_sessions():
     assert stopped == ['gb.a', 'ga.a']
     assert ga2 == ['ga.b']
 
+
+def test_process_commit():
+    emitted = []
+    m = Manager()
+    m.start()
+
+    def cb(ev, msg):
+        emitted.append(msg)
+
+    # subscribe to all events
+    m.events.subscribe('job.default.dummy.exit', cb)
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=0)
+    m.load(config)
+
+    pids0 = m.pids()
+    pid = m.commit("dummy", env={"BLAH": "test"})
+    process = m.get_process(pid)
+    pids1 = m.pids()
+
+    state = m._get_locked_state("dummy")
+
+    assert len(state.running) == 0
+    assert state.numprocesses == 0
+    assert len(state.running_out) == 1
+
+
+    m.unload("dummy")
+
+    time.sleep(0.2)
+    m.stop()
+    m.run()
+
+    assert pids0 == []
+    assert pid == 1
+    assert process.name == "default.dummy"
+    assert process.pid == 1
+    assert "BLAH" in process.env
+    assert pids1 == [1]
+
+    assert len(emitted) == 1
+    assert len(emitted[0]) == 7
+
+    msg = emitted[0]
+    assert "exit_status" in msg
+    assert msg['once'] == True
 
 if __name__ == "__main__":
     test_sessions()

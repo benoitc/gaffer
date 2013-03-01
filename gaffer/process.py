@@ -497,6 +497,8 @@ class Process(object):
         self._info = None
         self.stopped = False
         self.graceful_time = 0
+        self.graceful_timeout = None
+        self.once = False
 
         self._setup_stdio()
 
@@ -523,8 +525,15 @@ class Process(object):
             self._stdio.append(pyuv.StdIO(stream=channel,
                 flags=pyuv.UV_INHERIT_STREAM))
 
-    def spawn(self):
+    def spawn(self, once=False, graceful_timeout=None, env=None):
         """ spawn the process """
+
+        self.once = once
+        self.graceful_timeout = graceful_timeout
+
+        if env is not None:
+            self.env.update(env)
+
         kwargs = dict(
                 file = self.cmd,
                 exit_callback = self._exit_cb,
@@ -591,7 +600,7 @@ class Process(object):
         if self._info is None:
             self._info = dict(pid=self.pid, name=self.name, cmd=self.cmd,
                     args=self.args, env=self.env, uid=self.uid, gid=self.gid,
-                    os_pid=None, create_time=None)
+                    os_pid=None, create_time=None, commited=self.once)
 
         if (self._info.get('create_time') is None and
                 self._pprocess is not None):

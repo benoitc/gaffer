@@ -11,4 +11,4 @@ from .stats import StatsHandler
 from .stream import StreamHandler, WStreamHandler
 from .jobs import (SessionsHandler, AllJobsHandler, JobsHandler,
         JobHandler, JobStatsHandler, ScaleJobHandler,
-        PidsJobHandler, SignalJobHandler, StateJobHandler)
+        PidsJobHandler, SignalJobHandler, StateJobHandler, CommitJobHandler)

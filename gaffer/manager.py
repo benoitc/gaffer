@@ -383,6 +383,20 @@ class Manager(object):
 
             self._stopall(state)
 
+    def commit(self, name, graceful_timeout=10.0, env=None):
+        """ Like ``scale(1) but the process won't be kept alived at the end.
+        It is also not handled uring scaling or reaping. """
+
+        sessionid, name = self._parse_name(name)
+        pname = "%s.%s" % (sessionid, name)
+
+        with self._lock:
+            state = self._get_state(sessionid, name)
+
+            # commit the job and return the pid
+            return self._commit_process(state,
+                    graceful_timeout=graceful_timeout, env=env)
+
     def scale(self, name, n):
         """ Scale the number of processes in for a job. By using this
         function you can increase, decrease or set the number of processes in
@@ -445,10 +459,12 @@ class Manager(object):
             state = self._get_state(sessionid, name)
 
         processes = list(state.running)
+        processes.extend(list(state.running_out))
 
         info = {"name": pname,
                 "active":  state.active,
-                "running": len(state.running),
+                "running": len(processes),
+                "running_out": len(state.running_out),
                 "max_processes": state.numprocesses,
                 "processes": [p.pid for p in processes]}
 
@@ -472,11 +488,13 @@ class Manager(object):
 
         with self._lock:
             state = self._get_state(sessionid, name)
+            processes = list(state.running)
+            processes.extend(list(state.running_out))
 
             stats = []
             lmem = []
             lcpu = []
-            for p in state.running:
+            for p in processes:
                 pstats = p.stats
                 pstats['pid'] = p.pid
                 pstats['os_pid'] = p.os_pid
@@ -523,7 +541,13 @@ class Manager(object):
             # remove the process from the state
             sessionid, name = self._parse_name(p.name)
             state = self._get_state(sessionid, name)
-            state.remove(p)
+
+            # if the process is marked once it means the job has been
+            # committed and the process shouldn't be restarted
+            if p.once:
+                state.running_out.remove(p)
+            else:
+                state.remove(p)
 
             # notify we stop this pid
             self._publish("stop_process", pid=p.pid, name=p.name)
@@ -533,7 +557,8 @@ class Manager(object):
 
             # track this process to make sure it's killed after the
             # graceful time
-            self._tracker.check(p, state.graceful_timeout)
+            graceful_timeout = p.graceful_timeout or state.graceful_timeout
+            self._tracker.check(p, graceful_timeout)
 
     def stopall(self, name):
         """ stop all processes of a job. Processes are just exiting and will
@@ -567,7 +592,11 @@ class Manager(object):
         with self._lock:
             state = self._get_state(sessionid, name)
             self._publish("job.%s.kill" % pname, name=pname, signum=signum)
-            for p in state.running:
+
+            processes = list(state.running)
+            processes.extend(list(state.running_out))
+            print(processes)
+            for p in processes:
                 # notify we stop this job
                 self._publish("proc.%s.kill" % p.pid, pid=p.pid, name=p.name)
                 # effectively send the signal
@@ -749,19 +778,10 @@ class Manager(object):
 
     # ------------- process type private functions
 
-
-    def _stopall(self, state):
-        """ stop all processes of a job """
-
-        # start the flapping detection before killing the process to prevent
-        # any race condition
-
-        if state.flapping_timer is not None:
-            state.flapping_timer.stop()
-
+    def _stop_group(self, state, group):
         while True:
             try:
-                p = state.dequeue()
+                p = group.popleft()
             except IndexError:
                 break
 
@@ -778,13 +798,53 @@ class Manager(object):
 
             # track this process to make sure it's killed after the
             # graceful time
-            self._tracker.check(p, state.graceful_timeout)
+            graceful_timeout = p.graceful_timeout or state.graceful_timeout
+            self._tracker.check(p, graceful_timeout)
+
+    def _stopall(self, state):
+        """ stop all processes of a job """
+
+        # stop the flapping detection before killing the process to prevent
+        # any race condition
+        if state.flapping_timer is not None:
+            state.flapping_timer.stop()
+
+        # kill all keepalived processes
+        if state.running:
+            self._stop_group(state, state.running)
+
+        # kill all others processes (though who have been committed)
+        if state.running_out:
+            self._stop_group(state, state.running_out)
 
         # if the job isn't stopped, restart the flapping detection
         if not state.stopped and state.flapping_timer is not None:
             state.flapping_timer.start()
 
     # ------------- functions that manage the process
+
+    def _commit_process(self, state, graceful_timeout=10.0, env=None):
+        """ like spawn but doesn't keep the process associated to the state.
+        It should die at the end """
+        # get internal process id
+        pid = self.get_process_id()
+
+        # start process
+        p = state.make_process(self.loop, pid, self._on_process_exit)
+        p.spawn(once=True, graceful_timeout=graceful_timeout, env=env)
+
+        # add the pid to external processes in the state
+        state.running_out.append(p)
+
+        # we keep a list of all running process by id here
+        self.running[pid] = p
+
+        # notify
+        self._publish("spawn", name=p.name, pid=pid, os_pid=p.os_pid)
+
+        # on commit we return the pid now, so someone will be able to use it.
+        return pid
+
 
     def _spawn_process(self, state):
         """ spawn a new process and add it to the state """
@@ -905,6 +965,7 @@ class Manager(object):
 
     def _on_exit(self, evtype, msg):
         sessionid, name = self._parse_name(msg['name'])
+        once = msg.get('once', False)
 
         with self._lock:
             try:
@@ -914,7 +975,7 @@ class Manager(object):
                 return
 
             # eventually restart the process
-            if not state.stopped:
+            if not state.stopped and not once:
                 # manage the template, eventually restart a new one.
                 if self._check_flapping(state):
                     self._manage_processes(state)
@@ -929,18 +990,23 @@ class Manager(object):
             if process.pid in self.running:
                 self.running.pop(process.pid)
 
+            print("exit %s" % process.pid)
+
             sessionid, name = self._parse_name(process.name)
             try:
                 state = self._get_state(sessionid, name)
                 # remove the process from the state if needed
-                state.remove(process)
+                if process.once:
+                    state.running_out.remove(process)
+                else:
+                    state.remove(process)
             except (ProcessNotFound, KeyError):
                 pass
 
             # notify other that the process exited
             ev_details = dict(name=process.name, pid=process.pid,
                     exit_status=exit_status, term_signal=term_signal,
-                    os_pid=process.os_pid)
+                    os_pid=process.os_pid, once=process.once)
 
             self._publish("exit", **ev_details)
             self._publish("job.%s.exit" % process.name, **ev_details)

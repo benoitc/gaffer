@@ -302,5 +302,47 @@ def test_job_notfound():
     m.stop()
     m.run()
 
+
+def test_job_commit():
+    m, s = init()
+
+    testfile, cmd, args, wdir = dummy_cmd()
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=0)
+    job = s.load(config, start=False)
+    time.sleep(0.2)
+    assert isinstance(job, Job)
+    assert job.active == False
+    assert job.numprocesses == 0
+    assert job.running == 0
+    assert job.running_out == 0
+
+
+    pid = job.commit()
+
+    assert pid == 1
+    assert s.pids() == [1]
+    assert job.active == True
+    assert job.numprocesses == 0
+    assert job.running == 1
+    assert job.running_out == 1
+
+
+    state = m._get_locked_state("dummy")
+    assert len(state.running) == 0
+    assert state.numprocesses == 0
+    assert len(state.running_out) == 1
+    assert m.pids() == [1]
+
+
+    job.scale(1)
+    assert s.pids() == [1, 2]
+    assert job.active == True
+    assert job.numprocesses == 1
+    assert job.running == 2
+    assert job.running_out == 1
+
+    m.stop()
+    m.run()
+
 if __name__ == "__main__":
     test_template()

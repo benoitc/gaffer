@@ -147,8 +147,11 @@ class BaseClient(object):
         return resp
 
     def json_body(self, resp):
-        return json.loads(resp.body.decode('utf-8'))
-
+        respbody = resp.body.decode('utf-8')
+        try:
+            return json.loads(respbody)
+        except ValueError:
+            return respbody
 
 
 class Server(BaseClient):
@@ -164,6 +167,8 @@ class Server(BaseClient):
     def running(self):
         resp = self.request("get", "/pids")
         return self.json_body(resp)['pids']
+
+    pids = running
 
     def ping(self):
         resp = self.request("get", "/ping")
@@ -384,6 +389,12 @@ class Job(object):
         return info['running']
 
     @property
+    def running_out(self):
+        """ return the number of processes running for this template """
+        info = self.info()
+        return info['running_out']
+
+    @property
     def numprocesses(self):
         """ return the maximum number of processes that can be launched
         for this template """
@@ -436,6 +447,18 @@ class Job(object):
             self.sessionid, self.name), body=body)
         result = self.server.json_body(resp)
         return result['numprocesses']
+
+
+    def commit(self, graceful_timeout=10.0, env=None):
+        """ Like ``scale(1) but the process won't be kept alived at the end.
+        It is also not handled uring scaling or reaping. """
+
+        env = env or {}
+        body = json.dumps({"graceful_timeout": graceful_timeout, "env": env})
+        resp = self.server.request("post", "/jobs/%s/%s/commit" % (
+            self.sessionid, self.name), body=body)
+        result = self.server.json_body(resp)
+        return result['pid']
 
     def kill(self, sig):
         """ send a signal to all processes of this template """
