@@ -79,12 +79,16 @@ class LookupConnection(sockjs.SockJSConnection):
 
     def on_event(self, event, message):
         if event in ('add_node', 'remove_node', 'identify', ):
-            message = message.infodict()
+            msg = message.infodict()
         else:
-            message['node'] = message['node'].infodict()
+            msg = {}
+            for k, v in message.items():
+                if k == "node":
+                    v = v.infodict()
+                msg[k] = v
         # add event to the message
-        message['event'] = event
-        self.write_message(message)
+        msg['event'] = event
+        self.write_message(msg)
 
     def write_message(self, msg):
         if isinstance(msg, dict):

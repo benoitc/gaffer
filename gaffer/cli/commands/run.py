@@ -9,7 +9,6 @@ from ...httpclient import GafferNotFound
 from ...process import ProcessConfig
 
 
-
 class Run(Command):
     """
     usage: gaffer run <job> [--graceful-timeout=TIMEOUT]
