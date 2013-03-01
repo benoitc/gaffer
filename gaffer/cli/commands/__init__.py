@@ -4,6 +4,7 @@ from gaffer.cli.commands import (
         unload,
         reload,
         ps,
+        run,
         info,
         scale,
         start,

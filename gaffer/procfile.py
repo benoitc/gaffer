@@ -49,7 +49,7 @@ class Procfile(object):
 
         # initialize value
         self.cfg = self.parse(self.procfile)
-        self.env = self.get_env(self.envs)
+        self.env = get_env(self.envs)
 
         # used to cache the appname
         self._appname = None
@@ -68,22 +68,6 @@ class Procfile(object):
                 if m:
                     cfg[m.group(1)] = m.group(2)
         return cfg
-
-    def get_env(self, envs=[]):
-        """ build the procfile environment from a list of procfiles """
-        env = {}
-        for path in envs:
-            if os.path.isfile(path):
-                with open(path, 'r') as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        p = line.split('=', 1)
-                        if len(p) == 2:
-                            k, v = p
-                            # remove double quotes
-                            v = v.strip('\n').replace('\"','')
-                            env[k] = v
-        return env
 
     def get_appname(self):
         if not self._appname:
@@ -136,3 +120,19 @@ class Procfile(object):
         else:
             args = []
         return cmd, args
+
+
+def get_env(envs=[]):
+    env = {}
+    for path in envs:
+        if os.path.isfile(path):
+            with open(path, 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    p = line.split('=', 1)
+                    if len(p) == 2:
+                        k, v = p
+                        # remove double quotes
+                        v = v.strip('\n').replace('\"','')
+                        env[k] = v
+    return env

@@ -26,7 +26,7 @@ import sys
 from .. import __version__
 from ..docopt import docopt, printable_usage
 from ..httpclient import Server
-from ..procfile import Procfile
+from ..procfile import Procfile, get_env
 
 from .commands import get_commands
 
@@ -35,6 +35,14 @@ class Config(object):
 
     def __init__(self, args):
         self.args = args
+
+        if self.args["--env"]:
+            self.envs = list(set(self.args["--env"]))
+        else:
+            self.envs = ['.env']
+
+        # initialize the env object
+        self.env = get_env(self.envs)
 
         # initialize the procfile
         self.procfile = self._init_procfile()
@@ -61,11 +69,6 @@ class Config(object):
         return self.args["--gafferd-http-address"]
 
     def _init_procfile(self):
-        if self.args["--env"]:
-            envs = list(set(self.args["--env"]))
-        else:
-            envs = ['.env']
-
         procfile = "Procfile"
 
         if self.args['--procfile']:
@@ -83,7 +86,7 @@ class Config(object):
                 return None
 
         else:
-            return Procfile(procfile, root=root, envs=envs)
+            return Procfile(procfile, root=root, envs=self.envs)
 
 class GafferCli(object):
 

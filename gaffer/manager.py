@@ -383,7 +383,7 @@ class Manager(object):
 
             self._stopall(state)
 
-    def commit(self, name, graceful_timeout=10.0, env=None):
+    def commit(self, name, graceful_timeout=0, env=None):
         """ Like ``scale(1) but the process won't be kept alived at the end.
         It is also not handled uring scaling or reaping. """
 

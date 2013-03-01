@@ -12,7 +12,7 @@ from ...process import ProcessConfig
 from ...sig_handler import SigHandler
 
 
-class Run(Command):
+class DevRun(Command):
     """
     usage: gaffer dev:run [-v] [-c concurrency|--concurrency concurrency]
                           (<args>...)

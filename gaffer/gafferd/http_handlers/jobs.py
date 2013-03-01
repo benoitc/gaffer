@@ -357,8 +357,10 @@ class CommitJobHandler(CorsHandler):
     def get_params(self):
         obj = json.loads(self.request.body.decode('utf-8'))
         env = obj.get('env')
-        try:
-            graceful_timeout = int(obj.get('graceful_timeout', 10.0))
-        except TypeError as e:
-            raise ValueError(str(e))
+        graceful_timeout = obj.get('graceful_timeout')
+        if graceful_timeout is not None:
+            try:
+                graceful_timeout = int(obj.get('graceful_timeout'))
+            except TypeError as e:
+                raise ValueError(str(e))
         return graceful_timeout, env
