@@ -138,6 +138,9 @@ class EventEmitter(object):
         self._wqueue = deque(maxlen=max_size)
 
         self._event_dispatcher = pyuv.Prepare(self.loop)
+        self._event_dispatcher.start(self._send)
+        self._event_dispatcher.unref()
+
         self._spinner = pyuv.Idle(self.loop)
 
     def close(self):
@@ -225,9 +228,7 @@ class EventEmitter(object):
     ### private methods
 
     def _dispatch_event(self):
-        if not self._event_dispatcher.active:
-            self._event_dispatcher.start(self._send)
-            self._spinner.start(lambda h: h.stop())
+        self._spinner.start(lambda h: None)
 
     def _send(self, handle):
         queue, self._queue = self._queue, deque(maxlen=self._queue.maxlen)
@@ -244,7 +245,7 @@ class EventEmitter(object):
                 self._events[pattern] = self._send_listeners(evtype,
                     self._events[pattern].copy(), *args, **kwargs)
 
-        self._event_dispatcher.stop()
+        self._spinner.stop()
 
     def _send_listeners(self, evtype, listeners, *args, **kwargs):
         to_remove = []
