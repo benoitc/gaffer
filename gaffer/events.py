@@ -118,10 +118,14 @@ Classes
 """
 
 from collections import deque
+import logging
 
 import pyuv
 
 from .loop import patch_loop
+
+LOGGER = logging.getLogger("gaffer")
+
 
 class EventEmitter(object):
     """ Many events happend in gaffer. For example a process will emist
@@ -231,15 +235,17 @@ class EventEmitter(object):
         self._spinner.start(lambda h: None)
 
     def _send(self, handle):
-        queue, self._queue = self._queue, deque(maxlen=self._queue.maxlen)
-        wqueue, self._wqueue = self._wqueue, deque(maxlen=self._wqueue.maxlen)
+        lwqueue = len(self._wqueue)
+        lqueue = len(self._queue)
 
-        for evtype, args, kwargs in wqueue:
+        for i in range(lwqueue):
+            evtype, args, kwargs = self._wqueue.popleft()
             if self._wildcards:
                 self._wildcards = self._send_listeners(evtype,
                         self._wildcards.copy(), *args, **kwargs)
 
-        for pattern, evtype, args, kwargs in queue:
+        for i in range(lqueue):
+            pattern, evtype, args, kwargs = self._queue.popleft()
             # emit the event to all listeners
             if pattern in self._events:
                 self._events[pattern] = self._send_listeners(evtype,
@@ -253,6 +259,8 @@ class EventEmitter(object):
             try:
                 listener(evtype, *args, **kwargs)
             except Exception: # we ignore all exception
+                LOGGER.exception('exception calling listener callback for %r',
+                        self)
                 to_remove.append(listener)
 
             if once:
