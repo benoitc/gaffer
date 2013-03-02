@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import os
 import signal
 import sys
 import time
 
+PY3 = sys.version_info[0] == 3
 
 class Echo(object):
 
@@ -25,10 +28,18 @@ class Echo(object):
     def run(self):
         i = 0
         try:
-            stream = os.fdopen(3, 'wb+', buffering=0)
+            if PY3:
+                stream = os.fdopen(3, 'wb+', buffering=0)
+            else:
+                stream =  os.fdopen(3, "w+")
+
             while self.alive:
                 c = stream.readline()
-                stream.write(c)
+                if PY3:
+                    stream.write(c)
+                else:
+                    print(c, file=stream)
+
                 stream.flush()
         except Exception as e:
             sys.stdout.write(str(e))
