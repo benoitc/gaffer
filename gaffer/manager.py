@@ -603,7 +603,6 @@ class Manager(object):
 
             processes = list(state.running)
             processes.extend(list(state.running_out))
-            print(processes)
             for p in processes:
                 # notify we stop this job
                 self._publish("proc.%s.kill" % p.pid, pid=p.pid, name=p.name)
