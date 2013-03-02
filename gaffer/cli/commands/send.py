@@ -27,11 +27,12 @@ class SigHandler(BaseSigHandler):
 class Send(Command):
 
     """
-    usage: gaffer send [--app APP] <pid> <data>
+    usage: gaffer send [--app APP] [-s STREAM|--stream STREAM] <pid> <data>...
 
       <data>  file inpur or data input
 
-      --app APP     name of the procfile application.
+      --app APP                  name of the procfile application or session.
+      -s STREAM --stream STREAM  name of the stream where to send the data
     """
 
     name = "send"
@@ -41,19 +42,36 @@ class Send(Command):
         appname = self.default_appname(config, args)
         server  = config.get("server")
 
-        if not args['<pid>'].isdigit():
+        stream = args["--stream"]
+        if "." in args['<pid>']:
+            pid, stream = args['<pid>'].split(".", 1)
+        else:
+            pid = args['<pid>']
+
+
+        if not pid.isdigit():
             raise RuntimeError("invalid <pid> value")
 
         try:
-            p = server.get_process(int(args['<pid>']))
+            p = server.get_process(int(pid))
         except GafferNotFound:
-            print("process %r not found" % args['<pid>'])
+            print("process %r not found" % pid)
             return
 
+        # make sure we can send some data before sending it.
+        if stream is not None and stream != "stdin":
+            if stream not in p.custom_streams:
+                raise RuntimeError("stream %r not found" % stream)
+        elif not p.redirect_input:
+            raise RuntimeError("can't write on this process, (no stdin)")
+
+        # make pid & stream available in the instance
+        self.pid = int(pid)
+        self.stream = stream
 
         self.socket = server.socket()
         self.socket.start()
-        data = args["<data>"]
+        data = " ".join(args["<data>"])
         self.args = args
         self.tty = None
         self.should_close = False
@@ -67,7 +85,13 @@ class Send(Command):
             data = data.strip()
             if not data.endswith('\n'):
                 data = data + os.linesep
-            cmd = self.socket.send_command("send", int(args['<pid>']), data)
+
+            args = [self.pid, data]
+            if (self.stream and
+                    (self.stream is not None or self.stream != "stdin")):
+                args.append(stream)
+
+            cmd = self.socket.send_command("send", *args)
             cmd.add_done_callback(self._on_done)
 
         server.loop.run()
@@ -96,8 +120,13 @@ class Send(Command):
             self.stop()
         else:
             data = data.decode('utf-8') + os.linesep
-            cmd = self.socket.send_command("send", int(self.args['<pid>']),
-                    data)
+
+            args = [self.pid, data]
+            if (self.stream and
+                    (self.stream is not None or self.stream != "stdin")):
+                args.append(self.stream)
+
+            cmd = self.socket.send_command("send", *args)
             cmd.add_done_callback(self._on_tty_done)
 
     def stop(self):

@@ -213,15 +213,19 @@ class ChannelConnection(SockJSConnection):
             sub.callback = partial(self._dispatch_output, sub.topic)
             proc = self.manager.get_process(sub.pid)
 
-            if not proc.redirect_output:
-                raise SubscriptionError("no_redirection_output")
-
+            # get the target to receive the data from
             if sub.target == sub.pid:
                 target = proc.redirect_output[0]
             else:
                 target = sub.target
 
-            proc.monitor_io(target, sub.callback)
+            # check if the target exists
+            if target in proc.redirect_output:
+                proc.monitor_io(target, sub.callback)
+            elif target in proc.custom_streams:
+                proc.streams[target].subscribe(sub.callback)
+            else:
+                raise SubscriptionError("stream_not_found")
         else:
             raise SubscriptionError("invalid_topic")
 
@@ -250,7 +254,10 @@ class ChannelConnection(SockJSConnection):
                 else:
                     target = sub.target
 
-                proc.unmonitor_io(target, sub.callback)
+                if target in proc.redirect_output:
+                    proc.unmonitor_io(target, sub.callback)
+                elif target in proc.custom_streams:
+                    proc.streams[stream].unsubscribe(sub.callback)
 
     def _dispatch_event(self, topic, evtype, ev):
         data = { "event": evtype, "topic": topic}

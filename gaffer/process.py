@@ -602,7 +602,8 @@ class Process(object):
                     args=self.args, env=self.env, uid=self.uid, gid=self.gid,
                     os_pid=None, create_time=None, commited=self.once,
                     redirect_output=self.redirect_output,
-                    redirect_input=self.redirect_input)
+                    redirect_input=self.redirect_input,
+                    custom_streams=self.custom_streams)
 
         if (self._info.get('create_time') is None and
                 self._pprocess is not None):

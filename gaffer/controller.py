@@ -216,8 +216,8 @@ class Controller(object):
         cmd.reply({"ok": True})
 
     def send(self, cmd):
-        if len(cmd.args) < 2:
+        if len(cmd.args) < 2 or len(cmd.args) > 3:
             raise CommandError()
 
-        self.manager.send(cmd.args[0], cmd.args[1])
+        self.manager.send(*cmd.args)
         cmd.reply({"ok": True})

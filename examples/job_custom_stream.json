@@ -1,0 +1,6 @@
+{
+    "name": "examples.echo_stream",
+    "cmd": "python -u ./echo_stream.py",
+    "redirect_output": ["out"],
+    "custom_streams": ["echo"]
+}

@@ -583,14 +583,26 @@ class Manager(object):
             # effectively send the signal
             p.kill(signum)
 
-    def send(self, pid, lines):
+    def send(self, pid, lines, stream=None):
         """ send some data to the process """
         with self._lock:
             p = self._get_pid(pid)
-            if isinstance(lines, list):
-                p.writelines(lines)
+
+            # find the stream we need to write to
+            if not stream or stream == "stdin":
+                target = p
             else:
-                p.write(lines)
+                if stream in p.streams:
+                    target = p.streams[stream]
+                else:
+                    raise ProcessError(404, "stream_not_found")
+
+            # finally write to the stream
+            if isinstance(lines, list):
+                target.writelines(lines)
+            else:
+                target.write(lines)
+
 
     def killall(self, name, sig):
         """ send a signal to all processes of a job """
