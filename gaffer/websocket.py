@@ -4,6 +4,7 @@
 
 import array
 import base64
+from collections import deque
 import functools
 import hashlib
 import json
@@ -25,8 +26,11 @@ from tornado.util import bytes_type
 from .tornado_pyuv import IOLoop, install
 install()
 
+from .error import AlreadyRead
 from .events import EventEmitter
 from .loop import patch_loop
+from .message import (Message, decode_frame, FRAME_ERROR_TYPE,
+        FRAME_RESPONSE_TYPE, FRAME_MESSAGE_TYPE)
 from .util import urlparse, ord_
 
 # The initial handshake over HTTP.
@@ -85,6 +89,9 @@ class WebSocket(object):
         self.host = self.url.hostname
         self.port = self.url.port or ports[self.url.scheme]
         self.path = self.url.path or '/'
+
+        # support the query argument in the path
+        self.path += self.url.query and "?%s" % self.url.query or ""
 
         self.client_terminated = False
         self.server_terminated = False
@@ -433,7 +440,7 @@ class GafferCommand(object):
             try:
                 cb(self)
             except Exception:
-                LOGGER.exception('exception calling callback for %r', self)
+                logging.error('Uncaught exception', exc_info=True)
 
 
 class GafferSocket(WebSocket):
@@ -604,3 +611,117 @@ class GafferSocket(WebSocket):
         # on heartbeat send a nop message to the channel
         # it will maintain the connection open
         self.write_message(json.dumps({"event": "NOP"}))
+
+
+class IOChannel(WebSocket):
+
+    def __init__(self, loop, url, mode=3, **kwargs):
+        loop = patch_loop(loop)
+
+        # initialize the capabilities
+        self.mode = mode
+        self.readable = False
+        self.writable = False
+        if mode & pyuv.UV_READABLE:
+            self.readable = True
+
+        if mode & pyuv.UV_WRITABLE:
+            self.writable = True
+
+        # set heartbeat
+        try:
+            self.heartbeat_timeout = kwargs.pop('heartbeat')
+        except KeyError:
+            self.heartbeat_timeout = 15.0
+        self._heartbeat = pyuv.Timer(loop)
+
+        # pending messages queue
+        self._queue = deque()
+        self.pending = {}
+
+        # define status
+        self.active = False
+        self.closed = False
+
+        # read callback
+        self._read_callback = None
+
+        super(IOChannel, self).__init__(loop, url, **kwargs)
+
+    def start(self):
+        if self.active:
+            return
+
+        super(IOChannel, self).start()
+        self.active = True
+
+    def start_read(self, callback):
+        if not self.readable:
+            raise IOError("not_readable")
+
+        if self._read_callback is not None:
+            raise AlreadyRead()
+        self._read_callback = callback
+
+    def stop_read(self):
+        self._read_callback = None
+
+
+    def write(self, data, callback=None):
+        if not self.writable:
+            raise IOError("not_writable")
+
+        msg = Message(data)
+        if callback is not None:
+            self.pending[msg.id] = callback
+
+        self.write_message(msg.encode())
+
+    ### websocket methods
+
+    def on_open(self):
+        # start the heartbeat
+        self._heartbeat.start(self.on_heartbeat, self.heartbeat_timeout,
+                self.heartbeat_timeout)
+        self._heartbeat.unref()
+
+    def on_close(self):
+        self.active = False
+        self.closed = True
+        self._heartbeat.stop()
+
+    def on_error(self, cb):
+        self._on_error_cb = cb
+
+    def on_message(self, raw):
+        msg = decode_frame(raw)
+        if msg.type in (FRAME_ERROR_TYPE, FRAME_RESPONSE_TYPE):
+            # did we received an error?
+            error = None
+            result = None
+            if msg.type == FRAME_ERROR_TYPE:
+                error = json.loads(msg.body.decode('utf-8'))
+                self.close()
+            else:
+                result = msg.body
+
+            if msg.id == "gaffer_error":
+                if self._on_error_cb is not None:
+                    return self._async_callback(self._on_error_cb)(self, obj)
+
+            # handle message callback if any
+            try:
+                callback = self.pending.pop(msg.id)
+            except KeyError:
+                return
+
+            self._async_callback(callback)(self, result, error)
+
+        elif msg.type == FRAME_MESSAGE_TYPE:
+            if self._read_callback is not None:
+                self._async_callback(self._read_callback)(self, msg.body)
+
+    def on_heartbeat(self, h):
+        # on heartbeat send a nop message to the channel
+        # it will maintain the connection open
+        self.ping()

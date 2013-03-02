@@ -30,6 +30,8 @@ DEFAULT_HANDLERS = [
         (r'/([0-9^/]+)', http_handlers.ProcessIdHandler),
         (r'/([0-9^/]+)/signal$', http_handlers.ProcessIdSignalHandler),
         (r'/([0-9^/]+)/stats$', http_handlers.ProcessIdStatsHandler),
+        (r'/([0-9^/]+)/channel', http_handlers.PidChannel),
+        (r'/([0-9^/]+)/channel/([^/]+)$', http_handlers.PidChannel),
         (r'/pids', http_handlers.AllProcessIdsHandler),
         (r'/sessions', http_handlers.SessionsHandler),
         (r'/jobs', http_handlers.AllJobsHandler),
@@ -98,6 +100,7 @@ class HttpHandler(object):
         user_settings = { "manager": manager }
         channel_router = sockjs.SockJSRouter(http_handlers.ChannelConnection,
                 "/channel", io_loop=self.io_loop, user_settings=user_settings)
+
         handlers = self.handlers + channel_router.urls
 
         # create the application

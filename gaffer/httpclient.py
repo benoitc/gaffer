@@ -43,7 +43,7 @@ from .loop import patch_loop, get_loop
 from .process import ProcessConfig
 from .tornado_pyuv import IOLoop
 from .util import quote, quote_plus, parse_signal_value
-from .websocket import GafferSocket
+from .websocket import GafferSocket, IOChannel
 
 class GafferNotFound(Exception):
     """ exception raised on HTTP 404 """
@@ -344,6 +344,35 @@ class Process(object):
         self.server.request("post", "/%s/signal" % self.pid, body=body,
                 headers=headers)
         return True
+
+    def socket(self, mode=3, stream=None, heartbeat=None):
+        """ return an IO channel to a PID stream. This channek allows you to
+        read and write to a stream if the operation is available
+
+        Args:
+
+          - **mode**: Mask of events that will be detected. The possible events
+            are pyuv.UV_READABLE or pyuv.UV_WRITABLE.
+          - **stream**: stream name as a string. By default it is using STDIO.
+          - **hearbeat**: heartbeat in seconds to maintain the connection alive
+            [default 15.0s]
+        """
+        # build connection url
+        if stream is None:
+            url = make_uri(self.server.uri, '/%s/channel' % self.pid,
+                mode=mode)
+        else:
+            url = make_uri(self.server.uri, '/%s/channel/%s' % (self.pid,
+                stream), mode=mode)
+        url = "ws%s" % url.split("http", 1)[1]
+
+        # build connection options
+        options = self.server.options.copy()
+        if heartbeat and heartbeat is not None:
+            options['heartbeat'] = heartbeat
+
+        return IOChannel(self.server.loop, url, mode=mode, **options)
+
 
 class Job(object):
     """ Job object. Represent a remote job"""

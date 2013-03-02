@@ -5,7 +5,7 @@
 from .channels import ChannelConnection
 from .misc import WelcomeHandler, PingHandler, VersionHandler
 from .pid import (AllProcessIdsHandler, ProcessIdHandler,
-        ProcessIdSignalHandler, ProcessIdStatsHandler)
+        ProcessIdSignalHandler, ProcessIdStatsHandler, PidChannel)
 from .watcher import WatcherHandler
 from .stats import StatsHandler
 from .stream import StreamHandler, WStreamHandler

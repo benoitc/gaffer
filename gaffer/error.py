@@ -45,3 +45,8 @@ class CommandError(ProcessError):
 
 class CommandNotFound(ProcessNotFound):
     """ exception raised when a command doesn't exist """
+
+class AlreadyRead(ProcessError):
+
+    def __init__(self,):
+        ProcessError.__init__(self, errno=403, reason="already_read")
