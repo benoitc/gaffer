@@ -48,15 +48,14 @@ def test_basic():
     to make sure we don't close the websocket client before fetching the event
     we are closing the connection and server after 0.8s.
     """
-    opened = [] # used to collect open connection success
+
+    m = start_manager()
+    s = get_server(m.loop)
+
     messages = [] # collect events
-    success = [] # collect subscription success
 
     # define a basic websocket client handler to collect message
     class TestClient(WebSocket):
-
-        def on_open(self):
-            opened.append(True)
 
         def on_message(self, raw):
             msg = json.loads(raw)
@@ -64,9 +63,8 @@ def test_basic():
             # each gaffer message should contain an event property
             assert "event" in msg
             event = msg['event']
-            if event == "gaffer:subscription_success":
-                success.append(True)
-            elif event == "gaffer:event":
+
+            if event == "gaffer:event":
                 # if message type is an event then it should contain a data
                 # property
                 assert "data" in msg
@@ -80,38 +78,35 @@ def test_basic():
                 # we only collect `(eventtype, joblabel)` tuples
                 messages.append((data['event'], data['name']))
 
-    m = start_manager()
-    s = get_server(m.loop)
-
     ws = TestClient(m.loop, TEST_URL)
     ws.start()
+    time.sleep(0.1)
+
     # subscribe
     ws.write_message(json.dumps({"event": "SUB", "data": {"topic":
         "EVENTS"}}))
 
     testfile, cmd, args, wdir = dummy_cmd()
-    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
 
-    t1 = pyuv.Timer(m.loop)
+    def do_events(h):
+        h.close()
+        m.load(config)
+        m.scale("dummy", 1)
+        m.unload("dummy")
 
     def stop(h):
         h.close()
         ws.close()
         m.stop()
 
-    def do_events(h):
-        m.load(config)
-        m.scale("dummy", 1)
-        m.unload("dummy")
-        t1.start(stop, 0.4, 0.0)
-
-
     t = pyuv.Timer(m.loop)
     t.start(do_events, 0.4, 0.0)
+    t1 = pyuv.Timer(m.loop)
+    t1.start(stop, 0.8, 0.0)
+
     m.run()
 
-    assert opened == [True]
-    assert success == [True]
     assert ('load', 'default.dummy') in messages
     assert ('start', 'default.dummy') in messages
     assert ('update', 'default.dummy') in messages
@@ -311,3 +306,6 @@ def test_commit():
     assert cmd1.error() == None
     assert cmd0.result() == {"ok": True}
     assert cmd1.result()["pid"] == 1
+
+if __name__ == "__main__":
+    test_basic()
