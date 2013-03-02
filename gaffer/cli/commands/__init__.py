@@ -12,6 +12,7 @@ from gaffer.cli.commands import (
         kill,
         logs,
         recv,
+        send,
         lookup,
         lookup_job,
         lookup_session,

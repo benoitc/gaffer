@@ -26,7 +26,7 @@ class Echo(object):
         i = 0
         while self.alive:
             c = sys.stdin.readline()
-            print(c)
+            sys.stdout.write(c)
             sys.stdout.flush()
 
 if __name__ == "__main__":

@@ -672,6 +672,7 @@ class Process(object):
         """ send data to the process via stdin"""
         if not self._redirect_in:
             raise IOError("stdin not redirected")
+        print("write %s" % data)
         self._redirect_in.write(data)
 
     def writelines(self, data):

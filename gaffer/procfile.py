@@ -51,6 +51,18 @@ class Procfile(object):
         self.cfg = self.parse(self.procfile)
         self.env = get_env(self.envs)
 
+        self.redirect_input = []
+        self.uid = None
+        self.gid = None
+
+        for k, v in self.env.items():
+            if k == "GAFFER_UID":
+                self.uid = v
+            elif k == "GAFFER_GID":
+                self.gid = v
+            elif k == "GAFFER_REDIRECT_INPUT":
+                self.redirect_input = v.split()
+
         # used to cache the appname
         self._appname = None
 

@@ -79,10 +79,16 @@ class Load(Command):
 
         # finally send the processes
         for name, cmd_str in procfile.processes():
+            if name in procfile.redirect_input:
+                redirect_input = True
+            else:
+                redirect_input = False
+
             cmd, args = procfile.parse_cmd(cmd_str)
             params = dict(args=args, env=procfile.env,
                     numprocesses=concurrency.get(name, 1),
                     redirect_output=['out', 'err'],
+                    redirect_input=redirect_input,
                     cwd=os.path.abspath(procfile.root))
 
             config = ProcessConfig(name, cmd, **params)

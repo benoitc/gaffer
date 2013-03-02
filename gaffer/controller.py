@@ -28,6 +28,7 @@ COMMANDS_TABLE= {
         "process_info": "process_info",
         "process_stats": "process_stats",
         "stop_process": "stop_process",
+        "send": "send",
         "kill": "kill"}
 
 
@@ -212,4 +213,11 @@ class Controller(object):
             raise CommandError()
 
         self.manager.kill(cmd.args[0], cmd.args[1])
+        cmd.reply({"ok": True})
+
+    def send(self, cmd):
+        if len(cmd.args) < 2:
+            raise CommandError()
+
+        self.manager.send(cmd.args[0], cmd.args[1])
         cmd.reply({"ok": True})

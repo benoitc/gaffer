@@ -583,6 +583,14 @@ class Manager(object):
             # effectively send the signal
             p.kill(signum)
 
+    def send(self, pid, lines):
+        """ send some data to the process """
+        with self._lock:
+            p = self._get_pid(pid)
+            if isinstance(lines, list):
+                p.writelines(lines)
+            else:
+                p.write(lines)
 
     def killall(self, name, sig):
         """ send a signal to all processes of a job """
