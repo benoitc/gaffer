@@ -450,9 +450,9 @@ def test_kill_process():
     time.sleep(0.2)
 
     m.stop_job("dummy")
-    time.sleep(0.1)
 
-    m.stop()
+    t = pyuv.Timer(m.loop)
+    t.start(lambda h: m.stop(), 0.2, 0.0)
     m.run()
 
     assert cmd.result == {"ok": True}
