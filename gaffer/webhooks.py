@@ -47,8 +47,6 @@ class WebHooks(object):
         self.events = {}
         self._refcount = 0
         self._active = 0
-        self._jobcount = 0
-
         # initialize hooks
         for event, url in hooks:
             if not event in self.events:
@@ -82,10 +80,6 @@ class WebHooks(object):
     @property
     def refcount(self):
         return atomic_read(self._refcount)
-
-    @property
-    def jobcount(self):
-        return atomic_read(self._jobcount)
 
     def register_hook(self, event, url):
         """  associate an url to an event """
@@ -140,15 +134,9 @@ class WebHooks(object):
         if not urls:
             return
 
-        # increment the number of jobs
-        self._jobcount = increment(self._jobcount)
-
         # queue the hook, it will be executed in a thread asap
         callback = partial(self._post_hook, msg, urls)
-        self.loop.queue_work(callback, self._sent)
-
-    def _sent(self, res, exc):
-        self._jobcount = decrement(self._jobcount)
+        self.loop.queue_work(callback)
 
     def _post_hook(self, msg, urls):
         body = json.dumps(msg)
