@@ -89,21 +89,22 @@ def test_basic():
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
 
+    t1 = pyuv.Timer(m.loop)
+
     def do_events(h):
-        h.close()
         m.load(config)
         m.scale("dummy", 1)
         m.unload("dummy")
+        t1.start(stop, 0.4, 0.0)
+
 
     def stop(h):
-        h.close()
         ws.close()
         m.stop()
 
     t = pyuv.Timer(m.loop)
     t.start(do_events, 0.4, 0.0)
-    t1 = pyuv.Timer(m.loop)
-    t1.start(stop, 0.8, 0.0)
+
 
     m.run()
 
