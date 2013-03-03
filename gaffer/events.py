@@ -124,9 +124,6 @@ import pyuv
 
 from .loop import patch_loop
 
-LOGGER = logging.getLogger("gaffer")
-
-
 class EventEmitter(object):
     """ Many events happend in gaffer. For example a process will emist
     the events "start", "stop", "exit".
@@ -262,9 +259,9 @@ class EventEmitter(object):
         for once, listener in listeners:
             try:
                 listener(evtype, *args, **kwargs)
-            except Exception: # we ignore all exception
-                LOGGER.exception('exception calling listener callback for %r',
-                        self)
+            except Exception:
+                # we ignore all exception
+                logging.error('Uncaught exception', exc_info=True)
                 to_remove.append(listener)
 
             if once:
