@@ -188,7 +188,7 @@ def test_stats():
         m.stop()
 
     t = pyuv.Timer(m.loop)
-    t.start(stop, 0.3, 0.0)
+    t.start(stop, 0.4, 0.0)
 
     m.run()
 
