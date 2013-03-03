@@ -707,7 +707,7 @@ class IOChannel(WebSocket):
 
             if msg.id == "gaffer_error":
                 if self._on_error_cb is not None:
-                    return self._async_callback(self._on_error_cb)(self, obj)
+                    return self._async_callback(self._on_error_cb)(self, error)
 
             # handle message callback if any
             try:
