@@ -257,7 +257,7 @@ class ChannelConnection(SockJSConnection):
                 if target in proc.redirect_output:
                     proc.unmonitor_io(target, sub.callback)
                 elif target in proc.custom_streams:
-                    proc.streams[stream].unsubscribe(sub.callback)
+                    proc.streams[target].unsubscribe(sub.callback)
 
     def _dispatch_event(self, topic, evtype, ev):
         data = { "event": evtype, "topic": topic}

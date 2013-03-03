@@ -36,7 +36,7 @@ class Run(Command):
 
         graceful_timeout = args['--graceful-timeout']
         if graceful_timeout is not None:
-            if not shutdown_timeout.isdigit():
+            if not graceful_timeout.isdigit():
                 raise RuntimeError('invalid graceful timeout value')
             graceful_timeout = int(graceful_timeout)
 

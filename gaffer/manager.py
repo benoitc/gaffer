@@ -17,7 +17,7 @@ import pyuv
 
 from .loop import patch_loop, get_loop
 from .events import EventEmitter
-from .error import ProcessConflict, ProcessNotFound
+from .error import ProcessError, ProcessConflict, ProcessNotFound
 from .pubsub import Topic
 from .state import ProcessState, ProcessTracker
 from .sync import increment

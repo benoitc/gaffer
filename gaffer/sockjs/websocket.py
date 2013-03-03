@@ -414,7 +414,7 @@ class WebSocketProtocol76(WebSocketProtocol):
 
         Raises ValueError when feed invalid key."""
         number = int(''.join(c for c in key if c.isdigit()))
-        spaces = len([c for c in key if c.isspace()])
+        spaces = len([s for s in key if s.isspace()])
         try:
             key_number = number // spaces
         except (ValueError, ZeroDivisionError):
