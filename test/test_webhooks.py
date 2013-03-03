@@ -63,7 +63,7 @@ def test_manager_hooks():
     m = Manager(loop=loop)
     m.start(apps=[WebHooks(hooks)])
     testfile, cmd, args, wdir = dummy_cmd()
-    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=4)
+    config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
     m.load(config)
     m.scale("dummy", 1)
     m.unload("dummy")

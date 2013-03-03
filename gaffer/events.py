@@ -183,7 +183,6 @@ class EventEmitter(object):
         # send the event for later
         self._dispatch_event()
 
-
     def subscribe(self, evtype, listener, once=False):
         """ subcribe to an event """
 
