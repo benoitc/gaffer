@@ -62,8 +62,9 @@ class Send(Command):
             return
 
         # make sure we can send some data before sending it.
-        if not stream and not not p.redirect_input:
-            raise RuntimeError("can't write on this process, (no stdin)")
+        if not stream:
+            if not p.redirect_input:
+                raise RuntimeError("can't write on this process, (no stdin)")
         elif stream not in p.custom_streams:
             raise RuntimeError("stream %r not found" % stream)
 
