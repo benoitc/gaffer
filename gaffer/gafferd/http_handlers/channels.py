@@ -5,8 +5,8 @@
 from functools import partial
 import json
 
-from .sockjs import SockJSConnection
 from ...controller import Command, Controller
+from ...sockjs import SockJSConnection
 from ...sync import increment, decrement
 
 class MessageError(Exception):

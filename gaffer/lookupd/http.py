@@ -7,7 +7,7 @@ from tornado.web import Application
 from tornado.httpserver import HTTPServer
 
 from gaffer import __version__
-from ..gafferd.http_handlers import sockjs
+from .. import sockjs
 from ..gafferd.http_handlers.util import CorsHandler
 
 

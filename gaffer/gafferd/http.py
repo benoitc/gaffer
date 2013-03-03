@@ -14,9 +14,9 @@ from tornado.httpserver import HTTPServer
 
 from ..httpclient import make_uri
 from ..loop import patch_loop
+from .. import sockjs
 from ..util import bind_sockets, hostname
 from . import http_handlers
-from .http_handlers import sockjs
 from .lookup import LookupClient
 
 LOGGER = logging.getLogger("gaffer")
