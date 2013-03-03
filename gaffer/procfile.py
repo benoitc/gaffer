@@ -10,11 +10,7 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from .datastructures import OrderedDict
-
+from collections import OrderedDict
 import os
 import re
 import shlex

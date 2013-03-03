@@ -2,16 +2,13 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+from collections import OrderedDict
 import copy
 import json
 import os
 import re
 import sys
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ...datastructures import OrderedDict
 
 KNOWN_COMMANDS = []
 def get_commands():

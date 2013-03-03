@@ -10,16 +10,10 @@ Classes
 =======
 
 """
-from collections import deque
+from collections import deque, OrderedDict
 from threading import RLock
 
 import pyuv
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    from .datastructures import OrderedDict
-
 
 from .loop import patch_loop, get_loop
 from .events import EventEmitter
