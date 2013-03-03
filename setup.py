@@ -9,8 +9,8 @@ from setuptools import setup, find_packages, Extension
 
 py_version = sys.version_info[:2]
 
-if py_version < (2, 6):
-    raise RuntimeError('On Python 2, Gaffer requires Python 2.6 or better')
+if py_version < (2, 7):
+    raise RuntimeError('On Python 2, Gaffer requires Python 2.7 or better')
 
 
 CLASSIFIERS = [
