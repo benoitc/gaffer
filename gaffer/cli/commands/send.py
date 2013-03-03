@@ -43,6 +43,9 @@ class Send(Command):
         server  = config.get("server")
 
         stream = args["--stream"]
+        if stream == "stdin":
+            stream = None
+
         if "." in args['<pid>']:
             pid, stream = args['<pid>'].split(".", 1)
         else:
@@ -59,18 +62,18 @@ class Send(Command):
             return
 
         # make sure we can send some data before sending it.
-        if stream is not None and stream != "stdin":
-            if stream not in p.custom_streams:
-                raise RuntimeError("stream %r not found" % stream)
-        elif not p.redirect_input:
+        if not stream and not not p.redirect_input:
             raise RuntimeError("can't write on this process, (no stdin)")
+        elif stream not in p.custom_streams:
+            raise RuntimeError("stream %r not found" % stream)
 
         # make pid & stream available in the instance
         self.pid = int(pid)
         self.stream = stream
 
-        self.socket = server.socket()
+        self.socket = socket = p.socket(mode=pyuv.UV_WRITABLE, stream=stream)
         self.socket.start()
+
         data = " ".join(args["<data>"])
         self.args = args
         self.tty = None
@@ -86,25 +89,17 @@ class Send(Command):
             if not data.endswith('\n'):
                 data = data + os.linesep
 
-            args = [self.pid, data]
-            if (self.stream and
-                    (self.stream is not None or self.stream != "stdin")):
-                args.append(stream)
-
-            cmd = self.socket.send_command("send", *args)
-            cmd.add_done_callback(self._on_done)
+            self.socket.write(data, self._on_done)
 
         server.loop.run()
 
-    def _on_done(self, cmd):
-        if cmd.error():
-            error = cmd.error()
+    def _on_done(self, channel, result, error):
+        if error is not None:
             print("Error (%s): %s" % (error['errno'], error['reason']))
         self.stop()
 
-    def _on_tty_done(self, cmd):
-        if cmd.error():
-            error = cmd.error()
+    def _on_tty_done(self, channel, result, error):
+        if error is not None:
             print("Error (%s): %s" % (error['errno'], error['reason']))
             self.stop()
         elif self.should_close:
@@ -120,14 +115,7 @@ class Send(Command):
             self.stop()
         else:
             data = data.decode('utf-8') + os.linesep
-
-            args = [self.pid, data]
-            if (self.stream and
-                    (self.stream is not None or self.stream != "stdin")):
-                args.append(self.stream)
-
-            cmd = self.socket.send_command("send", *args)
-            cmd.add_done_callback(self._on_tty_done)
+            self.socket.write(data, self._on_tty_done)
 
     def stop(self):
         if self.tty is not None and not self.tty.closed:

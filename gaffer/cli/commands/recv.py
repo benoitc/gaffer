@@ -5,9 +5,12 @@ import copy
 from datetime import datetime
 import sys
 
+import pyuv
+
 from .base import Command
 from ...console_output import colored, GAFFER_COLORS
 from ...httpclient import GafferNotFound
+
 
 class Recv(Command):
 
@@ -51,17 +54,9 @@ class Recv(Command):
                     stream not in p.custom_streams):
                 raise RuntimeError("can't read on %r" % stream)
 
-        socket = server.socket()
+        socket = p.socket(mode=pyuv.UV_READABLE, stream=stream)
         socket.start()
-
-        # subscribe to the event
-        if not stream:
-            event = "STREAM:%s" % pid
-        else:
-            event = "STREAM:%s.%s" % (pid, stream)
-
-        channel = socket.subscribe(event)
-        channel.bind_all(self._on_event)
+        socket.start_read(self._on_read)
 
         # then listen
         while True:
@@ -71,6 +66,6 @@ class Recv(Command):
             except KeyboardInterrupt:
                 break
 
-    def _on_event(self, event, msg):
-        sys.stdout.write(msg['data'])
+    def _on_read(self, channel, data):
+        sys.stdout.write(data.decode('utf-8'))
         sys.stdout.flush()
