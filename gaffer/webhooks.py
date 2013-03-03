@@ -31,10 +31,8 @@ The :mod:`webhooks` Module
 --------------------------
 
 """
-from collections import deque
+from functools import partial
 import json
-from threading import RLock
-import time
 
 from tornado.httpclient import HTTPError
 
@@ -50,8 +48,6 @@ class WebHooks(object):
         self._refcount = 0
         self._active = 0
         self._jobcount = 0
-        self._queue = deque()
-        self._lock = RLock()
 
         # initialize hooks
         for event, url in hooks:
@@ -69,7 +65,6 @@ class WebHooks(object):
     def stop(self):
         """ stop the webhook app, stop monitoring to events """
         self._stop_monitor()
-        self._queue.clear()
 
     def restart(self):
         self._stop_monitor()
@@ -77,10 +72,8 @@ class WebHooks(object):
 
     def close(self):
         self.stop()
-        with self._lock:
-            self.events = []
-            self._refcount = 0
-            self._queue.clear()
+        self.events = []
+        self._refcount = 0
 
     @property
     def active(self):
@@ -96,24 +89,23 @@ class WebHooks(object):
 
     def register_hook(self, event, url):
         """  associate an url to an event """
-        with self._lock:
-            if event not in self.events:
-                self.events[event] = set()
-            self.events[event].add(url)
+        if event not in self.events:
+            self.events[event] = set()
+
+        self.events[event].add(url)
 
         self.incref()
         self.maybe_start_monitor()
 
     def unregister_hook(self, event, url):
         """ unregister an url for this event """
-        with self._lock:
-            if event not in self.events:
-                return
+        if event not in self.events:
+            return
 
-            # remove an url from registered hooks
-            urls = self.events[event]
-            urls.remove(url)
-            self.events[event] = urls
+        # remove an url from registered hooks
+        urls = self.events[event]
+        urls.remove(url)
+        self.events[event] = urls
 
         self.decref()
         self.maybe_stop_monitor()
@@ -148,21 +140,17 @@ class WebHooks(object):
         if not urls:
             return
 
-        with self._lock:
-            self._jobcount = increment(self._jobcount)
-            self._queue.append((msg, urls))
-            self.loop.queue_work(self._send, self._sent)
+        # increment the number of jobs
+        self._jobcount = increment(self._jobcount)
+
+        # queue the hook, it will be executed in a thread asap
+        callback = partial(self._post_hook, msg, urls)
+        self.loop.queue_work(callback, self._sent)
 
     def _sent(self, res, exc):
         self._jobcount = decrement(self._jobcount)
 
-    def _send(self):
-        try:
-            msg, urls = self._queue.popleft()
-        except IndexError:
-            return
-
-
+    def _post_hook(self, msg, urls):
         body = json.dumps(msg)
         headers = { "Content-Length": str(len(body)),
                     "Content-Type": "application/json" }
@@ -177,11 +165,9 @@ class WebHooks(object):
                 pass
 
     def _start_monitor(self):
-        with self._lock:
-            self.manager.events.subscribe(".", self._on_event)
-            self._active = increment(self._active)
+        self.manager.events.subscribe(".", self._on_event)
+        self._active = increment(self._active)
 
     def _stop_monitor(self):
-        with self._lock:
-            self.manager.events.unsubscribe(".", self._on_event)
+        self.manager.events.unsubscribe(".", self._on_event)
         self._active = decrement(self._active)
