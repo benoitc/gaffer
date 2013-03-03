@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -
 #
 # This file is part of gaffer. See the NOTICE for more information.
-import copy
-from datetime import datetime
 import sys
 
 import pyuv
 
 from .base import Command
-from ...console_output import colored, GAFFER_COLORS
 from ...httpclient import GafferNotFound
 
 
@@ -27,7 +24,6 @@ class Recv(Command):
     short_descr = "read a stream from a pid"
 
     def run(self, config, args):
-        appname = self.default_appname(config, args)
         server  = config.get("server")
 
         # get the stream and pid from the command line

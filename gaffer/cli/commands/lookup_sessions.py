@@ -2,9 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import copy
-
-from ...httpclient import GafferNotFound
 from ...lookupd.client import LookupServer
 from .base import Command
 
@@ -63,6 +60,6 @@ class LookupSessions(Command):
                     uri = "http://%s:%s" % (broadcast_address, port)
 
                     lines.append("%s - hostname: %s, protocol: %s" %
-                        (broadcast_address, hostname, version))
+                        (uri, hostname, version))
                 lines.append("")
             print("\n".join(lines))

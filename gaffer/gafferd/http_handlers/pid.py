@@ -5,7 +5,6 @@
 import pyuv
 from tornado import escape
 from tornado import websocket
-from tornado.web import HTTPError
 
 from ...message import Message, decode_frame, make_response
 from ...error import ProcessError
@@ -232,7 +231,7 @@ class PidChannel(websocket.WebSocketHandler):
         # send the message
         try:
             self._write(msg.body)
-        except Exception as e:
+        except Exception:
             error = ProcessError(500, "EIO")
             return self.write_error(error.to_json(), msg.id)
 

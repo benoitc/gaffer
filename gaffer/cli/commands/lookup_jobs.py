@@ -2,9 +2,6 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import copy
-
-from ...httpclient import GafferNotFound
 from ...lookupd.client import LookupServer
 from .base import Command
 

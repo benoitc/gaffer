@@ -5,7 +5,6 @@
 import copy
 
 from ...console_output import colored, GAFFER_COLORS
-from ...httpclient import GafferNotFound
 from ...lookupd.client import LookupServer
 from .base import Command
 

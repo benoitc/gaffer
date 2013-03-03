@@ -39,7 +39,6 @@ class Send(Command):
     short_descr = "send some data to a pid"
 
     def run(self, config, args):
-        appname = self.default_appname(config, args)
         server  = config.get("server")
 
         stream = args["--stream"]
@@ -72,7 +71,7 @@ class Send(Command):
         self.pid = int(pid)
         self.stream = stream
 
-        self.socket = socket = p.socket(mode=pyuv.UV_WRITABLE, stream=stream)
+        self.socket = p.socket(mode=pyuv.UV_WRITABLE, stream=stream)
         self.socket.start()
 
         data = " ".join(args["<data>"])
