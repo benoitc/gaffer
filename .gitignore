@@ -22,4 +22,5 @@ man/
 include/
 html/
 .tox
+test/.coverage*
 htmlcov
