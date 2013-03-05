@@ -67,9 +67,11 @@ class Lookup(Command):
         if event == "add_node":
             line = self._print(event, "add node")
         elif event == "identify":
-            line = self._print(event, "identify %s" % msg['origin'])
+            line = self._print(event, "%s: %s" % (msg['name'],
+                msg['origin']))
         elif event == "remove_node":
-            line = self._print(event, "remove node %s" % msg['origin'])
+            line = self._print(event, "%s: node %s" % (msg['name'],
+                msg['origin']))
         else:
             uri = msg['node']['origin']
             if event == "add_job":
