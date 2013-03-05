@@ -246,7 +246,8 @@ class EventEmitter(object):
                 self._events[pattern] = self._send_listeners(evtype,
                     self._events[pattern].copy(), *args, **kwargs)
 
-        self._spinner.stop()
+        if not self._spinner.closed:
+            self._spinner.stop()
 
     def _send_listeners(self, evtype, listeners, *args, **kwargs):
         to_remove = []
