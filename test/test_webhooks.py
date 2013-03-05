@@ -68,16 +68,12 @@ def test_manager_hooks():
     m.scale("dummy", 1)
     m.unload("dummy")
 
-    def on_stop(manager):
-        s.stop()
-
-    def do_stop(handle):
-        handle.close()
-        m.stop(on_stop)
-
-
     t = pyuv.Timer(loop)
-    t.start(do_stop, 0.4, 0.0)
+
+    def on_stop(manager):
+        t.start(lambda h: s.stop(), 0.4, 0.0)
+
+    m.stop(on_stop)
 
     m.run()
     assert ('load', 'default.dummy') in emitted
