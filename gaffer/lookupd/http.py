@@ -40,7 +40,7 @@ def http_server(io_loop, listener, ssl_options=None, registration_db=None):
 
     # initialize the server
     app = Application(handlers, registration_db=registration_db)
-    server = HTTPServer(app, io_loop=io_loop, ssl_options=ssl_options or {})
+    server = HTTPServer(app, io_loop=io_loop, ssl_options=ssl_options)
     server.add_sockets(listener)
     return server
 

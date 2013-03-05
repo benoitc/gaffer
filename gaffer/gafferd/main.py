@@ -136,12 +136,9 @@ class Server(object):
         else:
             backlog = 128
 
-        self.ca_certs = None
-        if self.args["--cacert"]:
-            self.ca_certs = self.args["--cacert"]
-
         # parse SSL options
         ssl_options = {}
+        client_ssl_options = {}
         if self.args["--certfile"] is not None:
             ssl_options['certfile'] = self.args["--certfile"]
 
@@ -158,6 +155,9 @@ class Server(object):
         if self.args.get("--cacert") is not None:
             client_ssl_options["ca_certs"] = self.args["--cacert"]
 
+
+        if not ssl_options:
+            ssl_options = None
 
         broadcast_address = self.args['--broadcast-address']
 

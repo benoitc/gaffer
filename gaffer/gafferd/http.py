@@ -78,6 +78,7 @@ class HttpHandler(object):
         self.clients = dict()
 
         # client SSL options
+        client_ssl_options = client_ssl_options or {}
         self.client_options = client_ssl_options.copy()
         # disable SSLv2
         # http://blog.ivanristic.com/2011/09/ssl-survey-protocol-support.html
