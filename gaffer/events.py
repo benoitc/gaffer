@@ -139,8 +139,6 @@ class EventEmitter(object):
         self._wqueue = deque(maxlen=max_size)
 
         self._event_dispatcher = pyuv.Prepare(self.loop)
-        self._event_dispatcher.start(self._send)
-        self._event_dispatcher.unref()
         self._spinner = pyuv.Idle(self.loop)
 
     def close(self):
@@ -180,6 +178,7 @@ class EventEmitter(object):
 
         # send the event for later
         self._dispatch_event()
+
 
     def subscribe(self, evtype, listener, once=False):
         """ subcribe to an event """
@@ -227,27 +226,26 @@ class EventEmitter(object):
     ### private methods
 
     def _dispatch_event(self):
-        self._spinner.start(lambda h: None)
+        if not self._event_dispatcher.active:
+            self._event_dispatcher.start(self._send)
+            self._spinner.start(lambda h: h.stop())
 
     def _send(self, handle):
-        lwqueue = len(self._wqueue)
-        lqueue = len(self._queue)
+        queue, self._queue = self._queue, deque(maxlen=self._queue.maxlen)
+        wqueue, self._wqueue = self._wqueue, deque(maxlen=self._wqueue.maxlen)
 
-        for i in range(lwqueue):
-            evtype, args, kwargs = self._wqueue.popleft()
+        for evtype, args, kwargs in wqueue:
             if self._wildcards:
                 self._wildcards = self._send_listeners(evtype,
                         self._wildcards.copy(), *args, **kwargs)
 
-        for i in range(lqueue):
-            pattern, evtype, args, kwargs = self._queue.popleft()
+        for pattern, evtype, args, kwargs in queue:
             # emit the event to all listeners
             if pattern in self._events:
                 self._events[pattern] = self._send_listeners(evtype,
                     self._events[pattern].copy(), *args, **kwargs)
 
-        if not self._spinner.closed:
-            self._spinner.stop()
+        self._event_dispatcher.stop()
 
     def _send_listeners(self, evtype, listeners, *args, **kwargs):
         to_remove = []
