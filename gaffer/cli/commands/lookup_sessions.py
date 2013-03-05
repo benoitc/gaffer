@@ -27,7 +27,7 @@ class LookupSessions(Command):
         sessions = {}
         loop = pyuv.Loop.default_loop()
         for addr in lookupd_addresses:
-            s = LookupServer(addr, loop=loop)
+            s = LookupServer(addr, loop=loop, **config.client_options)
             if args['<nodeid>']:
                 resp = s.sessions(args['<nodeid>'])
             else:
@@ -53,13 +53,11 @@ class LookupSessions(Command):
             for job_name, sources in jobs.items():
                 lines.extend(["=== job: %s" % job_name])
                 for source in sources:
-                    port = source['node_info']['port']
-                    broadcast_address = source['node_info']['broadcast_address']
                     version = source['node_info']['version']
-                    hostname = source['node_info']['hostname']
-                    uri = "http://%s:%s" % (broadcast_address, port)
+                    name = source['node_info']['name']
+                    origin = source['node_info']['origin']
 
-                    lines.append("%s - hostname: %s, protocol: %s" %
-                        (uri, hostname, version))
+                    lines.append("%s - name: %s, protocol: %s" % (origin,
+                        name, version))
                 lines.append("")
             print("\n".join(lines))

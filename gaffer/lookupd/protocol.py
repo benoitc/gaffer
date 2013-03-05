@@ -42,8 +42,7 @@ class LookupMessage(object):
         # validate message arguments
         try:
             if self.type == "IDENTIFY":
-                self.args = (raw['hostname'], raw['port'],
-                    raw['broadcast_address'], raw['version'],)
+                self.args = (raw['name'], raw['origin'], raw['version'],)
             if self.type in ("REGISTER_JOB", "UNREGISTER_JOB"):
                 self.args  = (raw['job_name'],)
             elif self.type in ("REGISTER_PROCESS", "UNREGISTER_PROCESS"):

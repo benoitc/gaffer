@@ -33,7 +33,10 @@ Example of usage::
 
 
 import json
+import os
 import signal
+import ssl
+import sys
 
 import six
 from tornado import httpclient
@@ -42,8 +45,10 @@ from .eventsource import Watcher
 from .loop import patch_loop, get_loop
 from .process import ProcessConfig
 from .tornado_pyuv import IOLoop
-from .util import quote, quote_plus, parse_signal_value
+from .util import (quote, quote_plus, parse_signal_value, is_ssl,
+        parse_ssl_options)
 from .websocket import GafferSocket, IOChannel
+
 
 class GafferNotFound(Exception):
     """ exception raised on HTTP 404 """
@@ -262,17 +267,21 @@ class Server(BaseClient):
         """ return a watcher to listen on /watch """
         url =  make_uri(self.uri, '/watch', feed='eventsource',
                 heartbeat=str(heartbeat))
+
         return Watcher(self.loop, url, **self.options)
 
     def socket(self, heartbeat=None):
         """ return a direct websocket connection to gaffer """
         url0 =  make_uri(self.uri, '/channel/websocket')
-
         url = "ws%s" % url0.split("http", 1)[1]
 
-        options = self.options.copy()
+        options = {}
         if heartbeat and heartbeat is not None:
             options['heartbeat'] = heartbeat
+
+        if is_ssl(url):
+            options['ssl_options'] = parse_ssl_options(self.options)
+
         return GafferSocket(self.loop, url, **options)
 
     def _parse_name(self, name):
@@ -367,9 +376,13 @@ class Process(object):
         url = "ws%s" % url.split("http", 1)[1]
 
         # build connection options
-        options = self.server.options.copy()
+        options = {}
         if heartbeat and heartbeat is not None:
             options['heartbeat'] = heartbeat
+
+        # eventually add sll options
+        if is_ssl(url):
+            options['ssl_options'] = parse_ssl_options(self.server.options)
 
         return IOChannel(self.server.loop, url, mode=mode, **options)
 

@@ -8,11 +8,15 @@ import pwd
 import resource
 import signal
 import socket
+import ssl
 import string
+import sys
 import time
 
 import six
 from tornado import netutil
+
+DEFAULT_CA_CERTS = os.path.dirname(__file__) + '/cacert.pem'
 
 if six.PY3:
     def bytestring(s):
@@ -271,4 +275,32 @@ def parse_job_name(name, default='default'):
         appname = default
 
     return appname, name
+
+def is_ssl(url):
+    return url.startswith("https") or url.startswith("wss")
+
+def parse_ssl_options(client_options):
+    ssl_options = {}
+    if client_options.get('validate_cert'):
+        ssl_options["cert_reqs"] = ssl.CERT_REQUIRED
+    if client_options.get('ca_certs') is not None:
+        ssl_options["ca_certs"] = client_options['ca_certs']
+    else:
+        ssl_options["ca_certs"] = DEFAULT_CA_CERTS
+    if client_options.get('client_key') is not None:
+        ssl_options["keyfile"] = client_options['client_key']
+    if client_options.get('client_cert') is not None:
+        ssl_options["certfile"] = client_options['client_cert']
+
+
+    # disable SSLv2
+    # http://blog.ivanristic.com/2011/09/ssl-survey-protocol-support.html
+    if sys.version_info >= (2, 7):
+        ssl_options["ciphers"] = "DEFAULT:!SSLv2"
+    else:
+        # This is really only necessary for pre-1.0 versions
+        # of openssl, but python 2.6 doesn't expose version
+        # information.
+        ssl_options["ssl_version"] = ssl.PROTOCOL_SSLv3
+    return ssl_options
 

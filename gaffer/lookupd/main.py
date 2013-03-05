@@ -6,6 +6,7 @@
 usage: gaffer_lookupd [--version] [-v] [--daemon] [--pidfile=PIDFILE]
                       [--bind=ADDRESS] [--backlog=BACKLOG]
                       [--certfile=CERTFILE] [--keyfile=KEYFILE]
+                      [--cacert=CACERT]
 
 Options
 
@@ -14,10 +15,11 @@ Options
     -v                          verbose mode
     --daemon                    Start gaffer in daemon mode
     --pidfile=PIDFILE
+    --backlog=BACKLOG           default backlog [default: 128]
     --bind=ADDRESS              default HTTP binding [default: 0.0.0.0:5010]
     --certfile=CERTFILE         SSL certificate file
     --keyfile=KEYFILE           SSL key file
-    --backlog=BACKLOG           default backlog [default: 128].
+    --cacert=CACERT             SSL CA certificate
 """
 import os
 import sys
@@ -72,12 +74,20 @@ class LookupServer(object):
         else:
             self.backlog = 128
 
-        if (args["--certfile"] is not None and
-                self.args["--keyfile"] is not None):
-            self.ssl_options = {'certfile': args["--certfile"],
-                                'keyfile':args["--keyfile"]}
-        else:
-            self.ssl_options = None
+         # parse SSL options
+        ssl_options = {}
+        if self.args["--certfile"] is not None:
+            ssl_options['certfile'] = self.args["--certfile"]
+
+        if self.args["--keyfile"] is not None:
+            ssl_options["keyfile"] = self.args["--keyfile"]
+
+        if self.args.get("--cacert") is not None:
+            ssl_options["ca_certs"] = self.args["--cacert"]
+
+        self.ssl_options = None
+        if ssl_options:
+            self.ssl_options = ssl_options
 
         self.started = False
 
@@ -91,6 +101,21 @@ class LookupServer(object):
         # initialize the server
         listener = bind_sockets(self.addr, backlog=self.backlog,
                 allows_unix_socket=True)
+
+        # check ssl options now
+        if self.ssl_options is not None and isinstance(self.ssl_options, dict):
+            # Only certfile is required: it can contain both keys
+            if 'certfile' not in self.ssl_options:
+                raise RuntimeError('missing key "certfile" in ssl_options')
+
+            if not os.path.exists(self.ssl_options['certfile']):
+                raise RuntimeError('certfile "%s" does not exist' %
+                        self.ssl_options['certfile'])
+            if ('keyfile' in self.ssl_options and
+                    not os.path.exists(self.ssl_options['keyfile'])):
+                raise RuntimeError('keyfile "%s" does not exist' %
+                        self.ssl_options['keyfile'])
+
         self.hserver = http_server(self.io_loop, listener,
                 ssl_options=self.ssl_options)
         self.hserver.start()

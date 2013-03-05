@@ -24,3 +24,4 @@ html/
 .tox
 test/.coverage*
 htmlcov
+examples/server.*

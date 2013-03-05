@@ -28,6 +28,6 @@ class Echo(object):
             c = sys.stdin.readline()
             sys.stdout.write(c)
             sys.stdout.flush()
-
+            time.sleep(0.1)
 if __name__ == "__main__":
     Echo().run()

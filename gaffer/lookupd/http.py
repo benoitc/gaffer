@@ -40,7 +40,7 @@ def http_server(io_loop, listener, ssl_options=None, registration_db=None):
 
     # initialize the server
     app = Application(handlers, registration_db=registration_db)
-    server = HTTPServer(app, io_loop=io_loop, ssl_options=ssl_options)
+    server = HTTPServer(app, io_loop=io_loop, ssl_options=ssl_options or {})
     server.add_sockets(listener)
     return server
 
@@ -123,7 +123,7 @@ class SessionsHandler(CorsHandler):
         for sessionid, session_jobs in registered.items():
             all_jobs = {}
             for job_name, jobs in session_jobs.items():
-                sources = [{"hostname": job.node.hostname,
+                sources = [{"name": job.node.name,
                             "pids": job.pids,
                             "node_info": job.node.infodict()} for job in jobs]
 
@@ -143,7 +143,7 @@ class JobsHandler(CorsHandler):
 
         all_jobs = []
         for job_name, jobs in registered.items():
-            sources = [{"hostname": job.node.hostname,
+            sources = [{"name": job.node.name,
                         "pids": job.pids,
                         "node_info": job.node.infodict()} for job in jobs]
             all_jobs.append({"name": job_name, "sources": sources})
@@ -166,7 +166,7 @@ class FindJobHandler(CorsHandler):
 
         jobs = []
         for job in found:
-            jobs.append({"hostname": job.node.hostname, "pids": job.pids,
+            jobs.append({"name": job.node.name, "pids": job.pids,
                 "node_info": job.node.infodict()})
 
         self.write({"sources": jobs})
@@ -191,7 +191,7 @@ class FindSessionHandler(CorsHandler):
             if job.name not in jobs:
                 jobs[job.name] = []
 
-            source = {"hostname": job.node.hostname,
+            source = {"name": job.node.name,
                       "pids": job.pids,
                       "node_info": job.node.infodict()}
             jobs[job.name].append(source)

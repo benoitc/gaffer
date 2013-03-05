@@ -32,7 +32,7 @@ class Dummy(object):
             sys.stdout.flush()
             sys.stderr.write("STDERR %s\n" % i)
             sys.stderr.flush()
-            time.sleep(0.1)
+            time.sleep(1.0)
             i += 1
 if __name__ == "__main__":
     Dummy().run()

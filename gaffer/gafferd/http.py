@@ -4,6 +4,8 @@
 
 import copy
 import logging
+import ssl
+import sys
 
 # patch tornado IOLoop
 from ..tornado_pyuv import IOLoop, install
@@ -15,7 +17,7 @@ from tornado.httpserver import HTTPServer
 from ..httpclient import make_uri
 from ..loop import patch_loop
 from .. import sockjs
-from ..util import bind_sockets, hostname
+from ..util import (bind_sockets, hostname, DEFAULT_CA_CERTS, is_ssl)
 from . import http_handlers
 from .lookup import LookupClient
 
@@ -62,10 +64,9 @@ class HttpHandler(object):
 
     def __init__(self, uri='127.0.0.1:5000', lookupd_addresses=[],
             broadcast_address = None, backlog=128, ssl_options=None,
-            handlers=None, **settings):
+            client_ssl_options=None, handlers=None, **settings):
 
         self.uri = uri
-
         self.backlog = backlog
         self.ssl_options = ssl_options
         self.client = dict()
@@ -76,11 +77,17 @@ class HttpHandler(object):
         self.lookupd_addresses = lookupd_addresses
         self.clients = dict()
 
-        if not ssl_options:
-            self.client_ssl_options = {}
+        # client SSL options
+        self.client_options = client_ssl_options.copy()
+        # disable SSLv2
+        # http://blog.ivanristic.com/2011/09/ssl-survey-protocol-support.html
+        if sys.version_info >= (2, 7):
+            self.client_options["ciphers"] = "DEFAULT:!SSLv2"
         else:
-            self.client_ssl_options = {"certfile": ssl_options['certfile'],
-                    "keyfile": ssl_options['keyfile']}
+            # This is really only necessary for pre-1.0 versions
+            # of openssl, but python 2.6 doesn't expose version
+            # information.
+            self.client_options["ssl_version"] = ssl.PROTOCOL_SSLv3
 
         # set http handlers
         self.handlers = copy.copy(DEFAULT_HANDLERS)
@@ -170,6 +177,16 @@ class HttpHandler(object):
         self.server.start()
 
     def _start_lookup(self):
+        if not self.broadcast_address:
+            if self.ssl_options:
+                scheme = "https"
+            else:
+                scheme = "http"
+
+            origin = "%s://%s:%s" % (scheme, self.hostname, self.port)
+        else:
+            origin = self.broadcast_address
+
         for addr in self.lookupd_addresses:
             if addr.startswith("http"):
                 addr = addr.replace("http", "ws")
@@ -178,22 +195,21 @@ class HttpHandler(object):
             if addr in self.clients:
                 return
 
-            ssl_options = None
-            if addr.startswith("wss"):
-                ssl_options = self.client_ssl_options
+            # initialize the client
+            options = {}
+            if is_ssl(addr):
+                options["ssl_options"] = self.client_options
+            client = LookupClient(self.loop, addr, **options)
 
-            if ssl_options is None:
-                client = LookupClient(self.loop, addr)
-            else:
-                client = LookupClient(self.loop, addr, ssl_options=ssl_options)
-
+            # register the client
             self.clients[addr] = client
+
+            # start the client
             client.start(on_exit_cb=self._on_exit_lookup)
 
             # identify the client
-            broadcast_address = self.broadcast_address or self.hostname
-            client.identify(self.hostname, self.port, broadcast_address,
-                    PROTOCOL_VERSION)
+            # node name is its hostname for now
+            client.identify(self.hostname, origin, PROTOCOL_VERSION)
 
             for event in LOOKUP_EVENTS:
                 self.manager.events.subscribe(event, self._on_event)

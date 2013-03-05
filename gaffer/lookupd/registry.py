@@ -60,18 +60,16 @@ class GafferNode(object):
         self.conn = conn
         self.sessions = dict()
         self.update()
-        self.hostname = None
-        self.port = None
-        self.broadcast_address = None
+        self.name = None
+        self.origin = None
         self.version = None
 
     def __str__(self):
-        return "node: %s" % self.hostname
+        return "node: %s" % self.name
 
-    def identify(self, hostname, port, broadcast_address, version):
-        self.hostname = hostname
-        self.port = port
-        self.broadcast_address = broadcast_address
+    def identify(self, name, origin, version):
+        self.name = name
+        self.origin = origin
         self.version = version
         self.update()
 
@@ -152,9 +150,7 @@ class GafferNode(object):
         return info
 
     def infodict(self):
-        return dict(hostname=self.hostname, port=self.port,
-                broadcast_address=self.broadcast_address,
-                version=self.version)
+        return dict(name=self.name, origin=self.origin, version=self.version)
 
 
 class Registry(object):
@@ -197,21 +193,19 @@ class Registry(object):
             except KeyError:
                 pass
 
-    def identify(self, conn, hostname, port, broadcast_address, version):
+    def identify(self, conn, name, origin, version):
         """ identify a node """
         with self._lock:
             # check if we already identified this node
-            if self.nodes[conn].hostname is not None:
+            if self.nodes[conn].name is not None:
                 raise AlreadyIdentified()
 
             # check if we already identified a node with this identity
             for _, node in self.nodes.items():
-                if node.hostname == hostname and node.port == port:
+                if node.name == name and node.origin == origin:
                     raise IdentExists()
 
-            self.nodes[conn].identify(hostname, port, broadcast_address,
-                    version)
-
+            self.nodes[conn].identify(name, origin, version)
             self._emitter.publish('identify', self.nodes[conn])
 
 
@@ -247,7 +241,7 @@ class Registry(object):
                     continue
 
                 # if we filter by node, check if we can add the session
-                if with_node != '*' and node.hostname != with_node:
+                if with_node != '*' and node.name != with_node:
                     continue
 
                 for sessionid, jobs in node.sessions.items():
@@ -275,7 +269,7 @@ class Registry(object):
                         break
             return all_jobs
 
-    def node_by_hostname(self, hostname):
+    def node_by_name(self, name):
         """ get a node by its identity """
         with self._lock:
             nodes = []
@@ -283,7 +277,7 @@ class Registry(object):
                 if node is None:
                     continue
 
-                if node.hostname == hostname:
+                if node.name == name:
                     nodes.append(node)
             return nodes
 
@@ -370,6 +364,6 @@ class Registry(object):
 
     def _get_node(self, conn):
         node = self.nodes[conn]
-        if node.hostname is None:
+        if node.name is None:
             raise NoIdent("need to send IDENTIFY message first")
         return node

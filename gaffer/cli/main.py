@@ -4,6 +4,7 @@
 """
 usage: gaffer [--version] [-f procfile|--procfile procfile]
               [-d root|--root root] [-e path|--env path]...
+              [--certfile=CERTFILE] [--keyfile=KEYFILE] [--cacert=CACERT]
               [--gafferd-http-address url] <command> [<args>...]
 
 Options
@@ -17,6 +18,9 @@ Options
     -e path,--env path                  Specify one or more .env files to load
     --gafferd-http-address url          gafferd node HTTP address to connect
                                         [default: http://127.0.0.1:5000]
+    --certfile=CERTFILE                 SSL certificate file
+    --keyfile=KEYFILE                   SSL key file
+    --cacert=CACERT                     SSL CA certificate
 
 """
 import os
@@ -27,6 +31,7 @@ from .. import __version__
 from ..docopt import docopt, printable_usage
 from ..httpclient import Server
 from ..procfile import Procfile, get_env
+from ..util import is_ssl
 
 from .commands import get_commands
 
@@ -47,8 +52,27 @@ class Config(object):
         # initialize the procfile
         self.procfile = self._init_procfile()
 
+
+        self.client_options = {}
+
+        # handle ssl options
+        if (args["--certfile"] is not None and
+                self.args["--keyfile"] is not None):
+            # update the client optinos
+            self.client_options = {'client_cert': args["--certfile"],
+                                'client_key':args["--keyfile"]}
+
+
+            if args["--cacert"]:
+                self.client_options['ca_certs'] = args["--cacert"]
+
+        else:
+            if args["--cacert"] is not None:
+                self.client_options = {"ca_certs": args["--cacert"]}
+
         # setup default server
-        self.server = Server(self.args["--gafferd-http-address"])
+        self.server = Server(self.args["--gafferd-http-address"],
+                **self.client_options)
 
     def get(self, *attrs):
         ret = []

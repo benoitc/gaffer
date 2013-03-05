@@ -87,11 +87,11 @@ class LookupClient(WebSocket):
     def ping(self):
         return self.write_message({"type": "PING"})
 
-    def identify(self, hostname, port, broadcast_address, version,
+    def identify(self, name, broadcast_address, version,
             callback=None):
-        return self.write_message({"type": "IDENTIFY", "hostname": hostname,
-            "port": port, "broadcast_address": broadcast_address, "version":
-            version}, callback=callback)
+        return self.write_message({"type": "IDENTIFY", "name": name,
+            "origin": broadcast_address, "version": version},
+            callback=callback)
 
     def add_job(self, job_name, callback=None):
         return self.write_message({"type": "REGISTER_JOB",

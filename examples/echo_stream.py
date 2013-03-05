@@ -41,6 +41,7 @@ class Echo(object):
                     print(c, file=stream)
 
                 stream.flush()
+                time.sleep(0.1)
         except Exception as e:
             sys.stdout.write(str(e))
             sys.stdout.flush()

@@ -3,13 +3,18 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import json
+import os
+import ssl
+import sys
 
 import pyuv
 
 from ..events import EventEmitter
 from ..httpclient import BaseClient, make_uri
 from ..loop import patch_loop
+from ..util import is_ssl, parse_ssl_options
 from ..websocket import WebSocket
+
 
 class LookupChannel(WebSocket):
 
@@ -128,8 +133,12 @@ class LookupServer(BaseClient):
 
         url0 = make_uri(self.uri, "/lookup/websocket")
         url = "ws%s" % url0.split("http", 1)[1]
-        options = self.options.copy()
+        options = {}
         if heartbeat and heartbeat is not None:
             options['heartbeat'] = heartbeat
+
+        if is_ssl(url):
+            options['ssl_options'] = parse_ssl_options(self.options)
+
         channel = LookupChannel(self, url, **options)
         return channel

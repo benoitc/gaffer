@@ -86,6 +86,7 @@ class WebSocket(object):
         self._io_loop = IOLoop(_loop=loop)
 
         self.url = urlparse(url)
+        self.scheme = self.url.scheme
         self.host = self.url.hostname
         self.port = self.url.port or ports[self.url.scheme]
         self.path = self.url.path or '/'

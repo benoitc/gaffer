@@ -29,7 +29,7 @@ class LookupJob(Command):
         sources = []
         loop = pyuv.Loop.default_loop()
         for addr in lookupd_addresses:
-            s = LookupServer(addr, loop=loop)
+            s = LookupServer(addr, loop=loop, **config.client_options)
             resp = s.find_job(job_name)
             new_sources = resp.get('sources', [])
             if not new_sources:
@@ -43,16 +43,12 @@ class LookupJob(Command):
 
         balance = copy.copy(GAFFER_COLORS)
         for source in sources:
-            port = source['node_info']['port']
-            hostname = source['node_info']['hostname']
-            broadcast_address = source['node_info']['broadcast_address']
+            name = source['node_info']['name']
             version = source['node_info']['version']
-            uri = "http://%s:%s" % (broadcast_address, port)
-
 
             pids = [str(pid) for pid in source['pids']]
-            lines = ["=== %s (Protocol: %s)" % (hostname, version),
-                    "Broadcast address: %s" % uri,
+            lines = ["=== %s (Protocol: %s)" % (name, version),
+                    "Origin: %s" % source['node_info']['origin'],
                     "Pids: %s" % (",".join(pids)), ""]
             color, balance = self.get_color(balance)
             print(colored(color, "\n".join(lines)))

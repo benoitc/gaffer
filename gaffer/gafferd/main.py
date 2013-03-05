@@ -7,6 +7,8 @@ usage: gafferd [--version] [-v | -vv] [-c CONFIG|--config=CONFIG]
                [--bind=ADDRESS] [--lookupd-address=LOOKUP]...
                [--broadcast-address=ADDR]
                [--certfile=CERTFILE] [--keyfile=KEYFILE]
+               [--cacert=CACERT]
+               [--client-certfile=CERTFILE] [--client-keyfile=KEYFILE]
                [--backlog=BACKLOG] [CONFIG]
 
 Args
@@ -26,8 +28,14 @@ Options
     --lookupd-address=LOOKUP    lookupd HTTP address
     --broadcast-address=ADDR    the address for this node. This is registered
                                 with gaffer_lookupd (defaults to OS hostname)
+    --broadcast-port=PORT       The port that will be registered with
+                                gaffer_lookupd (defaults to local port)
     --certfile=CERTFILE         SSL certificate file for the default binding
     --keyfile=KEYFILE           SSL key file
+    --client-certfile=CERTFILE  SSL client certificate file (to connect to the
+                                lookup server)
+    --client-keyfile=KEYFILE    SSL client key file
+    --cacert=CACERT             SSL CA certificate
     --backlog=BACKLOG           default backlog [default: 128].
 
 """
@@ -128,16 +136,41 @@ class Server(object):
         else:
             backlog = 128
 
-        if (self.args["--certfile"] is not None and
-                self.args["--keyfile"] is not None):
-            ssl_options = {'certfile': self.args["--certfile"],
-                           'keyfile': self.args["--keyfile"]}
-        else:
-            ssl_options = None
+        self.ca_certs = None
+        if self.args["--cacert"]:
+            self.ca_certs = self.args["--cacert"]
+
+        # parse SSL options
+        ssl_options = {}
+        if self.args["--certfile"] is not None:
+            ssl_options['certfile'] = self.args["--certfile"]
+
+        if self.args["--keyfile"] is not None:
+            ssl_options["keyfile"] = self.args["--keyfile"]
+
+        client_ssl_options = {}
+        if self.args["--client-certfile"] is not None:
+            ssl_options['certfile'] = self.args["--client-certfile"]
+
+        if self.args["--keyfile"] is not None:
+            client_ssl_options["keyfile"] = self.args["--client-keyfile"]
+
+        if self.args.get("--cacert") is not None:
+            client_ssl_options["ca_certs"] = self.args["--cacert"]
+
+
+        broadcast_address = self.args['--broadcast-address']
+
+        if (broadcast_address is not None and
+                not broadcast_address.startswith("http://") and
+                not broadcast_address.startswith("https://")):
+            raise RuntimeError("invalid broadcast address")
+
         http_handler = HttpHandler(uri=self.args['--bind'],
                 lookupd_addresses=self.args['--lookupd-address'],
                 broadcast_address=self.args['--broadcast-address'],
                 backlog=backlog, ssl_options=ssl_options,
+                client_ssl_options=client_ssl_options,
                 handlers=static_sites)
 
         # setup gaffer apps

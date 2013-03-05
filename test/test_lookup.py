@@ -67,33 +67,32 @@ def test_registry_identify():
         r.get_node(c1)
 
     updated = r.nodes[c1].updated
-    r.identify(c1, "c1", 8000, "broadcast", 1.0)
+    r.identify(c1, "c1", "broadcast", 1.0)
 
     n1 = r.get_node(c1)
     assert updated != n1.updated
 
-    assert n1.hostname == "c1"
-    assert n1.port == 8000
-    assert n1.broadcast_address == "broadcast"
+    assert n1.name == "c1"
+    assert n1.origin == "broadcast"
     assert n1.version == 1.0
 
     with pytest.raises(AlreadyIdentified):
-        r.identify(c1, "c1", 8000, "broadcast", 1.0)
+        r.identify(c1, "c1", "broadcast", 1.0)
 
     with pytest.raises(IdentExists):
-        r.identify(c2, "c1", 8000, "broadcast", 1.0)
+        r.identify(c2, "c1", "broadcast", 1.0)
 
-    r.identify(c2, "c1", 8001, "broadcast", 1.0)
+    r.identify(c2, "c1", "broadcast:8001", 1.0)
     n2 = r.get_node(c2)
 
-    assert n2.hostname == "c1"
-    assert n2.port == 8001
+    assert n2.name == "c1"
+    assert n2.origin == "broadcast:8001"
 
-    r.identify(c3, "c3", 8000, "broadcast", 1.0)
+    r.identify(c3, "c3", "broadcast2", 1.0)
     n3 = r.get_node(c3)
 
-    assert n3.hostname == "c3"
-    assert n3.port == 8000
+    assert n3.name == "c3"
+    assert n3.origin == "broadcast2"
 
 def test_registry_add_job():
     r = Registry()
@@ -102,13 +101,13 @@ def test_registry_add_job():
     c3 = object()
     c4 = object()
     r.add_node(c1)
-    r.identify(c1, "c1", 8000, "broadcast", 1.0)
+    r.identify(c1, "c1", "broadcast", 1.0)
     r.add_node(c2)
-    r.identify(c2, "c2", 8000, "broadcast2", 1.0)
+    r.identify(c2, "c2", "broadcast2", 1.0)
     r.add_node(c3)
-    r.identify(c3, "c3", 8000, "broadcast2", 1.0)
+    r.identify(c3, "c3", "broadcast3", 1.0)
     r.add_node(c4)
-    r.identify(c4, "c4", 8000, "broadcast2", 1.0)
+    r.identify(c4, "c4", "broadcast4", 1.0)
 
     n1 = r.get_node(c1)
     n2 = r.get_node(c2)
@@ -210,7 +209,7 @@ def test_registry_add_process():
     with pytest.raises(NoIdent):
         r.add_process(c1, "a.job1", 1)
 
-    r.identify(c1, "c1", 8000, "broadcast", 1.0)
+    r.identify(c1, "c1", "broadcast", 1.0)
 
     with pytest.raises(JobNotFound):
         r.add_process(c1, "a.job1", 1)
@@ -223,7 +222,7 @@ def test_registry_add_process():
 
     c2 = object()
     r.add_node(c2)
-    r.identify(c2, "c2", 8000, "broadcast", 1.0)
+    r.identify(c2, "c2", "broadcast2", 1.0)
     r.add_job(c2, "a.job1")
     r.add_process(c2, "a.job1", 1)
 
@@ -274,7 +273,7 @@ def test_registry_events():
     c1 = object()
     r.add_node(c1)
 
-    r.identify(c1, "c1", 8000, "broadcast", 1.0)
+    r.identify(c1, "c1", "broadcast", 1.0)
     r.update(c1)
     r.add_job(c1, "a.job1")
     r.add_process(c1, "a.job1", 1)
@@ -329,7 +328,7 @@ def test_lookup_service():
     client.start()
 
     messages = []
-    messages.append(client.identify("c1", 8000, "broadcast", 1.0))
+    messages.append(client.identify("c1", "broadcast", 1.0))
     messages.append(client.ping())
     messages.append(client.add_job("a.job1"))
     messages.append(client.add_process("a.job1", 1))
@@ -504,8 +503,8 @@ def test_lookup_client():
     nodes = results[0]['nodes']
     assert len(nodes) == 1
 
-    assert "hostname" in nodes[0]
-    assert nodes[0]['hostname'] == host
+    assert "name" in nodes[0]
+    assert nodes[0]['name'] == host
 
     assert "sessions" in results[1]
     assert "nb_sessions" in results[1]
@@ -521,10 +520,10 @@ def test_lookup_client():
     assert "default.dummy" in jobs
     job = jobs["default.dummy"]
     assert isinstance(job, list)
-    assert job[0]["hostname"] == host
+    assert job[0]["name"] == host
     assert job[0]["pids"] == [1]
     node_info = job[0]["node_info"]
-    assert node_info["hostname"] == host
+    assert node_info["name"] == host
 
     assert "jobs" in results[2]
     assert "nb_jobs" in results[2]

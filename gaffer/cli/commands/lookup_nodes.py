@@ -7,11 +7,12 @@ import copy
 from ...console_output import colored, GAFFER_COLORS
 from ...httpclient import GafferNotFound
 from ...lookupd.client import LookupServer
+from ...util import is_ssl
 from .base import Command
 
 import pyuv
 
-class LookupSessions(Command):
+class LookupNodes(Command):
     """
     usage: gaffer lookup:nodes (-L ADDR|--lookupd-address=ADDR)...
 
@@ -28,7 +29,10 @@ class LookupSessions(Command):
         loop = pyuv.Loop.default_loop()
         all_nodes = []
         for addr in lookupd_addresses:
-            s = LookupServer(addr, loop=loop)
+            # connect to the lookupd server channel
+            s = LookupServer(addr, loop=loop, **config.client_options)
+
+            # get list of nodes on this lookupd server
             resp = s.nodes()
             for node in resp['nodes']:
                 if node not in all_nodes:
@@ -38,8 +42,7 @@ class LookupSessions(Command):
 
         balance = copy.copy(GAFFER_COLORS)
         for node in all_nodes:
-            uri = "http://%s:%s" % (node['broadcast_address'], node['port'])
-            line = "%s - hostname: %s, protocol: %s" % (uri, node['hostname'],
+            line = "%s - %s (protocol: %s)" % (node['origin'], node['name'],
                     node['version'])
 
             color, balance = self.get_color(balance)

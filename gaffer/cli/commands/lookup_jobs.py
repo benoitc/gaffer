@@ -25,7 +25,7 @@ class LookupJobs(Command):
         loop = pyuv.Loop.default_loop()
         all_jobs = {}
         for addr in lookupd_addresses:
-            s = LookupServer(addr, loop=loop)
+            s = LookupServer(addr, loop=loop, **config.client_options)
             resp = s.jobs()
 
             for job in resp['jobs']:
@@ -42,13 +42,11 @@ class LookupJobs(Command):
             lines = ["=== %s" % job_name]
 
             for source in sources:
-                port = source['node_info']['port']
-                hostname = source['node_info']['hostname']
-                broadcast_address = source['node_info']['broadcast_address']
+                name = source['node_info']['name']
                 version = source['node_info']['version']
-                uri = "http://%s:%s" % (broadcast_address, port)
+                origin = source['node_info']
 
-                lines.append("%s - hostname: %s, protocol: %s" %
-                        (uri, hostname, version))
+                lines.append("%s - name: %s, protocol: %s" %
+                        (origin, name, version))
             lines.append("")
             print("\n".join(lines))

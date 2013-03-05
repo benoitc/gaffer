@@ -26,7 +26,7 @@ class SigHandler(BaseSigHandler):
     def handle_reload(self, h, *args):
         return
 
-class LookupSessions(Command):
+class Lookup(Command):
     """
     usage: gaffer lookup (-L ADDR|--lookupd-address=ADDR) [--no-color]
 
@@ -48,14 +48,13 @@ class LookupSessions(Command):
         loop = pyuv.Loop.default_loop()
 
         # connect to the lookupd server channel
-        s = LookupServer(args['--lookupd-address'], loop=loop)
+        s = LookupServer(args['--lookupd-address'], loop=loop,
+                **config.client_options)
         channel = self.channel = s.lookup()
 
         # initialize the signal handler
         self._sig_handler = SigHandler(channel)
         self._sig_handler.start(loop)
-
-
 
         # bind to all events
 
@@ -68,22 +67,21 @@ class LookupSessions(Command):
         if event == "add_node":
             line = self._print(event, "add node")
         elif event == "identify":
-            uri = "http://%s:%s" % (msg['broadcast_address'], msg['port'])
-            line = self._print(event, "identify %s" % uri)
+            line = self._print(event, "identify %s" % msg['origin'])
         elif event == "remove_node":
-            uri = "http://%s:%s" % (msg['broadcast_address'], msg['port'])
-            line = self._print(event, "remove node %s" % uri)
+            line = self._print(event, "remove node %s" % msg['origin'])
         else:
-            uri = "http://%s:%s" % (msg['node']['broadcast_address'],
-                    msg['node']['port'])
+            uri = msg['node']['origin']
             if event == "add_job":
                 line = "load %s in %s" % (msg["job_name"], uri)
             elif event == "remove_job":
                 line = "unload %s in %s" % (msg["job_name"], uri)
             elif event == "add_process":
-                line = "%s: spaw %s in %s" % (msg["job_name"], msg["pid"], uri)
+                line = "%s: process id %s spanwned on %s" % (msg["job_name"],
+                        msg["pid"], uri)
             elif event == "remove_process":
-                line = "%s: exit %s in %s" % (msg["job_name"], msg["pid"], uri)
+                line = "%s: process %s exited on %s" % (msg["job_name"],
+                        msg["pid"], uri)
 
             line = self._print(event, line)
 
