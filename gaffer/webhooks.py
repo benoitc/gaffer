@@ -46,7 +46,8 @@ class WebHooks(object):
     def __init__(self, hooks=[]):
         self.events = {}
         self._refcount = 0
-        self._active = 0
+        self.active = False
+
         # initialize hooks
         for event, url in hooks:
             if not event in self.events:
@@ -62,7 +63,8 @@ class WebHooks(object):
 
     def stop(self):
         """ stop the webhook app, stop monitoring to events """
-        self._stop_monitor()
+        if self.active:
+            self._stop_monitor()
 
     def restart(self):
         self._stop_monitor()
@@ -72,10 +74,6 @@ class WebHooks(object):
         self.stop()
         self.events = []
         self._refcount = 0
-
-    @property
-    def active(self):
-        return atomic_read(self._active) > 0
 
     @property
     def refcount(self):
@@ -154,8 +152,8 @@ class WebHooks(object):
 
     def _start_monitor(self):
         self.manager.events.subscribe(".", self._on_event)
-        self._active = increment(self._active)
+        self.active = True
 
     def _stop_monitor(self):
         self.manager.events.unsubscribe(".", self._on_event)
-        self._active = decrement(self._active)
+        self.active = False
