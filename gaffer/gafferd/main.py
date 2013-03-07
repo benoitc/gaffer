@@ -25,7 +25,7 @@ Options
     -p DIR --plugin-dir=DIR     plugin dir
     --daemon                    Start gaffer in daemon mode
     --pidfile=PIDFILE
-    --bind=ADDRESS              default HTTP binding [default: 0.0.0.0:5000]
+    --bind=ADDRESS              default HTTP binding (default: 0.0.0.0:5000)
     --lookupd-address=LOOKUP    lookupd HTTP address
     --broadcast-address=ADDR    the address for this node. This is registered
                                 with gaffer_lookupd (defaults to OS hostname)
@@ -37,7 +37,7 @@ Options
                                 lookup server)
     --client-keyfile=KEYFILE    SSL client key file
     --cacert=CACERT             SSL CA certificate
-    --backlog=BACKLOG           default backlog [default: 128].
+    --backlog=BACKLOG           default backlog (default: 128).
 
 """
 
@@ -138,20 +138,48 @@ class Server(object):
         self.plugin_dir = self.args["--plugin-dir"]
         self.webhooks = []
         self.processes = []
+        self.ssl_options = {}
+        self.client_ssl_options = {}
+        self.bind = "0.0.0.0:5000"
+        self.lookupd_address = []
+        self.broadcast_address = None
+        self.backlog = 128
 
     def run(self):
         # check if any plugin dependancy is missing
         self.plugin_manager.check_mandatory()
 
+        # bind address
+        bind = self.args['--bind'] or self.bind
+
+        #lookupd address
+        lookupd_address = self.args['--lookupd-address']
+        if not lookupd_address:
+            lookupd_address = self.lookupd_address
+
+        # broadcast address
+        broadcast_address = self.args['--broadcast-address']
+        if not broadcast_address:
+            broadcast_address = self.broadcast_address
+
+        if (broadcast_address is not None and
+                not broadcast_address.startswith("http://") and
+                not broadcast_address.startswith("https://")):
+            raise RuntimeError("invalid broadcast address")
+
+
+
         # setup the http api
         static_sites = self.plugin_manager.get_sites()
+
+        # set the backlog
         if self.args["--backlog"]:
             try:
                 backlog = int(self.args["--backlog"])
             except ValueError:
                 raise RuntimeError("backlog should be an integer")
         else:
-            backlog = 128
+            backlog = self.backlog
 
         # parse SSL options
         ssl_options = {}
@@ -172,22 +200,17 @@ class Server(object):
         if self.args.get("--cacert") is not None:
             client_ssl_options["ca_certs"] = self.args["--cacert"]
 
+        # update the SSL configuration previously loaded in the config file
+        self.ssl_options.update(ssl_options)
+        self.client_ssl_options.update(client_ssl_options)
 
-        if not ssl_options:
-            ssl_options = None
+        if not self.ssl_options:
+            self.ssl_options = None
 
-        broadcast_address = self.args['--broadcast-address']
-
-        if (broadcast_address is not None and
-                not broadcast_address.startswith("http://") and
-                not broadcast_address.startswith("https://")):
-            raise RuntimeError("invalid broadcast address")
-
-        http_handler = HttpHandler(uri=self.args['--bind'],
-                lookupd_addresses=self.args['--lookupd-address'],
-                broadcast_address=self.args['--broadcast-address'],
-                backlog=backlog, ssl_options=ssl_options,
-                client_ssl_options=client_ssl_options,
+        http_handler = HttpHandler(uri=bind, lookupd_addresses=lookupd_address,
+                broadcast_address=broadcast_address, backlog=backlog,
+                ssl_options=self.ssl_options,
+                client_ssl_options=self.client_ssl_options,
                 handlers=static_sites)
 
         # setup gaffer apps
@@ -279,6 +302,27 @@ class Server(object):
         if plugin_dir:
             self.plugin_dir = plugin_dir
 
+        address = cfg.dget('gaffer', 'bind', "0.0.0.0")
+        port = cfg.dget('gaffer', 'port', "5000")
+        self.bind = "%s:%s" % (address, port)
+
+        self.broadcast_address = cfg.dget('gaffer', 'broadcast_address')
+        self.backlog = cfg.dgetint('gaffer', 'backlog', 128)
+
+        # parse lookupd addresses
+        addresses = {}
+        ports = {}
+
+        # Collect lookupd addresses
+        # they are put in the gaffer section undert the form:
+        #
+        #    lookupd_address1 = http://127.0.0.1:5010
+        #
+        self.lookupd_address = []
+        for k, v in cfg.items('gaffer'):
+            if k.startswith('lookupd_address'):
+                self.lookupd_address.append(v)
+
         processes = []
         webhooks = []
         envs = {}
@@ -347,10 +391,14 @@ class Server(object):
             elif section.startswith('env:'):
                 pname = section.split("env:", 1)[1]
                 name, sessionid = self._split_name(pname)
-
-
                 kvs = [(key.upper(), val) for key, val in cfg.items(section)]
                 envs[(sessionid, name)] = dict(kvs)
+            elif section == "ssl":
+                for key, val in cfg.items(section):
+                    self.ssl_options[key] = val
+            elif section == "lookup_ssl":
+                for key, val in cfg.items(section):
+                    self.client_ssl_options[key] = val
 
         # add environment variables
         for name, sessionid, cmd, params in processes:
@@ -387,7 +435,7 @@ def run():
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        print(str(e))
+        print("error: %s" % str(e))
         sys.exit(1)
     finally:
         if pidfile is not None:
