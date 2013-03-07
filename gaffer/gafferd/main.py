@@ -112,6 +112,8 @@ class Server(object):
         self.config_dir = self.find_configdir()
         if not os.path.exists(self.config_dir):
             os.makedirs(self.config_dir)
+        elif not os.path.isdir(self.config_dir):
+            raise RuntimeError("%r isn't a directory" % self.config_dir)
 
         # set default configuration
         self.set_defaults()
