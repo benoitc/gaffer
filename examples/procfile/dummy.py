@@ -28,7 +28,7 @@ class Dummy(object):
 
         i = 0
         while self.alive:
-            sys.stdout.write("STDOUTi %s\n" % i)
+            sys.stdout.write("STDOUT %s\n" % i)
             sys.stdout.flush()
             sys.stderr.write("STDERR %s\n" % i)
             sys.stderr.flush()
