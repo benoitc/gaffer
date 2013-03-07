@@ -23,6 +23,7 @@ import sys
 from colorama import Fore, Back, Style, init
 init()
 
+from .error import ProcessNotFound
 from .loop import patch_loop
 
 GAFFER_COLORS = ['cyan', 'yellow', 'green', 'magenta', 'red', 'blue',
@@ -96,7 +97,7 @@ class ConsoleOutput(object):
         for action in self.subscribed:
             self.manager.events.unsubscribe(action, self._on_process)
 
-    def restart(self, start):
+    def restart(self):
         self.stop()
         for action in self.subscribed:
             self.manager.events.subscribe(action, self._on_process)
@@ -109,12 +110,17 @@ class ConsoleOutput(object):
         else:
             pid = msg['pid']
             if event == "spawn":
-                p = self.manager.get_process(pid)
+
                 line = self._print(name, 'spawn process with pid %s' % pid)
 
-                if p.redirect_output and self.output_streams:
-                    for output in p.redirect_output:
-                        p.monitor_io(output, self._on_output)
+
+                try:
+                    p = self.manager.get_process(pid)
+                    if p.redirect_output and self.output_streams:
+                        for output in p.redirect_output:
+                            p.monitor_io(output, self._on_output)
+                except ProcessNotFound:
+                    pass
             else:
                 line = self._print(name,
                         '%s process with pid %s' % (event, pid))

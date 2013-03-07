@@ -1,23 +1,23 @@
 from gaffer import Plugin
 
-__plugins__ = ['DummyPlugin']
+__all__ = ['DummyPlugin1']
 
-class DummyApp(object):
+class DummyApp1(object):
 
     def start(self, loop, manager):
-        print("start dummy app")
+        print("start dummy 1 app")
 
     def stop(sef):
-        print("stop dummy")
+        print("stop dummy 1")
 
-    def rester(self):
+    def restart(self):
         print("restart dummy")
 
-class DummyPlugin(Plugin):
-    name = "dummy"
+class DummyPlugin1(Plugin):
+    name = "dummy1"
     version = "1.0"
     description = "test"
 
 
     def app(self, cfg):
-        return DummyApp()
+        return DummyApp1()

@@ -16,6 +16,7 @@ from gaffer.process import ProcessConfig
 from gaffer.websocket import IOChannel
 
 from test_manager import dummy_cmd
+from test_http import MockConfig
 
 TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
@@ -28,7 +29,7 @@ else:
     linesep = os.linesep
 
 def start_manager():
-    http_handler = HttpHandler(uri=TEST_URI)
+    http_handler = HttpHandler(MockConfig(bind=TEST_URI))
     m = Manager()
     m.start(apps=[http_handler])
     time.sleep(0.2)

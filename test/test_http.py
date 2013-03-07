@@ -22,8 +22,29 @@ TEST_PORT = (os.getpid() % 31000) + 1024
 
 TEST_URI = "%s:%s" % (TEST_HOST, TEST_PORT)
 
+class MockConfig(object):
+    def __init__(self, **kwargs):
+        self.set_defaults()
+
+        for attrname, attrval in kwargs.items():
+            setattr(self, attrname, attrval)
+
+    def set_defaults(self):
+        self.webhooks = []
+        self.processes = []
+        self.ssl_options = None
+        self.client_ssl_options = {}
+        self.bind = "0.0.0.0:5000"
+        self.lookupd_addresses = []
+        self.broadcast_address = None
+        self.backlog = 128
+        self.daemonize = False
+        self.pidfile = None
+        self.logfile = None
+        self.loglevel = "info"
+
 def start_manager():
-    http_handler = HttpHandler(uri=TEST_URI)
+    http_handler = HttpHandler(MockConfig(bind=TEST_URI))
     m = Manager()
     m.start(apps=[http_handler])
     time.sleep(0.2)

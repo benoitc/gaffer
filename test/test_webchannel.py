@@ -16,7 +16,7 @@ from gaffer.process import ProcessConfig
 from gaffer.websocket import WebSocket
 
 from test_manager import dummy_cmd
-
+from test_http import MockConfig
 
 TEST_HOST = '127.0.0.1'
 TEST_PORT = (os.getpid() % 31000) + 1024
@@ -24,7 +24,8 @@ TEST_URL = "ws://%s:%s/channel/websocket" % (TEST_HOST, str(TEST_PORT))
 
 
 def start_manager():
-    http_handler = HttpHandler(uri="%s:%s" % (TEST_HOST, TEST_PORT))
+    http_handler = HttpHandler(MockConfig(bind="%s:%s" % (TEST_HOST,
+        TEST_PORT)))
     m = Manager()
     m.start(apps=[http_handler])
     return m
@@ -93,6 +94,7 @@ def test_basic():
 
     def do_events(h):
         m.load(config)
+        m.manage("dummy")
         m.scale("dummy", 1)
         m.unload("dummy")
         t1.start(stop, 0.4, 0.0)
@@ -135,13 +137,12 @@ def test_basic_socket():
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
 
     def do_events(h):
-        h.close()
         m.load(config)
+        m.manage("dummy")
         m.scale("dummy", 1)
         m.unload("dummy")
 
     def stop(h):
-        h.close()
         socket.close()
         m.stop()
 

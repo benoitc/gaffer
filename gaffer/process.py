@@ -265,8 +265,8 @@ class ProcessConfig(object):
     """ object to maintain a process config """
 
     DEFAULT_PARAMS = {
-            "args": None,
-            "env": None,
+            "args": [],
+            "env": {},
             "uid": None,
             "gid": None,
             "cwd": None,

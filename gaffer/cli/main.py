@@ -103,12 +103,11 @@ class Config(object):
         else:
             root = os.path.dirname(procfile) or "."
 
-        if not os.path.exists(procfile):
-            if self.args['--procfile']:
+        if not os.path.isfile(procfile):
+            if self.args['--procfile'] is not None:
                 raise RuntimeError("procfile %r not found" % procfile)
             else:
                 return None
-
         else:
             return Procfile(procfile, root=root, envs=self.envs)
 
@@ -148,6 +147,8 @@ class GafferCli(object):
             try:
                 return cmd.run(config, cmd_args)
             except Exception as e:
+                import traceback
+                print(traceback.format_exc())
                 sys.stderr.write(str(e))
                 sys.exit(1)
         sys.exit(0)

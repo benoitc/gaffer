@@ -3,9 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import os
-import six
-
-
+import sys
 
 if os.name == 'nt':
     import ctypes
@@ -21,7 +19,7 @@ if os.name == 'nt':
         if len == 0:
             raise ctypes.WinError
         elif len == size:
-            raise ctypes.WinError(_ERROR_INSUFFICIENT_BUFFER)
+            raise ctypes.WinError(122)
         return buf.value
 
     def system_path():
@@ -43,8 +41,8 @@ if os.name == 'nt':
         try:
             # only windows users with admin privileges
             # can read the C:\windows\temp
-            temp = os.listdir(os.sep.join([os.environ.get('SystemRoot',
-                'C:\windows'),'temp']))
+            os.listdir(os.sep.join([os.environ.get('SystemRoot', 'C:\windows'),
+                'temp']))
         except:
             return False
         return True
@@ -76,7 +74,7 @@ else:
             local_etc = os.path.join(os.path.dirname(os.path.dirname(
                 sys.argv[0])), "etc")
             if os.path.isdir(local_etc):
-                return os.path.join(local_etc, etc)
+                return os.path.join(local_etc, "gaffer")
             return os.path.join("usr", "local", "etc", "gaffer")
 
         # if not root, use the user path

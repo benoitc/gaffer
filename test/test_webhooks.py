@@ -65,6 +65,7 @@ def test_manager_hooks():
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
     m.load(config)
+    m.manage("dummy")
     m.scale("dummy", 1)
     m.unload("dummy")
 

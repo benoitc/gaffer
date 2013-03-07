@@ -324,9 +324,6 @@ class Manager(object):
             # reload. If the process is not stopped then it will start
             self._stopall(state)
 
-            # manage processes
-            self._manage_processes(state)
-
     def get(self, name):
         """ get a job config """
         sessionid, name = self._parse_name(name)

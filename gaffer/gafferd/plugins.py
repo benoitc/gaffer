@@ -2,7 +2,9 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+import copy
 import importlib
+import logging
 import os
 import sys
 
@@ -99,17 +101,18 @@ class PluginManager(object):
         self.plugins = {}
         self.installed = []
 
+        self.apps = []
         # scan all plugins
         self.scan()
 
     def scan(self):
         if not os.path.isdir(self.plugin_dir):
+            logging.info("plugging dir %r not found" % self.plugin_dir)
             return
 
         for name in os.listdir(self.plugin_dir):
             if name in (".", "..",):
                 continue
-
             path = os.path.abspath(os.path.join(self.plugin_dir, name))
             if os.path.isdir(path):
                 plug = PluginDir(name, path)
@@ -136,11 +139,97 @@ class PluginManager(object):
                 handlers.append(rule)
         return handlers
 
-    def get_apps(self, cfg):
-        apps = []
+    def init_apps(self, cfg):
         for name, plugdir in self.plugins.items():
             for plug in plugdir.plugins:
                 app = plug.app(cfg)
                 if app is not None:
-                    apps.append(app)
-        return apps
+                    self.apps.append((app, plug))
+        return self.apps
+
+    ### apps handling
+
+    def start_apps(self, config, loop, manager):
+        apps = self.init_apps(config)
+        for app, _plug in apps:
+            try:
+                app.start(loop, manager)
+            except Exception:
+                # we ignore all exception
+                logging.error('Uncaught exception when starting a plugin',
+                        exc_info=True)
+
+    def stop_apps(self):
+        for app, _plug in self.apps:
+            try:
+                app.stop()
+            except Exception:
+                # we ignore all exception
+                logging.error('Uncaught exception when stopping a plugin',
+                        exc_info=True)
+
+        self.apps = []
+
+    def restart_apps(self, config, loop, manager):
+        if not os.path.isdir(config.plugin_dir):
+            # the new plugin dir isn't found
+            logging.error("config error plugging dir %r not found" %
+                    config.plugin_dir)
+
+            if self.plugin_dir != config.plugin_dir:
+                logging.info("stop all current plugins")
+                self.stop_apps()
+            return
+
+        # save all states
+        old_plugins = self.plugins.copy()
+        old_installed = self.installed
+        old_apps = copy.copy(self.apps)
+        old_plugin_dir = self.plugin_dir
+
+        # scan the plugin dir
+        self.plugin_dir = config.plugin_dir
+        self.scan()
+
+        try:
+            self.check_mandatory()
+        except RuntimeError as e:
+            # one dependency is missing, return
+            logging.error("Failed to reload plugins: %s" % str(e))
+
+            if self.plugin_dir != old_plugin_dir:
+                logging.info("stop all current plugins")
+                self.stop_apps()
+
+            # reset values
+            self.plugin_dir = old_plugin_dir
+            self.plugins = old_plugins
+            self.installed = old_installed
+            self.apps = old_apps
+            return
+
+        # initialize new apps
+        apps = self.init_apps(config)
+
+        # stop removed plugins
+        for ap in old_apps:
+            if ap not in apps:
+                app, _ = ap
+                try:
+                    app.stop()
+                except Exception:
+                     # we ignore all exception
+                    logging.error('Uncaught exception when stopping a plugin',
+                        exc_info=True)
+
+        # start or restart plugins
+        for app, plug in apps:
+            try:
+                if (app, plug) in old_apps:
+                    app.restart()
+                else:
+                    app.start(loop, manager)
+            except Exception:
+                # we ignore all exception
+                logging.error('Uncaught exception when (re)starting a plugin',
+                        exc_info=True)

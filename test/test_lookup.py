@@ -27,6 +27,7 @@ from gaffer.process import ProcessConfig
 from gaffer.util import bind_sockets, hostname
 
 from test_manager import dummy_cmd
+from test_http import MockConfig
 
 TEST_GAFFERD_HOST = '127.0.0.1'
 TEST_GAFFERD_PORT = (os.getpid() % 31000) + 1024
@@ -395,8 +396,8 @@ def test_lookup_manager():
 
 
     # start the manager with the HTTP API
-    http_handler = HttpHandler(uri=GAFFERD_ADDR,
-            lookupd_addresses=["http://%s" % LOOKUPD_ADDR])
+    http_handler = HttpHandler(MockConfig(bind=GAFFERD_ADDR,
+            lookupd_addresses=["http://%s" % LOOKUPD_ADDR]))
     m = Manager(loop=loop)
     m.start(apps=[http_handler])
 
@@ -458,8 +459,8 @@ def test_lookup_client():
 
 
     # start the manager with the HTTP API
-    http_handler = HttpHandler(uri=GAFFERD_ADDR,
-            lookupd_addresses=[lookup_address])
+    http_handler = HttpHandler(MockConfig(bind=GAFFERD_ADDR,
+            lookupd_addresses=[lookup_address]))
     m = Manager(loop=loop)
     m.start(apps=[http_handler])
     time.sleep(0.1)
@@ -563,8 +564,8 @@ def test_lookup_client_events():
     channel.bind_all(cb)
     channel.start()
 
-    http_handler = HttpHandler(uri=GAFFERD_ADDR,
-        lookupd_addresses=[lookup_address])
+    http_handler = HttpHandler(MockConfig(bind=GAFFERD_ADDR,
+        lookupd_addresses=[lookup_address]))
     m = Manager(loop=loop)
     t = pyuv.Timer(loop)
     t0 = pyuv.Timer(loop)

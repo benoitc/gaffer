@@ -175,7 +175,7 @@ def test_update():
     config['numprocesses'] = 2
     cmd = TestCommand("update", [config.to_dict()])
     ctl.process_command(cmd)
-
+    m.manage("dummy")
     pids1 = m.pids()
     jobs = m.jobs()
     m.stop()

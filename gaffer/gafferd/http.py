@@ -17,7 +17,7 @@ from tornado.httpserver import HTTPServer
 from ..httpclient import make_uri
 from ..loop import patch_loop
 from .. import sockjs
-from ..util import (bind_sockets, hostname, DEFAULT_CA_CERTS, is_ssl)
+from ..util import (bind_sockets, hostname, is_ssl)
 from . import http_handlers
 from .lookup import LookupClient
 
@@ -57,29 +57,35 @@ DEFAULT_HANDLERS = [
 ]
 
 
-
 class HttpHandler(object):
     """ simple gaffer application that gives an HTTP API access to gaffer.
     """
 
-    def __init__(self, uri='127.0.0.1:5000', lookupd_addresses=[],
-            broadcast_address = None, backlog=128, ssl_options=None,
-            client_ssl_options=None, handlers=None, **settings):
+    def __init__(self, config, plugin_manager=None, **settings):
+        self.config = config
+        self.plugin_manager = plugin_manager
 
-        self.uri = uri
-        self.backlog = backlog
-        self.ssl_options = ssl_options
-        self.client = dict()
+        # custom settings
+        if 'manager' in settings:
+            del settings['manager']
+        self.settings = settings
 
-        # init lookupd
-        self.hostname = hostname()
-        self.broadcast_address = broadcast_address
-        self.lookupd_addresses = lookupd_addresses
         self.clients = dict()
 
-        # client SSL options
-        client_ssl_options = client_ssl_options or {}
-        self.client_options = client_ssl_options.copy()
+        # intialize the config
+        self.init_config()
+
+
+    def init_config(self):
+        self.hostname = hostname()
+        self.address = self.config.bind
+        self.broadcast_address = self.config.broadcast_address
+        self.lookupd_addresses = self.config.lookupd_addresses
+        self.backlog = self.config.backlog
+
+        # initialize ssl options
+        self.ssl_options = self.config.ssl_options
+        self.client_options = self.config.client_ssl_options or {}
         # disable SSLv2
         # http://blog.ivanristic.com/2011/09/ssl-survey-protocol-support.html
         if sys.version_info >= (2, 7):
@@ -90,14 +96,10 @@ class HttpHandler(object):
             # information.
             self.client_options["ssl_version"] = ssl.PROTOCOL_SSLv3
 
-        # set http handlers
+         # set http handlers
         self.handlers = copy.copy(DEFAULT_HANDLERS)
-        self.handlers.extend(handlers or [])
-
-        # custom settings
-        if 'manager' in settings:
-            del settings['manager']
-        self.settings = settings
+        if self.plugin_manager is not None:
+            self.handlers.extend(self.plugin_manager.get_sites() or [])
 
     def start(self, loop, manager):
         self.loop = patch_loop(loop)
@@ -121,7 +123,6 @@ class HttpHandler(object):
         # start the lookup client
         self._start_lookup()
 
-
     def stop(self):
         # stop the server
         self.server.stop()
@@ -136,10 +137,10 @@ class HttpHandler(object):
             client = self.clients.pop(addr)
             if not client.closed:
                 client.close()
+        self.clients = {}
 
         # finally close the tornado loop
         self.io_loop.close(True)
-
 
     def restart(self):
         # stop the server
@@ -151,9 +152,12 @@ class HttpHandler(object):
             client = self.clients.pop(addr)
             if not client.closed:
                 client.close()
+        self.clients = {}
 
-        # reinit the hostname
-        self.hostname = hostname()
+        # reinit the config
+        self.init_config()
+
+        # start the server
         self._start_server()
 
         # restart lookup clients
@@ -164,13 +168,12 @@ class HttpHandler(object):
         for _, client in self.clients:
             [client.add_job(job_name) for job_name in jobs]
 
-
     def _start_server(self):
         self.server = HTTPServer(self.app, io_loop=self.io_loop,
                 ssl_options=self.ssl_options)
 
         # initialize the socket
-        sock = bind_sockets(self.uri, backlog=self.backlog)
+        sock = bind_sockets(self.address, backlog=self.backlog)
         self.server.add_sockets(sock)
         self.port = sock[0].getsockname()[1]
 

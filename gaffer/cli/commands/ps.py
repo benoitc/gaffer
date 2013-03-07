@@ -25,6 +25,7 @@ class Ps(Command):
         server = config.get("server")
 
         for pname in server.jobs(appname):
+            lines = []
             try:
                 job = server.get_job(pname)
             except:
@@ -40,10 +41,8 @@ class Ps(Command):
             stats = job.stats()
 
             # recreate cmd line
-            cmd = job.config['cmd']
-            if 'args' in job.config:
-                cmd = " ".join([cmd] + job.config['args'])
-
+            args = job.config.get('args') or []
+            cmd = " ".join([job.config['cmd']] + args)
             lines = ["=== %s: `%s`" % (name, cmd),
                      "Total CPU: %.2f Total MEM: %.2f" % (stats['cpu'],
                          stats['mem']),
