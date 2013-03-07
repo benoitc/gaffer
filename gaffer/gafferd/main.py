@@ -123,8 +123,12 @@ class Server(object):
 
         # if the plugin dir hasn't been set yet, set it to the default path
         if not self.plugin_dir:
-            self.plugin_dir = os.path.join(self.config_dir, "plugins")
+            if 'GAFFER_PLUGIN_DIR' in os.environ:
+                self.plugin_dir = os.environ.get('GAFFER_PLUGIN_DIR')
+            else:
+                self.plugin_dir = os.path.join(self.config_dir, "plugins")
 
+        # initialize the plugin manager
         self.manager = Manager()
         self.plugin_manager = PluginManager(self.plugin_dir)
 
