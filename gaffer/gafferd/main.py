@@ -3,13 +3,14 @@
 # This file is part of gaffer. See the NOTICE for more information.
 """
 usage: gafferd [--version] [-v | -vv] [-c CONFIG|--config=CONFIG]
-               [--plugins-dir=PLUGINS_DIR] [--daemon] [--pidfile=PIDFILE]
+               [-p PLUGINS_DIR|--plugin-dir=PLUGINS_DIR]
+               [--daemon] [--pidfile=PIDFILE]
                [--bind=ADDRESS] [--lookupd-address=LOOKUP]...
                [--broadcast-address=ADDR]
                [--certfile=CERTFILE] [--keyfile=KEYFILE]
                [--cacert=CACERT]
                [--client-certfile=CERTFILE] [--client-keyfile=KEYFILE]
-               [--backlog=BACKLOG] [CONFIG]
+               [--backlog=BACKLOG]
 
 Args
 
@@ -20,8 +21,8 @@ Options
     -h --help                   show this help message and exit
     --version                   show version and exit
     -v -vv                      verbose mode
-    -c CONFIG --config=CONFIG   configuration file
-    --plugins-dir=PLUGINS_DIR   default plugin dir [default: <PLUGIN_DIR>]
+    -c CONFIG --config=CONFIG   configuration dir
+    -p DIR --plugin-dir=DIR     plugin dir
     --daemon                    Start gaffer in daemon mode
     --pidfile=PIDFILE
     --bind=ADDRESS              default HTTP binding [default: 0.0.0.0:5000]
@@ -65,7 +66,7 @@ from ..util import daemonize, setproctitle_
 from ..webhooks import WebHooks
 from .http import HttpHandler
 from .plugins import PluginManager
-from .util import user_path
+from .util import user_path, system_path, default_path, is_admin
 
 PROCESS_DEFAULTS = dict(
         group = None,
@@ -108,17 +109,27 @@ class Server(object):
         self.args = args
         self.cfg = None
 
-        config_file = args['CONFIG'] or args["--config"]
-        if not config_file:
-            self.set_defaults()
-        else:
+        self.config_dir = self.find_configdir()
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
+
+        # set default configuration
+        self.set_defaults()
+
+        # maybe load the config file
+        config_file = os.path.join(self.config_dir, "gaffer.ini")
+        if os.path.isfile(config_file):
             self.parse_config(config_file)
 
+        # if the plugin dir hasn't been set yet, set it to the default path
+        if not self.plugin_dir:
+            self.plugin_dir = os.path.join(self.config_dir, "plugins")
+
         self.manager = Manager()
-        self.plugin_manager = PluginManager(self.plugins_dir)
+        self.plugin_manager = PluginManager(self.plugin_dir)
 
     def set_defaults(self):
-        self.plugins_dir = self.args["--plugins-dir"]
+        self.plugin_dir = self.args["--plugin-dir"]
         self.webhooks = []
         self.processes = []
 
@@ -203,6 +214,24 @@ class Server(object):
         # run the main loop
         self.manager.run()
 
+    def find_configdir(self):
+        if self.args.get('--config') is not None:
+            return self.args.get('--config')
+
+        if 'GAFFER_CONFIG' in os.environ:
+            return os.environ.get('GAFFER_CONFIG')
+
+        if is_admin():
+            default_paths = system_path()
+        else:
+            default_paths = user_path()
+
+        for path in default_paths:
+            if os.path.isdir(path):
+                return path
+
+        return default_path()
+
     def read_config(self, config_path):
         cfg = DefaultConfigParser()
         with open(config_path) as f:
@@ -240,8 +269,9 @@ class Server(object):
         cfg, cfg_files_read = self.read_config(config_file)
         self.cfg = cfg
 
-        self.plugins_dir = cfg.dget('gaffer', 'plugins_dir',
-                self.args["--plugins-dir"])
+        plugin_dir = cfg.dget('gaffer', 'plugins_dir', "")
+        if plugin_dir:
+            self.plugin_dir = plugin_dir
 
         processes = []
         webhooks = []
@@ -328,11 +358,7 @@ class Server(object):
         self.processes = processes
 
 def run():
-    # default plugins dir
-    plugins_dir = os.path.join(user_path(), "plugins")
-
-    doc = __doc__.replace("<PLUGIN_DIR>", plugins_dir)
-    args = docopt(doc, version=__version__)
+    args = docopt(__doc__, version=__version__)
 
     if args["--daemon"]:
         daemonize()
