@@ -23,7 +23,6 @@ class Echo(object):
         return
 
     def run(self):
-        i = 0
         while self.alive:
             c = sys.stdin.readline()
             sys.stdout.write(c)
