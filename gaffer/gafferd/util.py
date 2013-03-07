@@ -73,7 +73,6 @@ else:
         if is_admin():
             # if the user is an admin, first test if the program name root has
             # the etc folder. If not fallback to /usr/local/etc/gaffer.
-
             local_etc = os.path.join(os.path.dirname(os.path.dirname(
                 sys.argv[0])), "etc")
             if os.path.isdir(local_etc):
