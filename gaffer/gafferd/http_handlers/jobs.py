@@ -7,7 +7,7 @@ import json
 
 from ...error import ProcessError
 from ...process import ProcessConfig
-from .util import CorsHandler
+from .util import CorsHandler, CorsHandlerWithAuth
 
 
 class SessionsHandler(CorsHandler):
@@ -29,13 +29,16 @@ class AllJobsHandler(CorsHandler):
         self.set_header('Content-Type', 'application/json')
         self.write(json.dumps({"jobs": m.jobs()}))
 
-class JobsHandler(CorsHandler):
+class JobsHandler(CorsHandlerWithAuth):
     """ /jobs/<sessionid> """
 
     def get(self, *args, **kwargs):
         self.preflight()
         m = self.settings.get('manager')
         sessionid = args[0]
+
+        if not self.api_key.can_read(sessionid):
+            raise HttpError(403)
 
         try:
             jobs = list(m.jobs(sessionid))
@@ -51,6 +54,13 @@ class JobsHandler(CorsHandler):
 
     def post(self, *args, **kwargs):
         self.preflight()
+
+        # extract the sessionid from the path.
+        sessionid = args[0]
+
+        if not self.api_key.can_manage(sessionid):
+            raise HttpError(403)
+
         self.set_header('Content-Type', 'application/json')
         try:
             name, cmd, settings = self.fetch_body()
@@ -58,9 +68,6 @@ class JobsHandler(CorsHandler):
             self.set_status(400)
             return self.write({"error": "bad_request"})
             return
-
-        # extract the sessionid from the path.
-        sessionid = args[0]
 
         # do we start the job once the config is loaded? True by default.
         if "start" in settings:
@@ -90,16 +97,20 @@ class JobsHandler(CorsHandler):
         return name, cmd, obj
 
 
-class JobHandler(CorsHandler):
+class JobHandler(CorsHandlerWithAuth):
     """ /jobs/<sessionid>/<label> """
 
     def head(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_read(pname):
+            raise HttpError(403)
 
         try:
-            m.get("%s.%s" % (args[0], args[1]))
+            m.get(pname)
         except ProcessError:
             return self.set_status(404)
 
@@ -109,9 +120,13 @@ class JobHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_read(pname):
+            raise HttpError(403)
 
         try:
-            info = m.info("%s.%s" % (args[0], args[1]))
+            info = m.info(pname)
         except ProcessError:
             self.set_status(404)
             return self.write({"error": "not_found"})
@@ -124,6 +139,9 @@ class JobHandler(CorsHandler):
         m = self.settings.get('manager')
         sessionid = args[0]
         name = args[1]
+
+        if not self.api_key.can_manage("%s.%s" % (sessionid, name)):
+            raise HttpError(403)
 
         try:
             m.unload(name, sessionid)
@@ -139,6 +157,9 @@ class JobHandler(CorsHandler):
         m = self.settings.get('manager')
         sessionid = args[0]
         name = args[1]
+
+        if not self.api_key.can_manage("%s.%s" % (sessionid, name)):
+            raise HttpError(403)
 
         try:
             cmd, settings = self.fetch_body(name)
@@ -180,16 +201,19 @@ class JobHandler(CorsHandler):
         return cmd, config
 
 
-class JobStatsHandler(CorsHandler):
+class JobStatsHandler(CorsHandlerWithAuth):
     """ /jobs/<sessionid>/<label>/stats """
 
     def get(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
 
+        if not self.api_key.can_read(pname):
+            raise HttpError(403)
         try:
-            stats = m.stats("%s.%s" % (args[0], args[1]))
+            stats = m.stats(pname)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -197,16 +221,20 @@ class JobStatsHandler(CorsHandler):
         self.write(stats)
 
 
-class ScaleJobHandler(CorsHandler):
+class ScaleJobHandler(CorsHandlerWithAuth):
     """ /jobs/<sessionid>/<label>/numprocesses """
 
     def get(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_read(pname):
+            raise HttpError(403)
 
         try:
-            t = m._get_locked_state("%s.%s" % (args[0], args[1]))
+            t = m._get_locked_state()
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -217,6 +245,10 @@ class ScaleJobHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_manage(pname):
+            raise HttpError(403)
 
         try:
             n = self.get_scaling_value()
@@ -225,7 +257,7 @@ class ScaleJobHandler(CorsHandler):
             return self.write({"error": "bad_request"})
 
         try:
-            ret = m.scale("%s.%s" % (args[0], args[1]), n)
+            ret = m.scale(pname, n)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -239,16 +271,20 @@ class ScaleJobHandler(CorsHandler):
         return obj['scale']
 
 
-class PidsJobHandler(CorsHandler):
+class PidsJobHandler(CorsHandlerWithAuth):
     """ /jobs/<sessionid>/<label>/pids """
 
     def get(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_read(pname):
+            raise HttpError(403)
 
         try:
-            pids = m.pids("%s.%s" % (args[0], args[1]))
+            pids = m.pids(pname)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -256,7 +292,7 @@ class PidsJobHandler(CorsHandler):
         self.write({"pids": pids})
 
 
-class SignalJobHandler(CorsHandler):
+class SignalJobHandler(CorsHandlerWithAuth):
     """ /<jobs>/<sessionid>/<label>/signal """
 
 
@@ -264,9 +300,13 @@ class SignalJobHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_manage(pname):
+            raise HttpError(403)
 
         try:
-            m.kill("%s.%s" % (args[0], args[1]), self.get_signal_value())
+            m.kill(pname, self.get_signal_value())
         except ValueError:
             self.set_status(400)
             return self.write({"error": "bad_request"})
@@ -284,14 +324,19 @@ class SignalJobHandler(CorsHandler):
         return obj['signal']
 
 
-class StateJobHandler(CorsHandler):
+class StateJobHandler(CorsHandlerWithAuth):
 
     def get(self, *args):
         self.preflight()
 
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_read(pname):
+            raise HttpError(403)
+
         try:
-            t = m._get_locked_state("%s.%s" % (args[0], args[1]))
+            t = m._get_locked_state(pname)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -302,6 +347,11 @@ class StateJobHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+        pname = "%s.%s" % (args[0], args[1])
+
+        if not self.api_key.can_manage(pname):
+            raise HttpError(403)
+
         try:
             do = self.get_action(m)
         except ValueError:
@@ -309,7 +359,7 @@ class StateJobHandler(CorsHandler):
             return self.write({"error": "bad_request"})
 
         try:
-            do("%s.%s" % (args[0], args[1]))
+            do(pname)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
@@ -330,7 +380,7 @@ class StateJobHandler(CorsHandler):
         return do
 
 
-class CommitJobHandler(CorsHandler):
+class CommitJobHandler(CorsHandlerWithAuth):
     """ /jobs/<sessionid>/<label>/commit """
 
 
@@ -338,6 +388,9 @@ class CommitJobHandler(CorsHandler):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+
+        if not self.api_key.can_manage(args[0]):
+            raise HttpError(403)
 
         try:
             graceful_timeout, env = self.get_params()

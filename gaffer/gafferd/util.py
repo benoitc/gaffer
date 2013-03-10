@@ -2,6 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+from importlib import import_module
 import os
 import sys
 
@@ -79,3 +80,18 @@ else:
 
         # if not root, use the user path
         return os.path.join(os.path.expanduser('~'), '.gaffer')
+
+def load_backend(backend_name):
+    """ load pool backend. If this is an external module it should be
+    passed as "somelib.backend_mod".
+
+    """
+    try:
+        if len(backend_name.split(".")) > 1:
+            mod = import_module(backend_name)
+        elif backend_name == "sqlite":
+            mod = import_module("gaffer.gafferd.auth.SqliteAuthHandler")
+        return mod
+    except ImportError:
+        error_msg = "%s isn't a socketpool backend" % backend_name
+        raise ImportError(error_msg)

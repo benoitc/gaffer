@@ -70,7 +70,6 @@ class Config(object):
         # maybe load config from a config file
         config_file = os.path.join(self.config_dir, "gaffer.ini")
         if os.path.isfile(config_file):
-            print(config_file)
             self.parse_config(config_file)
 
         # if the plugin dir hasn't been set yet, set it to the default path

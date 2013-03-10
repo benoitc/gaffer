@@ -8,7 +8,7 @@ from tornado import websocket
 
 from ...message import Message, decode_frame, make_response
 from ...error import ProcessError
-from .util import CorsHandler
+from .util import CorsHandler, CorsHandlerWithAuth
 
 
 class AllProcessIdsHandler(CorsHandler):
@@ -19,7 +19,7 @@ class AllProcessIdsHandler(CorsHandler):
         m = self.settings.get('manager')
         self.write({"pids": list(m.running)})
 
-class ProcessIdHandler(CorsHandler):
+class ProcessIdHandler(CorsHandlerWithAuth):
 
     def head(self, *args):
         self.preflight()
@@ -34,10 +34,13 @@ class ProcessIdHandler(CorsHandler):
             return
 
         try:
-            m.get_process(pid)
+           p = m.get_process(pid)
         except ProcessError:
             self.set_status(404)
             return
+
+        if not self.api_key.can_read(p.name):
+            raise HttpError(403)
 
         self.set_status(200)
 
@@ -59,6 +62,9 @@ class ProcessIdHandler(CorsHandler):
             self.set_status(e.errno)
             return self.write(e.to_dict())
 
+        if not self.api_key.can_read(p.name):
+            raise HttpError(403)
+
         self.write(p.info)
 
     def delete(self, *args):
@@ -74,6 +80,15 @@ class ProcessIdHandler(CorsHandler):
             return
 
         try:
+            p = m.get_process(pid)
+        except ProcessError as e:
+            self.set_status(e.errno)
+            return self.write(e.to_dict())
+
+        if not self.api_key.can_manage(p.name):
+            raise HttpError(403)
+
+        try:
             m.stop_process(pid)
         except ProcessError as e:
             self.set_status(e.errno)
@@ -85,7 +100,7 @@ class ProcessIdHandler(CorsHandler):
         self.write({"ok": True})
 
 
-class ProcessIdSignalHandler(CorsHandler):
+class ProcessIdSignalHandler(CorsHandlerWithAuth):
 
     def post(self, *args):
         self.preflight()
@@ -106,6 +121,10 @@ class ProcessIdSignalHandler(CorsHandler):
             self.set_status(e.errno)
             return self.write(e.to_dict())
 
+        if not self.api_key.can_manage(p.name):
+            raise HttpError(403)
+
+
         # decode object
         obj = escape.json_decode(self.request.body)
         try:
@@ -118,7 +137,7 @@ class ProcessIdSignalHandler(CorsHandler):
         self.set_status(202)
         self.write({"ok": True})
 
-class ProcessIdStatsHandler(CorsHandler):
+class ProcessIdStatsHandler(CorsHandlerWithAuth):
 
     def get(self, *args):
         self.preflight()
@@ -138,6 +157,10 @@ class ProcessIdStatsHandler(CorsHandler):
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())
+
+        if not self.api_key.can_read(p.name):
+            raise HttpError(403)
+
 
         self.set_status(200)
         self.write({"stats": p.stats})
