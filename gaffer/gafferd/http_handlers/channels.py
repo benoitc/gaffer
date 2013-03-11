@@ -6,8 +6,10 @@ from functools import partial
 import json
 
 from ...controller import Command, Controller
+from ...error import ProcessError
 from ...sockjs import SockJSConnection
 from ...sync import increment, decrement
+from ..keys import Key, DummyKey
 
 class MessageError(Exception):
     """ raised on message error """
@@ -121,7 +123,14 @@ class Message(object):
 class ChannelConnection(SockJSConnection):
 
     def on_open(self, info):
-        self.manager = self.session.server.settings.get('manager')
+        self.settings = self.session.server.settings
+        self.manager = self.settings.get('manager')
+
+        # initialize key handling
+        self.require_key = self.settings.get('require_key', False)
+        self.key_mgr = self.settings.get('key_mgr')
+        self.api_key = None
+
         self.ctl = Controller(self.manager)
         self._subscriptions = {}
 
@@ -132,7 +141,27 @@ class ChannelConnection(SockJSConnection):
 
             self._subscriptions = []
 
+    def authenticate(self, body):
+        if body.startswith("AUTH:"):
+            key = body.split("AUTH:")[1]
+            try:
+                self.api_key = Key.loads(self.key_mgr.get_key(key))
+            except KeyNotFound:
+                raise ProcessError(403, "AUTH_REQUIRED")
+        else:
+            raise ProcessError(403, "AUTH_REQUIRED")
+
     def on_message(self, raw):
+        if not self.api_key and self.require_key:
+            try:
+                self.authenticate(raw)
+            except ProcessError as e:
+                return self.write_message(_error_msg(error="AUTH_REQUIRED",
+                reason=e.to_json()))
+                return self.close()
+        else:
+            self.api_key = DummyKey()
+
         try:
             msg = Message(raw)
         except MessageError as e:
@@ -149,6 +178,7 @@ class ChannelConnection(SockJSConnection):
                 self.del_subscription(msg.topic)
             elif msg.event == "CMD":
                 command = WSCommand(self, msg)
+                self._check_command_authz(command)
                 self.ctl.process_command(command)
         except SubscriptionError as e:
             return self.write_message(_error_msg(event="subscription_error",
@@ -185,13 +215,32 @@ class ChannelConnection(SockJSConnection):
 
     def start_subscription(self, sub):
         if sub.source == "EVENTS":
+            # only managers can read events
+            if not self.api_key.can_manage_all():
+                raise SubscriptionError("forbidden")
+
             sub.callback = partial(self._dispatch_event, sub.topic)
             # subscribe to all manager events
             self.manager.events.subscribe(sub.target, sub.callback)
         elif sub.source == "JOB":
+            if not self.api_key.can_manage(sub.target):
+                raise SubscriptionError("forbidden")
+
             sub.callback = partial(self._dispatch_process_event, sub.topic)
             self.manager.events.subscribe("job.%s" % sub.target, sub.callback)
         elif sub.source == "PROCESS":
+            # can we read this process
+            try:
+                p = self.manager.get_process(sub.pid)
+            except ValueError:
+                raise SubscriptionError("invalid_process")
+            except ProcessError as e:
+                raise SubscriptionError(e.to_json())
+
+            if not self.api_key.can_manage_all(p.name):
+                raise SubscriptionError("forbidden")
+
+
             sub.callback = partial(self._dispatch_process_event, sub.topic)
             self.manager.events.subscribe("proc.%s" % sub.target, sub.callback)
         elif sub.source == "STATS":
@@ -199,8 +248,15 @@ class ChannelConnection(SockJSConnection):
                 sub.callback = partial(self._dispatch_event, sub.topic)
                 # subscribe to the pid stats
                 proc = self.manager.get_process(sub.pid)
+
+                # check if we can read on this process
+                self._check_read(proc.name)
+
                 proc.monitor(sub.callback)
             else:
+                # check if we can read on this job
+                self._check_read(sub.target)
+
                 sub.callback = partial(self._dispatch_event, sub.topic)
                 # subscribe to the job processes stats
                 state = self.manager._get_locked_state(sub.target)
@@ -212,6 +268,10 @@ class ChannelConnection(SockJSConnection):
 
             sub.callback = partial(self._dispatch_output, sub.topic)
             proc = self.manager.get_process(sub.pid)
+
+            # check if we can read on this process
+            self._check_read(proc.name)
+
 
             # get the target to receive the data from
             if sub.target == sub.pid:
@@ -258,6 +318,58 @@ class ChannelConnection(SockJSConnection):
                     proc.unmonitor_io(target, sub.callback)
                 elif target in proc.custom_streams:
                     proc.streams[target].unsubscribe(sub.callback)
+
+
+    def _check_command_authz(self, command):
+        if self.api_key.can_manage_all():
+            return
+
+        try:
+            self._do_check_command_authz(command)
+        except ProcessError as pe:
+            command.reply_error({"errno": pe.errno, "reason": pe.reason})
+        except Exception as e:
+            command.reply_error({"errno": 500, "reason": str(e)})
+
+    def _do_check_command_authz(self, command):
+        if (command.name in ("process_info", "process_stats", "stop_process",
+            "send", "kill",)):
+
+            # if not pid given return and handle the command error later
+            if not command.args:
+                return
+
+            # get the process instance
+            p = self.manager.get_process(command.args[0])
+
+            # we need write permission for 'send'
+            if command.name == "send" and self.api_key.can_write(p.name):
+                return
+
+            # else we need manage rights tp execute commands.
+            if self.api_key.can_manage(p.name):
+                return
+        elif command.name in ("sessions", "jobs", "pids",):
+            # we need manage_all permission for such commands
+            if self.api_key.can_manage_all():
+                return
+        elif command.name in ("load", "unload","reload","update",):
+            # we need to be an admin
+            if self.api_key.is_admin():
+                return
+        else:
+            if not command.args:
+                return
+
+            # only manager permission are needed.
+            if self.api_key.can_manage(command.args[0]):
+                return
+
+        raise ProcessError(403, "forbidden")
+
+    def _check_read(self, pname):
+        if not self.api_key.can_read(pname):
+            raise SubscriptionError("forbidden")
 
     def _dispatch_event(self, topic, evtype, ev):
         data = { "event": evtype, "topic": topic}

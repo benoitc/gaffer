@@ -8,15 +8,20 @@ from tornado import websocket
 
 from ...message import Message, decode_frame, make_response
 from ...error import ProcessError
+from ..keys import Key, DummyKey
 from .util import CorsHandler, CorsHandlerWithAuth
 
-
-class AllProcessIdsHandler(CorsHandler):
+class AllProcessIdsHandler(CorsHandlerWithAuth):
 
     def get(self, *args):
         self.preflight()
         self.set_header('Content-Type', 'application/json')
         m = self.settings.get('manager')
+
+        if (not self.api_key.is_admin() and
+                not self.api_key.can_manage_all()):
+            raise HttpError(403)
+
         self.write({"pids": list(m.running)})
 
 class ProcessIdHandler(CorsHandlerWithAuth):
@@ -173,6 +178,12 @@ class PidChannel(websocket.WebSocketHandler):
 
     def open(self, *args):
         self.manager = self.settings.get('manager')
+        self.args = args
+
+        # initialize key handling
+        self.require_key = self.settings.get('require_key', False)
+        self.key_mgr = self.settings.get('key_mgr')
+        self.api_key = None
 
         try:
             process = self.process = self.manager.get_process(int(args[0]))
@@ -185,11 +196,8 @@ class PidChannel(websocket.WebSocketHandler):
         self.manager.events.subscribe("proc.%s.exit" % process.pid,
                 self.on_exit)
 
-        try:
-            self.open_stream(process, args)
-        except ProcessError as e:
-            self.write_error(e.to_json())
-            self.close()
+        self.opened = False
+
 
     def open_stream(self, process, args):
         self._write = None
@@ -204,6 +212,9 @@ class PidChannel(websocket.WebSocketHandler):
 
             # test if we need to read
             if mode & pyuv.UV_READABLE:
+                if not self.api_key.can_read(self.process.name):
+                    raise ProcessError(403, "FORBIDDEN")
+
                 if not process.redirect_output:
                     raise ProcessError(403, "EPERM")
 
@@ -213,6 +224,9 @@ class PidChannel(websocket.WebSocketHandler):
 
             # test if we need to write
             if mode & pyuv.UV_WRITABLE:
+                if not self.api_key.can_write(self.process.name):
+                    raise ProcessError(403, "FORBIDDEN")
+
                 if not process.redirect_input:
                     raise ProcessError(403, "EPERM")
                 self._write = process.write
@@ -238,6 +252,17 @@ class PidChannel(websocket.WebSocketHandler):
                 raise ProcessError(404, "ENOENT")
 
             self._stream = stream
+
+    def authenticate(self, body):
+        if body.startswith("AUTH:"):
+            key = body.split("AUTH:")[1]
+            try:
+                self.api_key = Key.loads(self.key_mgr.get_key(key))
+            except KeyNotFound:
+                raise ProcessError(403, "AUTH_REQUIRED")
+        else:
+            raise ProcessError(403, "AUTH_REQUIRED")
+
     def close(self):
         self._close_subscriptions()
         super(PidChannel, self).close()
@@ -245,6 +270,23 @@ class PidChannel(websocket.WebSocketHandler):
     def on_message(self, frame):
         # decode the coming msg frame
         msg = decode_frame(frame)
+
+        if not self.api_key and self.require_key:
+            try:
+                self.authenticate(msg.body)
+            except ProcessError as e:
+                self.write_error(e.to_json())
+                self.close()
+        else:
+            self.api_key = DummyKey()
+
+
+        if not self.opened:
+            try:
+                self.open_stream(self.process, self.args)
+            except ProcessError as e:
+                self.write_error(e.to_json())
+                self.close()
 
         # we can write on this stream, return an error
         if not self._write:

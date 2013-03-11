@@ -37,9 +37,6 @@ class Key(object):
         self.manage = permissions.get('manage', None) or {}
         self.write = permissions.get('write', None) or {}
         self.read = permissions.get('write', None) or {}
-        self.can_manage_all = '*' in self.manage
-        self.can_write_all = '*' in self.write
-        self.can_read_all = '*' in self.read
 
     def __str__(self):
         return "Key: %s" % self.api_key
@@ -58,9 +55,9 @@ class Key(object):
         return {"key": self.api_key, "label": self.label, "permissions":
                 self.permissions}
 
-    def is_superuser(self):
+    def is_admin(self):
         """ does this key has all rights? """
-        return self.permissions.get("superuser", False)
+        return self.permissions.get("admin", False)
 
     def can_create_key(self):
         """ can we create new keys with this key?
@@ -74,6 +71,15 @@ class Key(object):
         """ can we create users with this key ? """
         return self.permissions.get("create_user", False)
 
+    def can_manage_all(self):
+        return '*' in self.manage or self.is_admin()
+
+    def can_write_all(self):
+        return '*' in self.write or self.is_admin()
+
+    def can_read_all(self):
+        return '*' in self.read or self.is_admin()
+
     def can_manage(self, job_or_session):
         """ test if a user can manage a job or a session
 
@@ -82,6 +88,7 @@ class Key(object):
         - start/stop processes and jobs in a session
         - list
         """
+
         return self.can('manage', job_or_session)
 
     def can_write(self, job_or_session):
@@ -106,12 +113,12 @@ class Key(object):
         if not hasattr(self, permission):
             raise UnknownPermission("%r does not exist")
 
-        # do this key has all the permissions
-        if getattr(self, "%s_all" % permission, False):
-            return True
-
         # get all permissions
         permissions = getattr(self, permission, {})
+
+        # check if we we have the permission on all resources
+        if '*' in permissions or self.is_admin():
+            return True
 
         if "." in what:
             # we are testing job possibilities. The try first to know if we
@@ -135,11 +142,20 @@ class DummyKey(Key):
     def can_create_key(self):
         return False
 
-    def is_superuser(self):
-        return False
-
     def can_create_user(self):
         return False
+
+    def is_admin(self):
+        return True
+
+    def can_manage_all(self):
+        return True
+
+    def can_write_all(self):
+        return True
+
+    def can_read_all(self):
+        return True
 
     def can(self, permissions, what):
         return True

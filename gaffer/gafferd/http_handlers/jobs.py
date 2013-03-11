@@ -10,21 +10,31 @@ from ...process import ProcessConfig
 from .util import CorsHandler, CorsHandlerWithAuth
 
 
-class SessionsHandler(CorsHandler):
+class SessionsHandler(CorsHandlerWithAuth):
     """ /sessions """
 
     def get(self, *args):
         self.preflight()
+
+        if (not self.api_key.is_admin() and
+                not self.api_key.can_manage_all()):
+            raise HttpError(403)
+
         m = self.settings.get('manager')
         self.set_header('Content-Type', 'application/json')
         self.write(json.dumps({"sessions": m.sessions}))
 
 
-class AllJobsHandler(CorsHandler):
+class AllJobsHandler(CorsHandlerWithAuth):
     """ /jobs """
 
     def get(self, *args):
         self.preflight()
+
+        if (not self.api_key.is_admin() and
+                not self.api_key.can_manage_all()):
+            raise HttpError(403)
+
         m = self.settings.get('manager')
         self.set_header('Content-Type', 'application/json')
         self.write(json.dumps({"jobs": m.jobs()}))
@@ -37,7 +47,7 @@ class JobsHandler(CorsHandlerWithAuth):
         m = self.settings.get('manager')
         sessionid = args[0]
 
-        if not self.api_key.can_read(sessionid):
+        if not self.api_key.can_manage(sessionid):
             raise HttpError(403)
 
         try:
