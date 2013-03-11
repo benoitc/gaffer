@@ -3,9 +3,12 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 from collections import deque
+import os
+import json
 import sqlite3
 
 from ..events import EventEmitter
+from ..loop import patch_loop
 from .util import load_backend
 
 
@@ -168,13 +171,12 @@ class KeyManager(object):
         self.cfg = cfg
         self._cache = {}
         self._entries = deque()
-        self._lock = Lock()
 
         # initialize the db backend
         if not cfg.keys_backend or cfg.keys_backend == "default":
             self._backend = SqliteKeyBackend(loop, cfg)
         else:
-            self._backend = load_backend(backend)
+            self._backend = load_backend(cfg.keys_backend)
 
         # initialize the events listenr
         self._emitter = EventEmitter()
@@ -214,8 +216,8 @@ class KeyManager(object):
         # do we need to clean the cache?
         # we only keep last 1000 acceded keys in RAM
         if len(self._cache) >= 1000:
-            last = self._entries.popleft()
-            self._cache.pop(key)
+            to_remove = self._entries.popleft()
+            self._cache.pop(to_remove)
 
         # enter last entry in the cache
         self._cache[key] = okey
@@ -285,7 +287,7 @@ class SqliteKeyBackend(KeyBackend):
         if dbname != ":memory:":
             dbname = os.path.join(cfg.config_dir, dbname)
 
-        super(SqliteAuthHandler, self).__init__(loop, cfg, dbname)
+        super(SqliteKeyBackend, self).__init__(loop, cfg, dbname)
 
         # intitialize conn
         self.conn = None
@@ -318,10 +320,10 @@ class SqliteKeyBackend(KeyBackend):
         with self.conn:
             cur = self.conn.cursor()
             try:
-                res = cur.execute("INSERT INTO keys VALUES (?, ?, ?)", [key,
+                cur.execute("INSERT INTO keys VALUES (?, ?, ?)", [key,
                     data, parent])
             except sqlite3.IntegrityError:
-                raise UserConflict()
+                raise KeyConflict()
 
     def get_key(self, key, subkeys=True):
         assert self.conn is not None
