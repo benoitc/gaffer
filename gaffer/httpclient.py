@@ -160,7 +160,7 @@ class Server(BaseClient):
     calls are blocking. (but running in the loop) """
 
     def __init__(self, uri, loop=None, api_key=None, **options):
-        super(Server, self).__init__(uri, loop=None, **options)
+        super(Server, self).__init__(uri, loop=loop, **options)
         self.api_key = api_key
 
     def request(self, method, path, headers=None, body=None, **params):
@@ -171,7 +171,7 @@ class Server(BaseClient):
 
         # continue the request
         return super(Server, self).request(method, path, headers=headers,
-                body=None, **params)
+                body=body, **params)
 
     @property
     def version(self):
