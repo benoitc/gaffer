@@ -15,7 +15,7 @@ def test_pbkdf2():
         Parameters:'
             data=%(data)s
             salt=%(salt)s
-            iterations=%(iteration)s""" % {"expected": expected,
+            iterations=%(iterations)s""" % {"expected": expected,
                     "rv": rv, "data": data, "salt": salt,
                     "iterations": iterations}
 
