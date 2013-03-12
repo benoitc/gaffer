@@ -74,10 +74,9 @@ class DummyUser(User):
 
 class AuthManager(object):
 
-    def __init__(self, loop, cfg, key_mgr=None):
+    def __init__(self, loop, cfg):
         self.loop = patch_loop(loop)
         self.cfg = cfg
-        self.key_mgr = key_mgr
 
         # initialize the db backend
         if not cfg.auth_backend or cfg.auth_backend == "default":
@@ -85,12 +84,21 @@ class AuthManager(object):
         else:
             self._backend = load_backend(cfg.keys_backend)
 
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            self.close()
+        except:
+            pass
+
     def open(self):
         self._backend.open()
 
     def close(self):
         self._backend.close()
-
 
     def create_user(self, username, password, user_type=0, key=None,
             extra=None):
@@ -130,6 +138,11 @@ class AuthManager(object):
 
     def update_user(self, username, password, user_type=0, key=None,
             extra=None):
+        # hash the password
+        salt = uuid.uuid4().hex
+        hashed_password =  bytestring(pbkdf2_hex(password.encode('utf-8'),
+                salt.encode('utf-8')).decode('utf-8'))
+        password = "PBKDF2-256$%s:%s$%s" % (salt, 1000, hashed_password)
         self._backend.update_user(username, password, user_type=user_type,
                 key=key, extra=extra)
 
@@ -156,7 +169,7 @@ class AuthManager(object):
         # do a binary comparaison of password hashes
         rv = 0
         for x, y in zip(a, b):
-            rv |= ord_(x) ^ ord_(y)
+            rv |= ord(x) ^ ord(y)
 
         return rv == 0
 
@@ -204,6 +217,16 @@ class BaseAuthHandler(object):
 
     def has_user(self, usernamen ):
         raise NotImplementedError
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            self.close()
+        except:
+            pass
 
 
 class SqliteAuthHandler(BaseAuthHandler):
@@ -257,7 +280,7 @@ class SqliteAuthHandler(BaseAuthHandler):
     def set_password(self, username, password):
         with self.conn:
             cur = self.conn.cursor()
-            cur.execute("UPDATE auth SET password=? WHERE user=?", [password,
+            cur.execute("UPDATE auth SET pwd=? WHERE user=?", [password,
                 username])
 
     def set_key(self, username, key):
@@ -266,7 +289,7 @@ class SqliteAuthHandler(BaseAuthHandler):
             cur.execute("UPDATE auth SET key=? WHERE user=?", [key,
                 username])
 
-    def update_user(self, username, password, user_type=1, key=None,
+    def update_user(self, username, password, user_type=0, key=None,
             extra=None):
         assert self.conn is not None
 

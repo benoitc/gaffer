@@ -300,6 +300,7 @@ class Server(object):
         try:
             username = self.args['--username']
             password = self.args['--password']
+            confirm_password = None
 
             if username and username is not None:
                 if auth_mgr.has_user(username):
@@ -341,11 +342,13 @@ class Server(object):
                         break
 
                     print("Passwords are different.")
+            else:
+                confirm_password = password
 
         except KeyboardInterrupt:
             print("")
 
-        if not username or not password:
+        if not username or not password or (confirm_password != password):
             print("admin not created.")
             sys.exit(0)
 

@@ -43,6 +43,13 @@ class MockConfig(object):
         self.logfile = None
         self.loglevel = "info"
 
+        # auth(z) API
+        self.require_key = False
+        self.auth_backend = "default"
+        self.keys_backend = "default"
+        self.auth_dbname = None
+        self.keys_dbname = None
+
 def start_manager():
     http_handler = HttpHandler(MockConfig(bind=TEST_URI))
     m = Manager()

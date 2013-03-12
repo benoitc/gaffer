@@ -188,6 +188,16 @@ class KeyManager(object):
         # initialize the events listenr
         self._emitter = EventEmitter(loop)
 
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            self.close()
+        except:
+            pass
+
     def subscribe(self, event, listener):
         self._emitter.subscribe(event, listener)
 
@@ -267,6 +277,16 @@ class KeyBackend(object):
     def __init__(self, loop, cfg):
         self.loop = patch_loop(loop)
         self.cfg = cfg
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            self.close()
+        except:
+            pass
 
     def open(self):
         raise NotImplementedError
