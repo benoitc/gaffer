@@ -2,14 +2,14 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-from collections import deque
 import json
 import os
 import sqlite3
-
-import pyuv
+import uuid
 
 from ..loop import patch_loop
+from ..util import bytestring, ord_
+from .pbkdf2 import pbkdf2_hex
 from .util import load_backend
 
 
@@ -20,6 +20,57 @@ class UserNotFound(Exception):
 class UserConflict(Exception):
     """ exception raised when you try to create an already exisiting user """
 
+class User(object):
+    """ instance representing an authenticated user """
+
+    def __init__(self, username, password, user_type=0, key=None, extra=None):
+        self.username = username
+        self.password = password
+        self.user_type = user_type
+        self.key = key
+        self.extra = extra or {}
+
+    def __str__(self):
+        return "USer: %s" % self.username
+
+    def is_authenticated(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def is_user(self):
+        return self.user_type == 0
+
+    def is_app(self):
+        return self.user_type == 1
+
+    @classmethod
+    def load(cls, obj):
+        return cls(obj['username'], obj['password'], obj.get('user_type', 0),
+                obj.get("key"), obj.get('extra'))
+
+    def dump(self):
+        return {"username": self.username, "password": self.password,
+                "user_type": self.user_type, "key": self.key,
+                "extra": self.extra}
+
+
+class DummyUser(User):
+
+    def __init__(self, *args, **kwargs):
+        self.username = "anonymous"
+        self.password = None
+        self.user_type = 0
+        self.key = None
+        self.extra = {}
+
+    def is_authenticated(self):
+        return False
+
+    def is_anonymous(self):
+        return True
+
 
 class AuthManager(object):
 
@@ -29,28 +80,92 @@ class AuthManager(object):
         self.key_mgr = key_mgr
 
         # initialize the db backend
-        if not cfg.keys_backend or cfg.keys_backend == "default":
+        if not cfg.auth_backend or cfg.auth_backend == "default":
             self._backend = SqliteAuthHandler(loop, cfg)
         else:
             self._backend = load_backend(cfg.keys_backend)
 
-        # initialize the events listenr
-        self._emitter = EventEmitter(loop)
+    def open(self):
+        self._backend.open()
+
+    def close(self):
+        self._backend.close()
+
 
     def create_user(self, username, password, user_type=0, key=None,
             extra=None):
-        self._backend.creatre_user(username, password, user_type=user_type,
+
+        # hash the password
+        salt = uuid.uuid4().hex
+        hashed_password =  bytestring(pbkdf2_hex(password.encode('utf-8'),
+                salt.encode('utf-8')).decode('utf-8'))
+        password = "PBKDF2-256$%s:%s$%s" % (salt, 1000, hashed_password)
+
+        # store the user
+        self._backend.create_user(username, password, user_type=user_type,
                 key=key, extra=extra)
+
+    def authenticate(self, username, password):
+        user = self._backend.get_user(username)
+
+        _alg, infos, password_hash = user['password'].split("$", 3)
+        salt, iterations = infos.split(":")
+
+        password_hash1 =  bytestring(pbkdf2_hex(password.encode('utf-8'),
+            salt.encode('utf-8'), iterations=int(iterations)).decode('utf-8'))
+
+        if not self._check_password(password_hash, password_hash1):
+            return DummyUser()
+
+        return User.load(user)
+
+    def get_user(self, username):
+        return self._backend.get_user(username)
+
+    def set_password(self, username, password):
+        self._backend.set_password(username, password)
+
+    def set_key(self, username, key):
+        self._backend.set_key(username, key)
 
     def update_user(self, username, password, user_type=0, key=None,
             extra=None):
+        self._backend.update_user(username, password, user_type=user_type,
+                key=key, extra=extra)
+
+    def delete_user(self, username):
+        self._backend.delete_user(username)
+
+    def user_by_key(self, key):
+        return self._backend.get_bykey(key)
+
+    def user_by_type(self, user_type):
+        return self._backend.get_bytype(user_type)
+
+    def has_user(self, username):
+        return self._backend.has_user(username)
+
+    def has_usertype(self, user_type):
+        return self._backend.has_usertype(user_type)
+
+    def _check_password(self, a, b):
+        # compare password hashes lengths
+        if len(a) != len(b):
+            return False
+
+        # do a binary comparaison of password hashes
+        rv = 0
+        for x, y in zip(a, b):
+            rv |= ord_(x) ^ ord_(y)
+
+        return rv == 0
+
 
 class BaseAuthHandler(object):
 
-    def __init__(self, loop, cfg, dbname=None):
+    def __init__(self, loop, cfg):
         self.loop = patch_loop(loop)
         self.cfg = cfg
-        self.dbname = dbname
 
     def open(self):
         raise NotImplementedError
@@ -58,19 +173,27 @@ class BaseAuthHandler(object):
     def close(self):
         raise NotImplementedError
 
-    def create_user(self, username, password, user_type=0, extra=None):
+    def create_user(self, username, password, user_type=0, key=None,
+            extra=None):
         raise NotImplementedError
 
     def get_user(self, username):
         raise NotImplementedError
 
+    def update_user(self, username, password, user_type=0, key=None,
+            extra=None):
+        raise NotImplementedError
+
+    def set_password(self, username, password):
+        raise NotImplementedError
+
+    def set_key(self, username, key):
+        raise NotImplementedError
+
     def delete_user(self, username):
         raise NotImplementedError
 
-    def get_password(self, username):
-        raise NotImplementedError
-
-    def has_user(self, username):
+    def user_bykey(self, key):
         raise NotImplementedError
 
     def users_bytype(self, username):
@@ -79,55 +202,45 @@ class BaseAuthHandler(object):
     def has_usertype(self, user_type):
         raise NotImplementedError
 
-
-    def user_bykey(self, key):
+    def has_user(self, usernamen ):
         raise NotImplementedError
 
+
 class SqliteAuthHandler(BaseAuthHandler):
+    """ SQLITE AUTH BACKEND FOR THE AUTHENTICATION API in gaffer """
 
-    def __init__(self, loop, cfg, dbname=None):
+    def __init__(self, loop, cfg):
+        super(SqliteAuthHandler, self).__init__(loop, cfg)
+
         # set dbname
-        dbname = dbname or "auth.db"
-        if dbname != ":memory:":
-            dbname = os.path.join(cfg.config_dir, dbname)
-
-        super(SqliteAuthHandler, self).__init__(loop, cfg, dbname)
+        self.dbname = cfg.auth_dbname or "auth.db"
+        if self.dbname != ":memory:":
+            self.dbname = os.path.join(cfg.config_dir, self.dbname)
 
         # intitialize conn
         self.conn = None
 
     def open(self):
         self.conn = sqlite3.connect(self.dbname)
-        if self.dbname != ":memory:" and os.path.isfile(self.dbname):
-            return
-
         with self.conn:
-            sql = """CREATE TABLE auth (user text primary key, pwd text, type
-            int, key text, extra text)"""
+            sql = """CREATE TABLE if not exists auth (user text primary key,
+            pwd text, user_type int, key text, extra text)"""
             self.conn.execute(sql)
 
     def close(self):
         self.conn.commit()
         self.conn.close()
 
-    def create_user(self, username, password, user_type=0, extra=None):
+    def create_user(self, username, password, user_type=0, key=None,
+            extra=None):
         assert self.conn is not None
         with self.conn:
             try:
-                self.conn.execute("INSERT INTO auth VALUES(?, ?, ?, ?)",
-                        [username, password, user_type, extra])
+                self.conn.execute("INSERT INTO auth VALUES(?, ?, ?, ?, ?)",
+                        [username, password, user_type, key,
+                         json.dumps(extra or {})])
             except sqlite3.IntegrityError:
                 raise UserConflict()
-
-    def update_user(self, username, password, user_type=1, extra=None):
-        assert self.conn is not None
-
-        if not self.has_user(username):
-            raise UserNotFound()
-
-        with self.conn:
-            self.conn.execute("REPLACE INTO auth VALUES(?, ?, ?, ?)",
-                    [username, password, user_type, extra])
 
     def get_user(self, username):
         assert self.conn is not None
@@ -135,25 +248,58 @@ class SqliteAuthHandler(BaseAuthHandler):
             cur = self.conn.cursor()
             cur.execute("SELECT * FROM auth where user=?", [username])
             row = cur.fetchone()
-            user = row[3] or {}
-            user.update({"username": row[0], "password": row[1], "user_type":
-                row[2]})
-            return user
+
+        if not row:
+            raise UserNotFound()
+
+        return self._make_user(row)
+
+    def set_password(self, username, password):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("UPDATE auth SET password=? WHERE user=?", [password,
+                username])
+
+    def set_key(self, username, key):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("UPDATE auth SET key=? WHERE user=?", [key,
+                username])
+
+    def update_user(self, username, password, user_type=1, key=None,
+            extra=None):
+        assert self.conn is not None
+
+        if not self.has_user(username):
+            raise UserNotFound()
+
+        with self.conn:
+            self.conn.execute("REPLACE INTO auth VALUES(?, ?, ?, ?, ?)",
+                    [username, password, user_type, key,
+                     json.dumps(extra or {})])
 
     def delete_user(self, username):
         assert self.conn is not None
         with self.conn:
             cur = self.conn.cursor()
             cur.execute("DELETE FROM auth WHERE user=?", [username])
-            # don't forget to delete all keys for this user
-            cur.execute("DELETE FROM keys WHERE user=?", [username])
 
-    def get_password(self, username):
+    def get_bytype(self, user_type):
         assert self.conn is not None
         with self.conn:
             cur = self.conn.cursor()
-            cur.execute("SELECT pwd FROM auth where user=?", [username])
-            return cur.fetchone()[0]
+            rows = cur.execute("SELECT * from auth WHERE user_type=?",
+                    [user_type])
+
+            return [self._make_user(row) for row in rows]
+
+    def get_bykey(self, key):
+        assert self.conn is not None
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("SELECT * from auth WHERE key=?", [key])
+            row = cur.fetchone()
+            return self._make_user(row)
 
     def has_user(self, username):
         try:
@@ -162,15 +308,17 @@ class SqliteAuthHandler(BaseAuthHandler):
             return False
         return True
 
-    def user_keys(self, username):
-        assert self.conn is not None
+    def has_type(self, user_type):
         with self.conn:
             cur = self.conn.cursor()
-            rows = cur.execute("SELECT key, data from keys WHERE user=?",
-                    [username])
-            keys = []
-            for row in rows:
-                key = json.loads(row[1])
-                key["key"] = row[0]
-                keys.append(key)
-            return keys
+            cur.execute("SELECT * from auth WHERE user_type=?", [user_type])
+
+            if not cur.fetchone():
+                return False
+            return True
+
+    def _make_user(self, row):
+        user = json.loads(row[4]) or {}
+        user.update({"username": row[0], "password": row[1],
+            "user_type": row[2], "key": row[3]})
+        return user

@@ -121,6 +121,9 @@ class Config(object):
         if self.args['--log-level'] is not None:
             self.loglevel = self.args['--log-level']
 
+        if self.args['--require-key']:
+            self.require_key = True
+
 
     def reload(self):
         """ like reload but track removed processes and webhhoks """
@@ -152,6 +155,13 @@ class Config(object):
         self.pidfile = None
         self.logfile = None
         self.loglevel = "info"
+
+        # auth(z) API
+        self.require_key = False
+        self.auth_backend = "default"
+        self.keys_backend = "default"
+        self.auth_dbname = None
+        self.keys_dbname = None
 
     def parse_ssl_options(self):
         ssl_options = {}
@@ -226,6 +236,13 @@ class Config(object):
         for k, v in cfg.items('gaffer'):
             if k.startswith('lookupd_address'):
                 self.lookupd_addresses.append(v)
+
+        # parse AUTH api
+        self.require_key = cfg.dgetboolean('gaffer', 'require_key', True)
+        self.auth_backend = cfg.dget('auth', 'auth_backend', 'default')
+        self.keys_backend = cfg.dget('auth', 'keys_backend', 'default')
+        self.auth_dbname = cfg.dget('auth', 'auth_dbname', None)
+        self.keys_dbname = cfg.dget('auth', 'keys_dbname', None)
 
         processes = []
         webhooks = []

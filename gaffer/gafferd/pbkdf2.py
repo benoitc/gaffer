@@ -40,7 +40,9 @@
 
 
     :copyright: (c) Copyright 2011 by Armin Ronacher.
-    :license: BSD, see LICENSE for more details.
+    :license: BSD, see NOTIC for more details.
+
+    Adapted to Python 3 by Benoît Chesneau
 """
 import binascii
 import hmac

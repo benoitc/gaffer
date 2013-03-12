@@ -12,6 +12,9 @@ usage: gafferd [--version] [-v|-vv] [-c CONFIG|--config=CONFIG]
                [--client-certfile=CERTFILE] [--client-keyfile=KEYFILE]
                [--backlog=BACKLOG]
                [--error-log=FILE] [--log-level=LEVEL]
+               [--require-key]
+               [--create-admin-user [[--username USERNAME] [--password PASSWORD]]]
+
 
 Args
 
@@ -42,15 +45,22 @@ Options
     --error-log=FILE            logging file
     --log-level=LEVEL           logging level (critical, error warning, info,
                                 debug)
+    --require-key               enable the key authorization API
+    --create-admin-user         create an admin user and exit
+    --username USERNAME         admin username
+    --password PASSWORD         admin password
 
 """
 
 
 
+from getpass import getpass
 import os
 import logging
 import sys
+import uuid
 
+import pyuv
 
 from .. import __version__
 from ..console_output import ConsoleOutput
@@ -64,8 +74,10 @@ from ..util import daemonize, setproctitle_
 from ..webhooks import WebHooks
 from .config import ConfigError, Config
 from .http import HttpHandler
+from .keys import KeyManager
 from .plugins import PluginManager
-from .util import user_path, system_path, default_path, is_admin
+from .users import AuthManager
+from .util import user_path, system_path, default_path, is_admin, confirm
 
 
 LOG_LEVELS = {
@@ -160,6 +172,11 @@ class Server(object):
     def run(self):
         # load config
         self.cfg.load()
+
+        # check if we need to create an admin
+        if self.args['--create-admin-user']:
+            return self.create_admin_user()
+
 
         # do we need to daemonize the daemon
         if self.cfg.daemonize:
@@ -265,6 +282,103 @@ class Server(object):
         for h in handlers:
             h.setFormatter(logging.Formatter(format, datefmt))
             logger.addHandler(h)
+
+    def create_admin_user(self):
+        loop = pyuv.Loop.default_loop()
+        key_mgr = KeyManager(loop, self.cfg)
+        auth_mgr = AuthManager(loop, self.cfg)
+
+
+        # open the auth db
+        try:
+            auth_mgr.open()
+        except:
+            logging.error("error while creating an admin",
+                    exc_info=True)
+            sys.exit(1)
+
+        try:
+            username = self.args['--username']
+            password = self.args['--password']
+
+            if username and username is not None:
+                if auth_mgr.has_user(username):
+                    print("username %r already exists. " % username
+                            + "Please choose another")
+                    sys.exit(1)
+            elif username == "":
+                print("Error: username is empty")
+                sys.exit(1)
+
+            if password == "":
+                print("Error: password is empty")
+
+            if not username:
+                while True:
+                    username = input("username: ").lower()
+                    if username and username is not None:
+                        if auth_mgr.has_user(username):
+                            print("username %r already exists. " % username
+                                    + "Please enter another")
+                            continue
+                        break
+
+                    print("username is empty. Please enter a username.")
+
+            if not password:
+                while True:
+                    password = getpass("password: ")
+                    if password and password is not None:
+                        break
+
+                    print("password is empty. Please enter a password.")
+
+                # confirm password
+
+                while True:
+                    confirm_password = getpass("confirm password: ")
+                    if confirm_password == password:
+                        break
+
+                    print("Passwords are different.")
+
+        except KeyboardInterrupt:
+            print("")
+
+        if not username or not password:
+            print("admin not created.")
+            sys.exit(0)
+
+        # create an admin key
+        permissions = {"admin": True}
+        try:
+            key_mgr.open()
+            api_key = key_mgr.create_key(permissions, label="admin key")
+        except:
+            logging.error("error while creating an admin key",
+                    exc_info=True)
+            sys.exit(0)
+        finally:
+            try:
+                key_mgr.close()
+            except:
+                pass
+
+        # create a user
+        try:
+            auth_mgr.create_user(username, password, key=api_key)
+        except:
+            logging.error("error while creating an admin",
+                    exc_info=True)
+            sys.exit(0)
+        finally:
+            try:
+                auth_mgr.close()
+            except:
+                pass
+
+
+        print("User %r created.\nAPI Key: %s" % (username, api_key))
 
 def run():
     args = docopt(__doc__, version=__version__)

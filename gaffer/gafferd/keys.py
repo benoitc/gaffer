@@ -6,6 +6,7 @@ from collections import deque
 import os
 import json
 import sqlite3
+import uuid
 
 from ..events import EventEmitter
 from ..loop import patch_loop
@@ -68,10 +69,16 @@ class Key(object):
         Note only a user key can create keys able to create other keys. Sub
         keys can't create keys.
         """
+        if self.is_admin():
+            return True
+
         return self.permissions.get("create_key", False)
 
     def can_create_user(self):
         """ can we create users with this key ? """
+        if self.is_admin():
+            return True
+
         return self.permissions.get("create_user", False)
 
     def can_manage_all(self):
@@ -179,7 +186,7 @@ class KeyManager(object):
             self._backend = load_backend(cfg.keys_backend)
 
         # initialize the events listenr
-        self._emitter = EventEmitter()
+        self._emitter = EventEmitter(loop)
 
     def subscribe(self, event, listener):
         self._emitter.subscribe(event, listener)
@@ -189,10 +196,10 @@ class KeyManager(object):
 
     def open(self):
         self._backend.open()
-        self._emitter.publlish("open", self)
+        self._emitter.publish("open", self)
 
     def close(self):
-        self._emitter.publlish("close", self)
+        self._emitter.publish("close", self)
         self._backend.close()
         self._emitter.close()
 
@@ -203,9 +210,19 @@ class KeyManager(object):
     def all_keys(self):
         return self._backend.all()
 
+    def create_key(self, permissions, key=None, label="", parent=None):
+        key = key or uuid.uuid4().hex
+        data = {"permissions": permissions}
+        if label and label is not None:
+            data['label'] = label
+
+        self.set_key(key, data, parent=parent)
+        return key
+
+
     def set_key(self, key, data, parent=None):
         self._backend.set_key(key, data, parent=parent)
-        self._emitter.publlish("set", self, key)
+        self._emitter.publish("set", self, key)
 
     def get_key(self, key):
         if key in self._cache:
@@ -234,7 +251,7 @@ class KeyManager(object):
 
         # then delete the
         self._backend.delete_key(key)
-        self._emitter.publlish("delete", self, key)
+        self._emitter.publish("delete", self, key)
 
     def has_key(self, key):
         return self._backend.has_key(key)
@@ -247,10 +264,9 @@ class KeyManager(object):
 
 class KeyBackend(object):
 
-    def __init__(self, loop, cfg, dbname=None):
+    def __init__(self, loop, cfg):
         self.loop = patch_loop(loop)
         self.cfg = cfg
-        self.dbname = dbname
 
     def open(self):
         raise NotImplementedError
@@ -281,25 +297,22 @@ class SqliteKeyBackend(KeyBackend):
     """ sqlite backend to store API keys in gaffer """
 
 
-    def __init__(self, loop, cfg, dbname=None):
-        # set dbname
-        dbname = dbname or "keys.db"
-        if dbname != ":memory:":
-            dbname = os.path.join(cfg.config_dir, dbname)
+    def __init__(self, loop, cfg):
+        super(SqliteKeyBackend, self).__init__(loop, cfg)
 
-        super(SqliteKeyBackend, self).__init__(loop, cfg, dbname)
+        # set dbname
+        self.dbname = cfg.keys_dbname or "keys.db"
+        if self.dbname != ":memory:":
+            self.dbname = os.path.join(cfg.config_dir, self.dbname)
 
         # intitialize conn
         self.conn = None
 
     def open(self):
         self.conn = sqlite3.connect(self.dbname)
-        if self.dbname != ":memory:" and os.path.isfile(self.dbname):
-            return
-
         with self.conn:
-            sql = """CREATE TABLE keys (key text primary key, data text,
-            parent text)"""
+            sql = """CREATE TABLE if not exists keys (key text primary key,
+            data text, parent text)"""
             self.conn.execute(sql)
 
     def close(self):
