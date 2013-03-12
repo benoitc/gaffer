@@ -18,7 +18,7 @@ class ProcessError(Exception):
         return {"error": self.reason, "errno": self.errno}
 
     def to_json(self):
-        return json.dumps(self.to_dict)
+        return json.dumps(self.to_dict())
 
 class ProcessNotFound(ProcessError):
     """ exception raised when a process or job isn't found """

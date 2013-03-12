@@ -147,17 +147,17 @@ class ChannelConnection(SockJSConnection):
             try:
                 self.api_key = Key.load(self.key_mgr.get_key(key))
             except KeyNotFound:
-                raise ProcessError(403, "AUTH_REQUIRED")
+                raise ProcessError(403, "forbidden")
         else:
-            raise ProcessError(403, "AUTH_REQUIRED")
+            raise ProcessError(401, "unauthorized")
 
     def on_message(self, raw):
         if not self.api_key and self.require_key:
             try:
                 self.authenticate(raw)
             except ProcessError as e:
-                return self.write_message(_error_msg(error="AUTH_REQUIRED",
-                reason=e.to_json()))
+                self.write_message(_error_msg(error="AUTH_REQUIRED",
+                    reason=e.to_json()))
                 return self.close()
         else:
             self.api_key = DummyKey()
