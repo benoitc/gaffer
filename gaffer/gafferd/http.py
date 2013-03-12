@@ -19,7 +19,9 @@ from ..loop import patch_loop
 from .. import sockjs
 from ..util import (bind_sockets, hostname, is_ssl)
 from . import http_handlers
+from .keys import KeyManager
 from .lookup import LookupClient
+from .users import AuthManager
 
 LOGGER = logging.getLogger("gaffer")
 PROTOCOL_VERSION = "0.1"
@@ -64,6 +66,8 @@ class HttpHandler(object):
     def __init__(self, config, plugin_manager=None, **settings):
         self.config = config
         self.plugin_manager = plugin_manager
+        self.key_mgr = None
+        self.auth_mgr = None
 
         # custom settings
         if 'manager' in settings:
@@ -101,21 +105,40 @@ class HttpHandler(object):
         if self.plugin_manager is not None:
             self.handlers.extend(self.plugin_manager.get_sites() or [])
 
-    def start(self, loop, manager):
-        self.loop = patch_loop(loop)
-        self.io_loop = IOLoop(_loop=loop)
-        self.manager = manager
 
+    def init_app(self):
         # add channel routes
-        user_settings = { "manager": manager }
+        user_settings = { "manager": self.manager }
+
+        # start the key api if needed
+        if self.config.require_key:
+            self.key_mgr = KeyManager(self.loop, self.config)
+            self.auth_mgr = AuthManager(self.loop, self.config)
+            user_settings.update({"require_key": True, "key_mgr": self.key_mgr,
+                "auth_mgr": self.auth_mgr})
+        else:
+            self.key_mgr = None
+            self.auth_mgr = None
+
         channel_router = sockjs.SockJSRouter(http_handlers.ChannelConnection,
                 "/channel", io_loop=self.io_loop, user_settings=user_settings)
 
         handlers = self.handlers + channel_router.urls
 
+        settings = self.settings.copy()
+        settings.update(user_settings)
+
         # create the application
-        self.app = Application(handlers, manager=self.manager,
-                **self.settings)
+        self.app = Application(handlers, **user_settings)
+
+
+    def start(self, loop, manager):
+        self.loop = patch_loop(loop)
+        self.io_loop = IOLoop(_loop=loop)
+        self.manager = manager
+
+        # init app
+        self.init_app()
 
         # start the server
         self._start_server()
@@ -126,6 +149,11 @@ class HttpHandler(object):
     def stop(self):
         # stop the server
         self.server.stop()
+
+        # close the api key managers
+        if self.config.require_key:
+            self.key_mgr.close()
+            self.auth_mgr.close()
 
         for event in LOOKUP_EVENTS:
             self.manager.events.unsubscribe(event, self._on_event)
@@ -146,6 +174,12 @@ class HttpHandler(object):
         # stop the server
         self.server.stop()
 
+        # close the api key managers
+        if self.config.require_key:
+            self.key_mgr.close()
+            self.auth_mgr.close()
+
+
         # close all lookups clients
         addresses = list(self.clients)
         for addr in addresses:
@@ -156,6 +190,9 @@ class HttpHandler(object):
 
         # reinit the config
         self.init_config()
+
+        # reinit the app
+        self.init_app()
 
         # start the server
         self._start_server()
@@ -169,6 +206,11 @@ class HttpHandler(object):
             [client.add_job(job_name) for job_name in jobs]
 
     def _start_server(self):
+        # open API keys managers
+        if self.config.require_key:
+            self.key_mgr.open()
+            self.auth_mgr.open()
+
         self.server = HTTPServer(self.app, io_loop=self.io_loop,
                 ssl_options=self.ssl_options)
 

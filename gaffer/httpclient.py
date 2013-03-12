@@ -33,10 +33,6 @@ Example of usage::
 
 
 import json
-import os
-import signal
-import ssl
-import sys
 
 import six
 from tornado import httpclient
@@ -163,6 +159,20 @@ class Server(BaseClient):
     """ Server, main object to connect to a gaffer node. Most of the
     calls are blocking. (but running in the loop) """
 
+    def __init__(self, uri, loop=None, api_key=None, **options):
+        super(Server, self).__init__(uri, loop=None, **options)
+        self.api_key = api_key
+
+    def request(self, method, path, headers=None, body=None, **params):
+        headers = headers or {}
+        # if we have an api key, pass it to the headers
+        if self.api_key is not None:
+            headers['X-Api-Key'] = self.api_key
+
+        # continue the request
+        return super(Server, self).request(method, path, headers=headers,
+                body=None, **params)
+
     @property
     def version(self):
         """ get gaffer version """
@@ -282,7 +292,7 @@ class Server(BaseClient):
         if is_ssl(url):
             options['ssl_options'] = parse_ssl_options(self.options)
 
-        return GafferSocket(self.loop, url, **options)
+        return GafferSocket(self.loop, url, api_key=self.api_key, **options)
 
     def _parse_name(self, name):
         if "." in name:
@@ -384,7 +394,8 @@ class Process(object):
         if is_ssl(url):
             options['ssl_options'] = parse_ssl_options(self.server.options)
 
-        return IOChannel(self.server.loop, url, mode=mode, **options)
+        return IOChannel(self.server.loop, url, mode=mode,
+                api_key=self.server.api_key, **options)
 
 
 class Job(object):

@@ -373,4 +373,4 @@ def test_job_commit():
     m.run()
 
 if __name__ == "__main__":
-    test_template()
+    test_simple_job()

@@ -51,7 +51,7 @@ class CorsHandlerWithAuth(CorsHandler):
         if require_key:
             if api_key is not None:
                 try:
-                    self.api_key = Key.loads(key_mgr.get_key(api_key))
+                    self.api_key = Key.load(key_mgr.get_key(api_key))
                 except KeyNotFound:
                     raise HTTPError(403, "key %s doesn't exist",api_key)
                 self._check_auth()

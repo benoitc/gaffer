@@ -446,13 +446,15 @@ class GafferCommand(object):
 
 class GafferSocket(WebSocket):
 
-    def __init__(self, loop, url, **kwargs):
+    def __init__(self, loop, url, api_key=None, **kwargs):
         loop = patch_loop(loop)
 
         try:
             self.heartbeat_timeout = kwargs.pop('heartbeat')
         except KeyError:
             self.heartbeat_timeout = 15.0
+
+        self.api_key = api_key
 
         # define status
         self.active = False
@@ -468,6 +470,10 @@ class GafferSocket(WebSocket):
         self._emitter = EventEmitter(loop)
         self._heartbeat = pyuv.Timer(loop)
         super(GafferSocket, self).__init__(loop, url, **kwargs)
+
+        # make sure we authenticate first
+        if self.api_key is not None:
+            self.write_message("AUTH:%s" % self.api_key)
 
     def start(self):
         if self.active:
@@ -616,8 +622,9 @@ class GafferSocket(WebSocket):
 
 class IOChannel(WebSocket):
 
-    def __init__(self, loop, url, mode=3, **kwargs):
+    def __init__(self, loop, url, mode=3, api_key=None, **kwargs):
         loop = patch_loop(loop)
+        self.api_key = api_key
 
         # initialize the capabilities
         self.mode = mode
@@ -648,6 +655,10 @@ class IOChannel(WebSocket):
         self._read_callback = None
 
         super(IOChannel, self).__init__(loop, url, **kwargs)
+
+        # make sure we authenticate first
+        if self.api_key is not None:
+            self.write_message("AUTH:%s" % self.api_key)
 
     def start(self):
         if self.active:

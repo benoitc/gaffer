@@ -49,7 +49,6 @@ Options
     --create-admin-user         create an admin user and exit
     --username USERNAME         admin username
     --password PASSWORD         admin password
-
 """
 
 
