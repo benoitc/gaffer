@@ -52,6 +52,13 @@ class GafferNotFound(Exception):
 class GafferConflict(Exception):
     """ exption raised on HTTP 409 """
 
+class GafferUnauthorized(Exception):
+    """ exception raised on HTTP 401 """
+
+class GafferForbidden(Exception):
+    """ exception raised on HTTP 403 """
+
+
 class HTTPClient(object):
     """A blocking HTTP client.
 
@@ -138,6 +145,10 @@ class BaseClient(object):
                     raise GafferNotFound(self.json_body(e.response))
                 elif e.code == 409:
                     raise GafferConflict(self.json_body(e.response))
+                elif e.code == 401:
+                    raise GafferUnauthorized(self.json_body(e.response))
+                elif e.code == 403:
+                    raise GafferForbidden(self.json_body(e.response))
                 else:
                     raise
             else:

@@ -5,7 +5,8 @@
 usage: gaffer [--version] [-f procfile|--procfile procfile]
               [-d root|--root root] [-e path|--env path]...
               [--certfile=CERTFILE] [--keyfile=KEYFILE] [--cacert=CACERT]
-              [--gafferd-http-address url] <command> [<args>...]
+              [-g url|--gafferd-http-address url]
+              [--api-key API_KEY] <command> [<args>...]
 
 Options
 
@@ -18,6 +19,7 @@ Options
     -e path,--env path                  Specify one or more .env files to load
     --gafferd-http-address url          gafferd node HTTP address to connect
                                         [default: http://127.0.0.1:5000]
+    --api-key API_KEY                   API Key to access to gaffer
     --certfile=CERTFILE                 SSL certificate file
     --keyfile=KEYFILE                   SSL key file
     --cacert=CACERT                     SSL CA certificate
@@ -29,7 +31,7 @@ import sys
 
 from .. import __version__
 from ..docopt import docopt, printable_usage
-from ..httpclient import Server
+from ..httpclient import Server, GafferUnauthorized, GafferForbidden
 from ..procfile import Procfile, get_env
 from ..util import is_ssl
 
@@ -72,7 +74,7 @@ class Config(object):
 
         # setup default server
         self.server = Server(self.args["--gafferd-http-address"],
-                **self.client_options)
+                api_key = self.args['--api-key'], **self.client_options)
 
     def get(self, *attrs):
         ret = []
@@ -146,6 +148,12 @@ class GafferCli(object):
             cmd = self.commands[cmdname]
             try:
                 return cmd.run(config, cmd_args)
+            except GafferUnauthorized:
+                print("Unauthorized access. You need an API key")
+                sys.exit(1)
+            except GafferForbidden:
+                print("Forbidden access. API key permissions aren't enough")
+                sys.exit(1)
             except Exception as e:
                 import traceback
                 print(traceback.format_exc())
