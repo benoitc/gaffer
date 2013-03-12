@@ -13,20 +13,37 @@ from ..loop import patch_loop
 from .util import load_backend
 
 
-class Auth(object):
+class UserNotFound(Exception):
+    """ exception raised when a user doesn't exist"""
 
-    def __init__(self, loop, cfg):
-        if not cfg.auth_backend:
+
+class UserConflict(Exception):
+    """ exception raised when you try to create an already exisiting user """
+
+
+class AuthManager(object):
+
+    def __init__(self, loop, cfg, key_mgr=None):
+        self.loop = patch_loop(loop)
+        self.cfg = cfg
+        self.key_mgr = key_mgr
+
+        # initialize the db backend
+        if not cfg.keys_backend or cfg.keys_backend == "default":
             self._backend = SqliteAuthHandler(loop, cfg)
         else:
-            self._backend = load_backend(backend)
+            self._backend = load_backend(cfg.keys_backend)
 
+        # initialize the events listenr
+        self._emitter = EventEmitter(loop)
 
+    def create_user(self, username, password, user_type=0, key=None,
+            extra=None):
+        self._backend.creatre_user(username, password, user_type=user_type,
+                key=key, extra=extra)
 
-
-
-
-
+    def update_user(self, username, password, user_type=0, key=None,
+            extra=None):
 
 class BaseAuthHandler(object):
 
@@ -41,7 +58,7 @@ class BaseAuthHandler(object):
     def close(self):
         raise NotImplementedError
 
-    def set_user(self, username, password, user_type=0, extra=None):
+    def create_user(self, username, password, user_type=0, extra=None):
         raise NotImplementedError
 
     def get_user(self, username):
@@ -62,35 +79,9 @@ class BaseAuthHandler(object):
     def has_usertype(self, user_type):
         raise NotImplementedError
 
-    def user_keys(self, username):
+
+    def user_bykey(self, key):
         raise NotImplementedError
-
-    def set_key(self, key, data):
-        raise NotImplementedError
-
-    def get_key(self, key):
-        raise NotImplementedError
-
-    def delete_key(self, key):
-        raise NotImplementedError
-
-    def has_key(self, key):
-        raise NotImplementedError
-
-
-class KeyNotFound(Exception):
-    """ exception raised when the key isn't found """
-
-
-class KeyConflict(Exception):
-    """ exception when you try to create a key that already exists """
-
-
-class UserNotFound(Exception):
-    """ exception raised when a user doesn't exist"""
-
-class UserConflict(Exception):
-    """ exception raised when you try to create an already exisiting user """
 
 class SqliteAuthHandler(BaseAuthHandler):
 
@@ -111,19 +102,15 @@ class SqliteAuthHandler(BaseAuthHandler):
             return
 
         with self.conn:
-            sql = ["""CREATE TABLE auth (user text primary key, pwd text, type
-            int, extra text)""",
-            """CREATE TABLE keys (key text primary key, user text, data
-            text)"""]
-
-            for q in sql:
-                self.conn.execute(q)
+            sql = """CREATE TABLE auth (user text primary key, pwd text, type
+            int, key text, extra text)"""
+            self.conn.execute(sql)
 
     def close(self):
         self.conn.commit()
         self.conn.close()
 
-    def set_user(self, username, password, user_type=0, extra=None):
+    def create_user(self, username, password, user_type=0, extra=None):
         assert self.conn is not None
         with self.conn:
             try:
@@ -187,40 +174,3 @@ class SqliteAuthHandler(BaseAuthHandler):
                 key["key"] = row[0]
                 keys.append(key)
             return keys
-
-    def set_key(self, owner, key, data):
-        assert self.conn is not None
-        if isinstance(data, dict):
-            data = json.dumps(data)
-
-        with self.conn:
-            cur = self.conn.cursor()
-            try:
-                res = cur.execute("INSERT INTO keys VALUES (?, ?, ?)", [key,
-                    owner, data])
-            except sqlite3.IntegrityError:
-                raise UserConflict()
-
-    def get_key(self, key):
-        assert self.conn is not None
-        cur = self.conn.cursor()
-        cur.execute("SELECT * FROM keys WHERE key=?", [key])
-        row = cur.fetchone()
-        if not row:
-            raise KeyNotFound()
-
-        kobj = json.loads(row[2])
-        kobj.update({ "key": row[0], "owner": row[1] })
-        return kobj
-
-    def delete_key(self, key):
-        assert self.conn is not None
-        with self.conn:
-            self.conn.execute("DELETE FROM keys WHERE key=?", [key])
-
-    def has_key(self, key):
-        try:
-            self.get_key(key)
-        except KeyNotFound:
-            return False
-        return True

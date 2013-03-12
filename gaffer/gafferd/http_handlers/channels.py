@@ -353,7 +353,7 @@ class ChannelConnection(SockJSConnection):
             # we need manage_all permission for such commands
             if self.api_key.can_manage_all():
                 return
-        elif command.name in ("load", "unload","reload","update",):
+        elif command.name in ("load", "unload", "reload", "update",):
             # we need to be an admin
             if self.api_key.is_admin():
                 return
