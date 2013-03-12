@@ -81,7 +81,6 @@ def test_basic():
 
     ws = TestClient(m.loop, TEST_URL)
     ws.start()
-    time.sleep(0.1)
 
     # subscribe
     ws.write_message(json.dumps({"event": "SUB", "data": {"topic":
@@ -90,22 +89,20 @@ def test_basic():
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
 
-    t1 = pyuv.Timer(m.loop)
-
     def do_events(h):
         m.load(config)
         m.manage("dummy")
         m.scale("dummy", 1)
         m.unload("dummy")
-        t1.start(stop, 0.4, 0.0)
-
 
     def stop(h):
-        ws.close()
         m.stop()
+        ws.close()
 
     t = pyuv.Timer(m.loop)
     t.start(do_events, 0.4, 0.0)
+    t1 = pyuv.Timer(m.loop)
+    t1.start(stop, 0.8, 0.0)
 
 
     m.run()
@@ -143,8 +140,8 @@ def test_basic_socket():
         m.unload("dummy")
 
     def stop(h):
-        socket.close()
         m.stop()
+        socket.close()
 
     t = pyuv.Timer(m.loop)
     t.start(do_events, 0.4, 0.0)
