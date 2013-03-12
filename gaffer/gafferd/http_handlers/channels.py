@@ -9,7 +9,7 @@ from ...controller import Command, Controller
 from ...error import ProcessError
 from ...sockjs import SockJSConnection
 from ...sync import increment, decrement
-from ..keys import Key, DummyKey
+from ..keys import Key, DummyKey, KeyNotFound
 
 class MessageError(Exception):
     """ raised on message error """
@@ -145,7 +145,7 @@ class ChannelConnection(SockJSConnection):
         if body.startswith("AUTH:"):
             key = body.split("AUTH:")[1]
             try:
-                self.api_key = Key.loads(self.key_mgr.get_key(key))
+                self.api_key = Key.load(self.key_mgr.get_key(key))
             except KeyNotFound:
                 raise ProcessError(403, "AUTH_REQUIRED")
         else:
