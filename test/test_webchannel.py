@@ -78,6 +78,8 @@ def test_basic():
 
                 # we only collect `(eventtype, joblabel)` tuples
                 messages.append((data['event'], data['name']))
+                if len(messages) == 10:
+                    self.close()
 
     ws = TestClient(m.loop, TEST_URL)
     ws.start()
@@ -97,10 +99,10 @@ def test_basic():
 
     def stop(h):
         m.stop()
-        ws.close()
+        #ws.close()
 
     t = pyuv.Timer(m.loop)
-    t.start(do_events, 0.4, 0.0)
+    t.start(do_events, 0.3, 0.0)
     t1 = pyuv.Timer(m.loop)
     t1.start(stop, 0.8, 0.0)
 
@@ -109,8 +111,8 @@ def test_basic():
 
     assert ('load', 'default.dummy') in messages
     assert ('start', 'default.dummy') in messages
-    assert ('update', 'default.dummy') in messages
     assert ('stop', 'default.dummy') in messages
+    assert ('update', 'default.dummy') in messages
     assert ('unload', 'default.dummy') in messages
 
 
