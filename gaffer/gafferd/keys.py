@@ -40,7 +40,7 @@ class Key(object):
         # parse permissions
         self.manage = permissions.get('manage', None) or {}
         self.write = permissions.get('write', None) or {}
-        self.read = permissions.get('write', None) or {}
+        self.read = permissions.get('read', None) or {}
 
     def __str__(self):
         return "Key: %s" % self.api_key
@@ -85,10 +85,10 @@ class Key(object):
         return '*' in self.manage or self.is_admin()
 
     def can_write_all(self):
-        return '*' in self.write or self.is_admin()
+        return '*' in self.write or self.can_manage_all()
 
     def can_read_all(self):
-        return '*' in self.read or self.is_admin()
+        return '*' in self.read or self.can_write_all()
 
     def can_manage(self, job_or_session):
         """ test if a user can manage a job or a session
@@ -218,7 +218,7 @@ class KeyManager(object):
         self._cache = {}
 
     def all_keys(self):
-        return self._backend.all()
+        return self._backend.all_keys()
 
     def create_key(self, permissions, key=None, label="", parent=None):
         key = key or uuid.uuid4().hex
@@ -254,10 +254,9 @@ class KeyManager(object):
     def delete_key(self, key):
         # remove the key and all sub keys from the cache if needed
         self._delete_entry(key)
-        with self.conn:
-            cur = self.conn.cursor()
-            rows = cur.execute("SELECT key FROM keys where parent=?", [key])
-            [self._delete_entry(row[0]) for row in rows]
+
+        for subkey in self.all_subkeys(key):
+            self._delete_entry(subkey["key"])
 
         # then delete the
         self._backend.delete_key(key)
@@ -265,6 +264,9 @@ class KeyManager(object):
 
     def has_key(self, key):
         return self._backend.has_key(key)
+
+    def all_subkeys(self, key):
+        return self._backend.all_subkeys(key)
 
     def _delete_entry(self, key):
         if key in self._cache:
@@ -373,7 +375,8 @@ class SqliteKeyBackend(KeyBackend):
     def delete_key(self, key):
         assert self.conn is not None
         with self.conn:
-            self.conn.execute("DELETE FROM keys WHERE key=?", [key])
+            self.conn.execute("DELETE FROM keys WHERE key=? OR parent=?",
+                    [key, key])
 
     def has_key(self, key):
         try:

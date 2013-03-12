@@ -2,11 +2,11 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-from gaffer.gafferd.users import (AuthManager, User, DummyUser,
-        SqliteAuthHandler, UserConflict, UserNotFound)
-
 import pyuv
 import pytest
+
+from gaffer.gafferd.users import (AuthManager, User, DummyUser,
+        SqliteAuthHandler, UserConflict, UserNotFound)
 
 from test_http import MockConfig
 
