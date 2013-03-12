@@ -52,7 +52,6 @@ from itertools import starmap
 import six
 from six.moves import zip
 
-
 _pack_int = Struct('>I').pack
 
 if six.PY3:
@@ -96,6 +95,3 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
         return bytes(buf)[:keylen]
 
     return ''.join(map(chr, buf))[:keylen]
-
-if __name__ == '__main__':
-    test()
