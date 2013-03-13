@@ -46,16 +46,7 @@ DEFAULT_HANDLERS = [
         (r'/jobs/([^/]+)/([^/]+)/signal$', http_handlers.SignalJobHandler),
         (r'/jobs/([^/]+)/([^/]+)/state$', http_handlers.StateJobHandler),
         (r'/jobs/([^/]+)/([^/]+)/pids$', http_handlers.PidsJobHandler),
-        (r'/jobs/([^/]+)/([^/]+)/commit$', http_handlers.CommitJobHandler),
-        (r'/watch', http_handlers.WatcherHandler),
-        (r'/watch/([^/]+)$', http_handlers.WatcherHandler),
-        (r'/watch/([^/]+)/([^/]+)$', http_handlers.WatcherHandler),
-        (r'/watch/([^/]+)/([^/]+)/([^/]+)$', http_handlers.WatcherHandler),
-        (r'/stats', http_handlers.StatsHandler),
-        (r'/stats/([^/]+)', http_handlers.StatsHandler),
-        (r'/stats/([^/]+)/([0-9^/]+)$', http_handlers.StatsHandler),
-        (r'/streams/([0-9^/]+)/([^/]+)$', http_handlers.StreamHandler),
-        (r'/wstreams/([0-9^/]+)$', http_handlers.WStreamHandler)
+        (r'/jobs/([^/]+)/([^/]+)/commit$', http_handlers.CommitJobHandler)
 ]
 
 

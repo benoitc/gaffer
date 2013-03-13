@@ -37,7 +37,6 @@ import json
 import six
 from tornado import httpclient
 
-from .eventsource import Watcher
 from .loop import patch_loop, get_loop
 from .process import ProcessConfig
 from .tornado_pyuv import IOLoop
@@ -283,13 +282,6 @@ class Server(BaseClient):
 
     def get_process(self, pid):
         return Process(server=self, pid=pid)
-
-    def get_watcher(self, heartbeat="true"):
-        """ return a watcher to listen on /watch """
-        url =  make_uri(self.uri, '/watch', feed='eventsource',
-                heartbeat=str(heartbeat))
-
-        return Watcher(self.loop, url, **self.options)
 
     def socket(self, heartbeat=None):
         """ return a direct websocket connection to gaffer """
