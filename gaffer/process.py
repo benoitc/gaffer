@@ -345,7 +345,7 @@ class ProcessConfig(object):
         for name, default in self.DEFAULT_PARAMS.items():
             params[name] = self.settings.get(name, default)
 
-        os_env = self.settings.get('os_env', True)
+        os_env = self.settings.get('os_env', False)
         if os_env:
             env = params.get('env') or {}
             env.update(os.environ)
