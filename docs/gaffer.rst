@@ -86,7 +86,7 @@ SUBCOMMANDS
                 List your processes informations
 
                 <appname> he name of the application (session) of process
-                recoreded in gafferd.  By default it will be the name of your
+                recorded in gafferd.  By default it will be the name of your
                 project folder.You can use ``.`` to specify the current
                 folder.
 

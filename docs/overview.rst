@@ -12,8 +12,8 @@ Design
 
 Gaffer is internally based on an event loop using the `libuv <https://github.com/joyent/libuv/>`_ from Joyent via the `pyuv binding <https://pyuv.readthedocs.org>`_
 
-All gaffer events are added to the loop and processes asynchronously wich
-make it pretty performant to handle multiple process and their control.
+All gaffer events are added to the loop and processes asynchronously which
+make it pretty efficient to handle multiple process and their control.
 
 At the lowest level you will find the manager. A manager is responsible
 of maintaining process alive and manage actions on them:
@@ -57,14 +57,14 @@ be changed dynamically. Current properties of this templates are:
     and stop the process.
 - **redirect_output**: list of io to redict (max 2) this is a list of custom
   labels to use for the redirection. Ex: ["a", "b"] will
-  redirect stdoutt & stderr and stdout events will be labeled "a"
+  redirect stdout & stderr and stdout events will be labeled "a"
 - **redirect_input**: Boolean (False is the default). Set it if
   you want to be able to write to stdin.
 
 
 The manager is also responsible of starting and stopping gaffer
-applications that you add to he manager to react on different events. A applicaton can
-fetch informations from the manager and interract with him.
+applications that you add to he manager to react on different events. 
+An application can fetch informations from the manager and interact with him.
 
 Running an application is done like this::
 
@@ -77,7 +77,7 @@ Running an application is done like this::
 
     .... # do smth
 
-    manager.stop() # stop the controlller
+    manager.stop() # stop the controller
     manager.run() # run the event loop
 
 
@@ -98,7 +98,7 @@ following structure::
     class MyApplication(object):
 
         def __init__(self):
-            # do inti
+            # do init
 
         def start(self, loop, manager):
             # this method is call by the manager to start the controller
@@ -107,13 +107,13 @@ following structure::
             # method called when the manager stop
 
         def restart(self):
-            # methhod called when the manager restart
+            # method called when the manager restart
 
 You can use this structure for anything you want, even add an app to the
 loop.
 
 To help you in your work a :doc:`pyuv implementation <tornado_pyuv>` of
-tornado is integrated and a powerfull :doc:`events <events>` modules
+tornado is integrated and a powerful :doc:`events <events>` modules
 will allows you to manage PUB/SUB events (or anything evented) inside
 your app. An EventEmitter is a threadsafe class to manage subscriber and
 publisher of events. It is internally used to broadcast processes and
@@ -125,7 +125,7 @@ Watch stats
 
 Stats of a process ca, be monitored continuously (there is a refresh
 interval of 0.1s to fetch CPU informations) using the following
-mettod::
+method::
 
     manager.monitor(<nameorid>, <listener>)
 
@@ -145,7 +145,7 @@ Callback signature: ``callback(evtype, msg)``.
         "ctime": int,
         "pid": int,
         "username": str,
-        "nicce": int,
+        "nice": int,
         "cmdline": str,
         "children": [{ stat dict, ... }]
     }
@@ -177,7 +177,7 @@ Subscribe to stdout/stderr process stream
 You can subscribe to stdout/stderr process stream and even write to
 stdin if you want.
 
-To be able to receive the stdour/stderr streams in your application,
+To be able to receive the stdout/stderr streams in your application,
 you need to create a process with the *redirect_output* setting::
 
 

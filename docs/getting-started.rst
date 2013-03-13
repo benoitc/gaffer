@@ -15,7 +15,7 @@ Gaffer allows you to launch OS processes and supervise them. 3
   before to use other tools.
 - :doc:`gaffer` is a Procfile application manager and allows you to
   load your Procfile applications in gafferd and watch their status.
-- :doc:`gafferctl` is a more generic tooll than gaffer and is more admin
+- :doc:`gafferctl` is a more generic tool than gaffer and is more admin
   oriented. It allows you to setup any process templates and manage your
   processes. You can also use it to watch the activity in gafferd
   (process activity or general activity)
@@ -49,7 +49,7 @@ To launch gafferd run the following command line::
 If you want to launch `custom plugins <gafferd.html#plugins>`_ with
 gafferd you can also set the path to them::
 
-    $ gafferd -c /path/to/gaffer.ini -p /path/to/plugun
+    $ gafferd -c /path/to/gaffer.ini -p /path/to/plugin
 
 .. note::
 
@@ -75,7 +75,7 @@ gafferd, setup some processes and webhooks.
     Since the configuration is passed to the plugin you can also use
     this configuration file to setup your plugins.
 
-Here is a simple example of a config to launch the dumy process from the
+Here is a simple example of a config to launch the dummy process from the
 example folder::
 
     [process:dummy]
@@ -103,7 +103,7 @@ parameters are:
 
 - **cmd**: the full command line to launch. eg. ``./dummy.p¨``
 - **args**: arguments to pass as a string. eg. ``-some value --option=a``
-- **cwd**: path to working directorty
+- **cwd**: path to working directory
 - **uid**: user name or id used to execute the process
 - **gid**: group name or id used to execute the process
 - **detach**: if you wnt to completely detach the process from gafferd
@@ -111,7 +111,7 @@ parameters are:
 - **shell**: The process is executed in a shell (unix only)
 - **flapping**: flapping rule. eg. `2, 1., 7., 5` which means
   attempts=2, window=1., retry_in=7., max_retry=5
-- **redirect_input**: to allows you to interract with stdin
+- **redirect_input**: to allows you to interact with stdin
 - **redirect_output**: to watch both stdout & stderr. output names can
   be whatever you cant. For example you. eg. ``redirect_output =
   mystdout, mystderr`` stdout will be labelled *mysdtout* in this
@@ -128,9 +128,9 @@ parameters are:
   processes have the same order.
 
 
-Sometimes you also want to pass a custom environnement to your process.
+Sometimes you also want to pass a custom environment to your process.
 This is done by creating a special configuration section named
-``env:processname``. Each environmenets sections are prefixed by
+``env:processname``. Each environment sections are prefixed by
 ``env:``. For example to pass a special PORT environment variable to
 dummy::
 
@@ -181,7 +181,7 @@ started.
 
 If you want to start a process with a specific environment file you can
 create a .env in he application folder (or use the command line option to tell to
-gaffer which one to use). Each environmennt variables are passed by
+gaffer which one to use). Each environment variables are passed by
 lines. Ex::
 
     PORT=80
