@@ -121,6 +121,7 @@ class WebSocket(object):
         # start the stream
         self.stream.connect((self.host, self.port), self._on_connect)
 
+
     def on_open(self):
         pass
 
@@ -551,7 +552,6 @@ class GafferSocket(WebSocket):
             channel = self.channels[topic]
         except KeyError:
             raise KeyError("%s channel isn't subscribed" % topic)
-
         return channel
 
     def __delitem__(self, topic):

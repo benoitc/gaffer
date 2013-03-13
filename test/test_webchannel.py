@@ -26,7 +26,7 @@ TEST_URL = "ws://%s:%s/channel/websocket" % (TEST_HOST, str(TEST_PORT))
 def start_manager():
     http_handler = HttpHandler(MockConfig(bind="%s:%s" % (TEST_HOST,
         TEST_PORT)))
-    m = Manager()
+    m = Manager(loop=pyuv.Loop.default_loop())
     m.start(apps=[http_handler])
     return m
 
@@ -46,6 +46,7 @@ def init():
 def test_basic_socket():
     m = start_manager()
     s = get_server(m.loop)
+    t = pyuv.Timer(m.loop)
 
     # get a gaffer socket
     socket = s.socket()
@@ -53,7 +54,8 @@ def test_basic_socket():
 
     messages =[]
     def cb(event, data):
-        messages.append((event, data['name']))
+        print("got %s" % event)
+        messages.append(event)
 
     # bind to all events
     socket.subscribe('EVENTS')
@@ -62,28 +64,25 @@ def test_basic_socket():
     testfile, cmd, args, wdir = dummy_cmd()
     config = ProcessConfig("dummy", cmd, args=args, cwd=wdir, numprocesses=1)
 
-    def do_events(h):
-        m.load(config)
-        m.manage("dummy")
-        m.scale("dummy", 1)
-        m.unload("dummy")
 
-    def stop(h):
+    def stop_all(handle):
         m.stop()
         socket.close()
 
-    t = pyuv.Timer(m.loop)
-    t.start(do_events, 0.4, 0.0)
-    t1 = pyuv.Timer(m.loop)
-    t1.start(stop, 0.8, 0.0)
+    def load_process(ev, msg):
+        m.load(config)
+        m.scale("dummy", 1)
+        m.unload("dummy")
+        t.start(stop_all, 0.6, 0.0)
 
+    socket.bind("subscription_success", load_process)
     m.run()
 
-    assert ('load', 'default.dummy') in messages
-    assert ('start', 'default.dummy') in messages
-    assert ('update', 'default.dummy') in messages
-    assert ('stop', 'default.dummy') in messages
-    assert ('unload', 'default.dummy') in messages
+    assert 'load' in messages
+    assert 'start' in messages
+    assert 'update' in messages
+    assert 'stop' in messages
+    assert 'unload' in messages
 
 
 def test_stats():
@@ -221,13 +220,12 @@ def test_commit():
     cmd0 = socket.send_command("load", config.to_dict(), start=False)
     cmd1 = socket.send_command("commit", "dummy")
 
-    def stop(h):
-        h.close()
+    def stop(c):
         socket.close()
         m.stop()
 
-    t = pyuv.Timer(m.loop)
-    t.start(stop, 0.3, 0.0)
+
+    cmd1.add_done_callback(stop)
     m.run()
 
     assert cmd0.error() == None
@@ -236,4 +234,4 @@ def test_commit():
     assert cmd1.result()["pid"] == 1
 
 if __name__ == "__main__":
-    test_basic()
+    test_basic_socket()
