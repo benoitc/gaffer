@@ -217,8 +217,8 @@ class KeyManager(object):
         self._entries.clear()
         self._cache = {}
 
-    def all_keys(self):
-        return self._backend.all_keys()
+    def all_keys(self, include_key=False):
+        return self._backend.all_keys(include_key=include_key)
 
     def create_key(self, permissions, key=None, label="", parent=None):
         key = key or uuid.uuid4().hex
@@ -341,11 +341,14 @@ class SqliteKeyBackend(KeyBackend):
         self.conn.commit()
         self.conn.close()
 
-    def all_keys(self):
+    def all_keys(self, include_key=False):
         with self.conn:
             cur = self.conn.cursor()
             rows = cur.execute("SELECT * FROM keys", [])
-            return [self._make_key(row) for row in rows]
+            if include_key:
+                return [self._make_key(row) for row in rows]
+            else:
+                return [row[0] for row in rows]
 
     def set_key(self, key, data, parent=None):
         assert self.conn is not None

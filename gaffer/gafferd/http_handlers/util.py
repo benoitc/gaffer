@@ -45,8 +45,12 @@ class CorsHandler(RequestHandler):
     def get_error_html(self, status_code, **kwargs):
         self.set_header("Content-Type", "application/json")
 
-        if status_code == 404:
+        if status_code == 400:
+            resp = {"error": 400, "reason": "bad_request"}
+        elif status_code == 404:
             resp = {"error": 404, "reason": "not_found"}
+        elif status_code == 409:
+            resp = {"error": 409, "reason": "conflict"}
         elif status_code == 401:
             resp = {"error": 401, "reason": "unauthorized"}
         elif status_code == 403:
@@ -67,7 +71,7 @@ class CorsHandlerWithAuth(CorsHandler):
     def prepare(self):
         api_key = self.request.headers.get('X-Api-Key', None)
         require_key = self.settings.get('require_key', False)
-        key_mgr = self.settings.get('key_mgr')
+        key_mgr = self.key_mgr = self.settings.get('key_mgr')
         self.api_key = DummyKey()
 
         # if the key API is enable start to use it

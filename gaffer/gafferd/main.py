@@ -14,6 +14,7 @@ usage: gafferd [--version] [-v|-vv] [-c CONFIG|--config=CONFIG]
                [--error-log=FILE] [--log-level=LEVEL]
                [--require-key]
                [--create-admin-user] [--username USER] [--password PASSWORD]
+               [--list-admins]
 
 
 Args
@@ -49,6 +50,7 @@ Options
     --create-admin-user         create an admin user and exit
     --username USERNAME         admin username
     --password PASSWORD         admin password
+    --list-admins               list admin users
 """
 
 
@@ -174,6 +176,10 @@ class Server(object):
         # check if we need to create an admin
         if self.args['--create-admin-user']:
             return self.create_admin_user()
+
+        # list admin
+        if self.args['--list-admins']:
+            return self.list_admins()
 
 
         # do we need to daemonize the daemon
@@ -367,7 +373,8 @@ class Server(object):
 
         # create a user
         try:
-            auth_mgr.create_user(username, password, key=api_key)
+            auth_mgr.create_user(username, password, user_type=0,
+                    key=api_key)
         except:
             logging.error("error while creating an admin",
                     exc_info=True)
@@ -380,6 +387,23 @@ class Server(object):
 
 
         print("User %r created.\nAPI Key: %s" % (username, api_key))
+
+    def list_admins(self):
+        loop = pyuv.Loop.default_loop()
+        auth_mgr = AuthManager(loop, self.cfg)
+
+        # open the auth db
+        try:
+            auth_mgr.open()
+        except:
+            logging.error("error while creating an admin",
+                    exc_info=True)
+            sys.exit(1)
+
+        users = auth_mgr.user_by_type(0)
+        for user in users:
+            print("%s - %s" % (user['username'], user["key"]))
+
 
 def run():
     args = docopt(__doc__, version=__version__)

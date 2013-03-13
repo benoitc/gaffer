@@ -100,7 +100,7 @@ class AuthManager(object):
     def close(self):
         self._backend.close()
 
-    def create_user(self, username, password, user_type=0, key=None,
+    def create_user(self, username, password, user_type=1, key=None,
             extra=None):
 
         # hash the password
@@ -140,7 +140,7 @@ class AuthManager(object):
     def set_key(self, username, key):
         self._backend.set_key(username, key)
 
-    def update_user(self, username, password, user_type=0, key=None,
+    def update_user(self, username, password, user_type=1, key=None,
             extra=None):
         # hash the password
         salt = uuid.uuid4().hex

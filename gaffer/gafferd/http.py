@@ -47,7 +47,9 @@ DEFAULT_HANDLERS = [
         (r'/jobs/([^/]+)/([^/]+)/state$', http_handlers.StateJobHandler),
         (r'/jobs/([^/]+)/([^/]+)/pids$', http_handlers.PidsJobHandler),
         (r'/jobs/([^/]+)/([^/]+)/commit$', http_handlers.CommitJobHandler),
-        (r'/auth', http_handlers.AuthHandler)
+        (r'/auth', http_handlers.AuthHandler),
+        (r'/keys', http_handlers.KeysHandler),
+        (r'/keys/([^/]+)$', http_handlers.KeyHandler)
 ]
 
 
