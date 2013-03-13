@@ -2,6 +2,10 @@
 #
 # this file is part of gaffer. see the notice for more information.
 
+try:
+    import httplib
+except ImportError:
+    import http.client as httplib
 import json
 
 import pyuv
@@ -37,6 +41,26 @@ class CorsHandler(RequestHandler):
         self.set_header('Access-Control-Allow-Origin', origin)
         for k, v in CORS_HEADERS.items():
             self.set_header(k, v)
+
+    def get_error_html(self, status_code, **kwargs):
+        self.set_header("Content-Type", "application/json")
+
+        if status_code == 404:
+            resp = {"error": 404, "reason": "not_found"}
+        elif status_code == 401:
+            resp = {"error": 401, "reason": "unauthorized"}
+        elif status_code == 403:
+            resp = {"error": 403, "reason": "forbidden"}
+        else:
+            resp = {"error": status_code,
+                    "reason": httplib.responses[status_code]}
+
+
+        if self.settings.get("debug") and "exc_info" in kwargs:
+            exc_info = traceback.format_exception(*kwargs["exc_info"])
+            resp['exc_info'] = exc_info
+
+        return json.dumps(resp)
 
 
 class CorsHandlerWithAuth(CorsHandler):

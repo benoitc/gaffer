@@ -9,3 +9,4 @@ from .pid import (AllProcessIdsHandler, ProcessIdHandler,
 from .jobs import (SessionsHandler, AllJobsHandler, JobsHandler,
         JobHandler, JobStatsHandler, ScaleJobHandler,
         PidsJobHandler, SignalJobHandler, StateJobHandler, CommitJobHandler)
+from .auth import AuthHandler

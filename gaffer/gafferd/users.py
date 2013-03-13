@@ -114,7 +114,11 @@ class AuthManager(object):
                 key=key, extra=extra)
 
     def authenticate(self, username, password):
-        user = self._backend.get_user(username)
+
+        try:
+            user = self._backend.get_user(username)
+        except UserNotFound:
+            return DummyUser()
 
         _alg, infos, password_hash = user['password'].split("$", 3)
         salt, iterations = infos.split(":")
