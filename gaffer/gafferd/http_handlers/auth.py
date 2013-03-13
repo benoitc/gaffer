@@ -35,7 +35,7 @@ class AuthHandler(CorsHandler):
             raise HTTPError(401)
 
         self.set_header("Content-Type", "application/json")
-        self.set_header("X-Api-Key", self.user.key)
+        self.set_header("X-Api-Key", self.user.key or "")
 
     def head(self):
         self.set_status(200)

@@ -11,3 +11,5 @@ from .jobs import (SessionsHandler, AllJobsHandler, JobsHandler,
         PidsJobHandler, SignalJobHandler, StateJobHandler, CommitJobHandler)
 from .auth import AuthHandler
 from .keys import KeysHandler, KeyHandler
+from .user import (UsersHandler, UserHandler, UserPasswordHandler,
+        UserKeydHandler)

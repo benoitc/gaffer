@@ -11,6 +11,7 @@ import json
 import pyuv
 from tornado.web import RequestHandler, asynchronous, HTTPError
 from ..keys import DummyKey, Key, KeyNotFound
+from ..users import UserNotFound
 
 ACCESS_CONTROL_HEADERS = ['X-Requested-With',
             'X-HTTP-Method-Override', 'Content-Type', 'Accept',
@@ -71,8 +72,10 @@ class CorsHandlerWithAuth(CorsHandler):
     def prepare(self):
         api_key = self.request.headers.get('X-Api-Key', None)
         require_key = self.settings.get('require_key', False)
+        self.auth_mgr = self.settings.get('auth_mgr')
         key_mgr = self.key_mgr = self.settings.get('key_mgr')
         self.api_key = DummyKey()
+        self.key_username = None
 
         # if the key API is enable start to use it
         if require_key:
@@ -81,9 +84,11 @@ class CorsHandlerWithAuth(CorsHandler):
                     self.api_key = Key.load(key_mgr.get_key(api_key))
                 except KeyNotFound:
                     raise HTTPError(403, "key %s doesn't exist",api_key)
-                self._check_auth()
+
+                try:
+                    user_obj = self.auth_mgr.user_by_key(api_key)
+                    self.key_username = user_obj["username"]
+                except UserNotFound:
+                    pass
             else:
                 raise HTTPError(401)
-
-    def _check_auth(self):
-        return

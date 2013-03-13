@@ -100,14 +100,13 @@ class AuthManager(object):
     def close(self):
         self._backend.close()
 
+    def all_users(self, include_user=False):
+        return self._backend.all_users(include_user=include_user)
+
     def create_user(self, username, password, user_type=1, key=None,
             extra=None):
 
-        # hash the password
-        salt = uuid.uuid4().hex
-        hashed_password =  bytestring(pbkdf2_hex(password.encode('utf-8'),
-                salt.encode('utf-8')).decode('utf-8'))
-        password = "PBKDF2-256$%s:%s$%s" % (salt, 1000, hashed_password)
+        password = self._hash_password(password)
 
         # store the user
         self._backend.create_user(username, password, user_type=user_type,
@@ -135,6 +134,7 @@ class AuthManager(object):
         return self._backend.get_user(username)
 
     def set_password(self, username, password):
+        password = self._hash_password(password)
         self._backend.set_password(username, password)
 
     def set_key(self, username, key):
@@ -142,11 +142,7 @@ class AuthManager(object):
 
     def update_user(self, username, password, user_type=1, key=None,
             extra=None):
-        # hash the password
-        salt = uuid.uuid4().hex
-        hashed_password =  bytestring(pbkdf2_hex(password.encode('utf-8'),
-                salt.encode('utf-8')).decode('utf-8'))
-        password = "PBKDF2-256$%s:%s$%s" % (salt, 1000, hashed_password)
+        password = self._hash_password(password)
         self._backend.update_user(username, password, user_type=user_type,
                 key=key, extra=extra)
 
@@ -176,6 +172,13 @@ class AuthManager(object):
             rv |= ord(x) ^ ord(y)
 
         return rv == 0
+
+    def _hash_password(self, password):
+        # hash the password
+        salt = uuid.uuid4().hex
+        hashed_password =  bytestring(pbkdf2_hex(password.encode('utf-8'),
+                salt.encode('utf-8')).decode('utf-8'))
+        return "PBKDF2-256$%s:%s$%s" % (salt, 1000, hashed_password)
 
 
 class BaseAuthHandler(object):
@@ -258,6 +261,16 @@ class SqliteAuthHandler(BaseAuthHandler):
         self.conn.commit()
         self.conn.close()
 
+    def all_users(self, include_user=False):
+        with self.conn:
+            cur = self.conn.cursor()
+            if include_user:
+                rows = cur.execute("SELECT * FROM auth")
+                return [self._make_user(row, False) for row in rows]
+            else:
+                rows = cur.execute("SELECT user FROM auth")
+                return [row[0] for row in rows]
+
     def create_user(self, username, password, user_type=0, key=None,
             extra=None):
         assert self.conn is not None
@@ -301,9 +314,9 @@ class SqliteAuthHandler(BaseAuthHandler):
             raise UserNotFound()
 
         with self.conn:
-            self.conn.execute("REPLACE INTO auth VALUES(?, ?, ?, ?, ?)",
-                    [username, password, user_type, key,
-                     json.dumps(extra or {})])
+            self.conn.execute("""UPDATE auth SET pwd=?, user_type=?,
+            key=?, extra=? WHERE user=?""", [password, user_type, key,
+                json.dumps(extra or {}), username])
 
     def delete_user(self, username):
         assert self.conn is not None
@@ -318,7 +331,7 @@ class SqliteAuthHandler(BaseAuthHandler):
             rows = cur.execute("SELECT * from auth WHERE user_type=?",
                     [user_type])
 
-            return [self._make_user(row) for row in rows]
+            return [self._make_user(row, False) for row in rows]
 
     def get_bykey(self, key):
         assert self.conn is not None
@@ -326,6 +339,10 @@ class SqliteAuthHandler(BaseAuthHandler):
             cur = self.conn.cursor()
             cur.execute("SELECT * from auth WHERE key=?", [key])
             row = cur.fetchone()
+
+            if not row:
+                raise UserNotFound()
+
             return self._make_user(row)
 
     def has_user(self, username):
@@ -344,8 +361,10 @@ class SqliteAuthHandler(BaseAuthHandler):
                 return False
             return True
 
-    def _make_user(self, row):
+    def _make_user(self, row, include_password=True):
         user = json.loads(row[4]) or {}
-        user.update({"username": row[0], "password": row[1],
-            "user_type": row[2], "key": row[3]})
+        user.update({"username": row[0], "user_type": row[2], "key": row[3]})
+
+        if include_password:
+            user.update({"password": row[1]})
         return user
