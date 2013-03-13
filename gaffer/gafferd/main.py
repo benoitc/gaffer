@@ -13,7 +13,7 @@ usage: gafferd [--version] [-v|-vv] [-c CONFIG|--config=CONFIG]
                [--backlog=BACKLOG]
                [--error-log=FILE] [--log-level=LEVEL]
                [--require-key]
-               [--create-admin-user [[--username USERNAME] [--password PASSWORD]]]
+               [--create-admin-user] [--username USER] [--password PASSWORD]
 
 
 Args
