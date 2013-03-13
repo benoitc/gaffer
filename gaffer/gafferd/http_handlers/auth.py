@@ -5,9 +5,8 @@
 import base64
 import json
 
-from tornado.web import RequestHandler, asynchronous, HTTPError
+from tornado.web import HTTPError
 
-from ..users import UserNotFound
 from .util import CorsHandler
 
 class AuthHandler(CorsHandler):
