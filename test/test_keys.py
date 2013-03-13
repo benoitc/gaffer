@@ -38,8 +38,9 @@ def test_sqlite_backend():
         assert h.has_key("test1") == True
         assert h.all_subkeys("test") == [{"key": "test1", "permission": {}}]
         assert len(h.all_keys()) == 2
-        assert h.all_keys() == [{"key": "test", "permission": {}},
-                {"key": "test1", "permission": {}}]
+        assert h.all_keys() == ["test", "test1"]
+        assert h.all_keys(include_key=True) == [{"key": "test",
+            "permission": {}}, {"key": "test1", "permission": {}}]
 
 def test_key_manager():
     conf = test_config()
@@ -71,8 +72,9 @@ def test_key_manager():
         assert h.has_key("test1") == True
         assert h.all_subkeys("test") == [{"key": "test1", "permission": {}}]
         assert len(h.all_keys()) == 2
-        assert h.all_keys() == [{"key": "test", "permission": {}},
-                {"key": "test1", "permission": {}}]
+        assert h.all_keys() == ["test", "test1"]
+        assert h.all_keys(include_key=True) == [{"key": "test",
+            "permission": {}}, {"key": "test1", "permission": {}}]
 
         h.get_key("test")
         h.get_key("test1")
