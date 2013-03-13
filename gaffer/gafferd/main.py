@@ -13,7 +13,7 @@ usage: gafferd [--version] [-v|-vv] [-c CONFIG|--config=CONFIG]
                [--backlog=BACKLOG]
                [--error-log=FILE] [--log-level=LEVEL]
                [--require-key]
-               [--create-admin-user] [--username USER] [--password PASSWORD]
+               [--create-admin-user] [--username USER] [--password PASSWORD]
 
 
 Args
@@ -95,7 +95,6 @@ class Server(object):
 
     def __init__(self, args):
         self.args = args
-
         # get config dir
         self.config_dir = self.find_configdir()
         if not os.path.exists(self.config_dir):
