@@ -19,14 +19,16 @@ class AuthHandler(CorsHandler):
         if not require_key:
             raise HTTPError(404)
 
+        # get auth header
         auth_hdr = self.request.headers.get('Authorization').encode('utf-8')
-
         if not auth_hdr or not auth_hdr.startswith(b'Basic '):
             raise HTTPError(401)
 
+        # decode the auth header
         auth_decoded = base64.decodestring(auth_hdr[6:])
-        print(auth_decoded)
         username, password = auth_decoded.split(b':', 2)
+
+        # authenticate the user
         self.user = auth_mgr.authenticate(username.decode('utf-8'),
                 password.decode('utf-8'))
 
