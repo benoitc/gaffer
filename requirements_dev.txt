@@ -5,3 +5,4 @@ tornado==2.4.1
 colorama
 setproctitle
 pytest
+sphinx
