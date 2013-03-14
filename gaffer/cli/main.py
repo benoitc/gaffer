@@ -76,7 +76,6 @@ class Config(object):
 
         # parse ssl options
         self.parse_ssl_options(node_section)
-        print(self.client_options)
 
         # setup default server
         api_key = self.args['--api-key']
@@ -207,12 +206,16 @@ class GafferCli(object):
                 print("Forbidden access. API key permissions aren't enough")
                 sys.exit(1)
             except tornado.httpclient.HTTPError as e:
-                print("HTTP Error: %s" % str(e))
+                print("HTTP Error: %s\n" % str(e))
+                sys.exit(1)
+
+            except RuntimeError as e:
+                sys.stderr.write("%s\n" % str(e))
                 sys.exit(1)
             except Exception as e:
                 import traceback
                 print(traceback.format_exc())
-                sys.stderr.write(str(e))
+                sys.stderr.write("%s\n" % str(e))
                 sys.exit(1)
         sys.exit(0)
 

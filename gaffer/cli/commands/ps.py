@@ -24,6 +24,9 @@ class Ps(Command):
         appname = self.default_appname(config, args)
         server = config.get("server")
 
+        if not appname in server.sessions():
+            raise RuntimeError("%r not loaded" % appname)
+
         for pname in server.jobs(appname):
             lines = []
             try:
