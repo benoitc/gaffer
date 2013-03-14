@@ -134,6 +134,9 @@ class Config(object):
             return Procfile(procfile, root=root, envs=self.envs)
 
     def get_user_config(self):
+        if 'GAFFER_CONFIG' in os.environ:
+            return os.environ.get('GAFFER_CONFIG')
+
         for path in user_path():
             config_file = os.path.join(path, "gaffer.ini")
             if os.path.isfile(config_file):
