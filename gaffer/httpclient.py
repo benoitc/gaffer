@@ -31,7 +31,7 @@ Example of usage::
 
 """
 
-
+import base64
 import json
 
 import six
@@ -182,6 +182,22 @@ class Server(BaseClient):
         # continue the request
         return super(Server, self).request(method, path, headers=headers,
                 body=body, **params)
+
+    def authenticate(self, username, password):
+        """ authenticate against a gafferd node to retrieve an api key """
+        # set the basic auth header
+        auth_hdr = "%s:%s" % (username, password)
+        auth_hdr = b"Basic " + base64.b64encode(auth_hdr.encode("utf-8"))
+        headers = {"Authorization": auth_hdr.decode("utf-8")}
+
+        # make the request
+        resp = self.request("get", "/auth", headers=headers)
+
+        # set the server api key
+        self.api_key = self.json_body(resp)["api_key"]
+
+        # return the api key. useful for clients that store it for later.
+        return self.api_key
 
     @property
     def version(self):

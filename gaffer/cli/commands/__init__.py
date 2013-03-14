@@ -1,4 +1,5 @@
 from gaffer.cli.commands import (
+        login,
         apps,
         load,
         unload,

@@ -25,12 +25,16 @@ Options
     --cacert=CACERT                     SSL CA certificate
 
 """
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import os
 import sys
 
-
 from .. import __version__
 from ..docopt import docopt, printable_usage
+from ..gafferd.util import user_path, default_user_path
 from ..httpclient import Server, GafferUnauthorized, GafferForbidden
 from ..procfile import Procfile, get_env
 from ..util import is_ssl
@@ -54,9 +58,10 @@ class Config(object):
         # initialize the procfile
         self.procfile = self._init_procfile()
 
+        # get user path
+        self.user_config_path = self.get_user_config()
 
         self.client_options = {}
-
         # handle ssl options
         if (args["--certfile"] is not None and
                 self.args["--keyfile"] is not None):
@@ -72,9 +77,24 @@ class Config(object):
             if args["--cacert"] is not None:
                 self.client_options = {"ca_certs": args["--cacert"]}
 
+
+        # load config
+        self.user_config = None
+
+        if os.path.isfile(self.user_config_path):
+            self.user_config = configparser.RawConfigParser()
+            with open(self.user_config_path) as f:
+                self.user_config.readfp(f)
+
         # setup default server
+        api_key = self.args['--api-key']
+        if api_key is None and self.user_config is not None:
+            node_section = "node \"%s\"" % args["--gafferd-http-address"]
+            if self.user_config.has_section(node_section):
+                api_key = self.user_config.get(node_section, "key")
+
         self.server = Server(self.args["--gafferd-http-address"],
-                api_key = self.args['--api-key'], **self.client_options)
+                api_key=api_key, **self.client_options)
 
     def get(self, *attrs):
         ret = []
@@ -112,6 +132,18 @@ class Config(object):
                 return None
         else:
             return Procfile(procfile, root=root, envs=self.envs)
+
+    def get_user_config(self):
+        for path in user_path():
+            config_file = os.path.join(path, "gaffer.ini")
+            if os.path.isfile(config_file):
+                return config_file
+
+        config_dir = default_user_path()
+        if not os.path.isdir(config_dir):
+            os.makedirs(config_dir)
+
+        return os.path.join(config_dir, "gaffer.ini")
 
 class GafferCli(object):
 

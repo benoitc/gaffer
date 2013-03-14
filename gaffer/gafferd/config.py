@@ -12,6 +12,7 @@ except ImportError:
 
 import six
 
+from ..gafferd.util import user_path
 from ..state import FlappingInfo
 
 PROCESS_DEFAULTS = dict(
@@ -68,7 +69,7 @@ class Config(object):
         """ load the config """
 
         # maybe load config from a config file
-        config_file = os.path.join(self.config_dir, "gaffer.ini")
+        config_file = os.path.join(self.config_dir, "gafferd.ini")
         if os.path.isfile(config_file):
             self.parse_config(config_file)
 

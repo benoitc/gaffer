@@ -53,6 +53,8 @@ if os.name == 'nt':
         if userprofile:
             return os.path.join(userprofile, '.gaffer')
         return os.path.join(os.path.expanduser('~'), '.gaffer')
+
+    default_user_path = default_path
 else:
     def system_path():
         here = os.path.dirname(os.path.dirname(sys.argv[0]))
@@ -80,6 +82,10 @@ else:
 
         # if not root, use the user path
         return os.path.join(os.path.expanduser('~'), '.gaffer')
+
+    def default_user_path():
+        return os.path.join(os.path.expanduser('~'), '.gaffer')
+
 
 def load_backend(backend_name):
     """ load pool backend. If this is an external module it should be

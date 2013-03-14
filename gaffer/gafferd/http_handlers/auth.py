@@ -19,7 +19,7 @@ class AuthHandler(CorsHandler):
             raise HTTPError(404)
 
         # get auth header
-        auth_hdr = self.request.headers.get('Authorization').encode('utf-8')
+        auth_hdr = self.request.headers.get('Authorization', "").encode('utf-8')
         if not auth_hdr or not auth_hdr.startswith(b'Basic '):
             raise HTTPError(401)
 
