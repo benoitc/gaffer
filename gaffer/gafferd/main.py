@@ -255,8 +255,8 @@ class Server(object):
         if self.args.get('--config') is not None:
             return self.args.get('--config')
 
-        if 'GAFFER_CONFIG' in os.environ:
-            return os.environ.get('GAFFER_CONFIG')
+        if 'GAFFERD_CONFIG' in os.environ:
+            return os.environ.get('GAFFERD_CONFIG')
 
         if is_admin():
             default_paths = system_path()
