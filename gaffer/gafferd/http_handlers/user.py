@@ -74,7 +74,7 @@ class UserHandler(UsersHandler):
     def head(self, *args):
         # only the key with can_create_user or key associated to a username
         # can fetch the user details
-        if not self.api_key.can_create_user() or self.key_username != args[0]:
+        if not self.api_key.can_create_user() and self.key_username != args[0]:
             raise HTTPError(404)
 
         if not self.auth_mgr.has_user(args[0]):
@@ -86,14 +86,20 @@ class UserHandler(UsersHandler):
     def get(self, *args):
         # only the key with can_create_user or key associated to a username
         # can fetch the user details
-        if not self.api_key.can_create_user() or self.key_username == args[0]:
+        if not self.api_key.can_create_user() and self.key_username != args[0]:
             raise HTTPError(403)
 
-        self.write(self.auth_mgr.get_user(args[0]))
+        try:
+            self.write(self.auth_mgr.get_user(args[0]))
+        except UserNotFound:
+            raise HTTPError(404)
 
     def delete(self, *args):
-        if not self.api_key.can_create_user() or self.key_username == args[0]:
+        if not self.api_key.can_create_user() and self.key_username != args[0]:
             raise HTTPError(403)
+
+        if not self.auth_mgr.has_user(args[0]):
+            raise HTTPError(404)
 
         try:
             self.auth_mgr.delete_user(args[0])
@@ -103,7 +109,7 @@ class UserHandler(UsersHandler):
         self.write({"ok": True})
 
     def put(self, *args):
-        if not self.api_key.can_create_user() or self.key_username == args[0]:
+        if not self.api_key.can_create_user() and self.key_username != args[0]:
             raise HTTPError(403)
 
         try:
@@ -123,7 +129,7 @@ class UserHandler(UsersHandler):
 class UserPasswordHandler(CorsHandlerWithAuth):
 
     def put(self, *args):
-        if not self.api_key.can_create_user() or self.key_username == args[0]:
+        if not self.api_key.can_create_user() and self.key_username != args[0]:
             raise HTTPError(403)
 
         obj = json.loads(self.request.body.decode('utf-8'))
@@ -140,7 +146,7 @@ class UserPasswordHandler(CorsHandlerWithAuth):
 class UserKeydHandler(CorsHandlerWithAuth):
 
     def put(self, *args):
-        if not self.api_key.can_create_user() or self.key_username == args[0]:
+        if not self.api_key.can_create_user() and self.key_username != args[0]:
             raise HTTPError(403)
 
         obj = json.loads(self.request.body.decode('utf-8'))

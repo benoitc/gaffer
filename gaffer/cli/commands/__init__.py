@@ -20,6 +20,11 @@ from gaffer.cli.commands import (
         lookup_sessions,
         lookup_jobs,
         lookup_nodes,
+        user,
+        user_add,
+        user_del,
+        user_setpwd,
+        user_setkey,
         dev_start,
         dev_run,
         export)
