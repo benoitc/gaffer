@@ -17,7 +17,7 @@ Options
                                         This defaults to the  directory
                                         containing the Procfile [default: .]
     -e path,--env path                  Specify one or more .env files to load
-    --gafferd-http-address url          gafferd node HTTP address to connect
+    -g url --gafferd-http-address url   gafferd node HTTP address to connect
                                         [default: http://127.0.0.1:5000]
     --api-key API_KEY                   API Key to access to gaffer
     --certfile=CERTFILE                 SSL certificate file
@@ -31,6 +31,8 @@ except ImportError:
     import ConfigParser as configparser
 import os
 import sys
+
+import tornado
 
 from .. import __version__
 from ..docopt import docopt, printable_usage
@@ -58,40 +60,29 @@ class Config(object):
         # initialize the procfile
         self.procfile = self._init_procfile()
 
-        # get user path
+        # get user config path
         self.user_config_path = self.get_user_config()
 
-        self.client_options = {}
-        # handle ssl options
-        if (args["--certfile"] is not None and
-                self.args["--keyfile"] is not None):
-            # update the client optinos
-            self.client_options = {'client_cert': args["--certfile"],
-                                'client_key':args["--keyfile"]}
-
-
-            if args["--cacert"]:
-                self.client_options['ca_certs'] = args["--cacert"]
-
-        else:
-            if args["--cacert"] is not None:
-                self.client_options = {"ca_certs": args["--cacert"]}
-
-
-        # load config
-        self.user_config = None
-
+         # load config
+        self.user_config = configparser.RawConfigParser()
         if os.path.isfile(self.user_config_path):
-            self.user_config = configparser.RawConfigParser()
             with open(self.user_config_path) as f:
                 self.user_config.readfp(f)
 
+        # node config section
+        node_section = "node \"%s\"" % args["--gafferd-http-address"]
+        if not self.user_config.has_section(node_section):
+            self.user_config.add_section(node_section)
+
+        # parse ssl options
+        self.parse_ssl_options(node_section)
+        print(self.client_options)
+
         # setup default server
         api_key = self.args['--api-key']
-        if api_key is None and self.user_config is not None:
-            node_section = "node \"%s\"" % args["--gafferd-http-address"]
-            if self.user_config.has_section(node_section):
-                api_key = self.user_config.get(node_section, "key")
+        if (api_key is None and
+                self.user_config.has_option(node_section, "key")):
+            api_key = self.user_config.get(node_section, "key")
 
         self.server = Server(self.args["--gafferd-http-address"],
                 api_key=api_key, **self.client_options)
@@ -132,6 +123,32 @@ class Config(object):
                 return None
         else:
             return Procfile(procfile, root=root, envs=self.envs)
+
+    def parse_ssl_options(self, node_section):
+        self.client_options = {}
+        # get client options from the config file
+        if self.user_config.has_option(node_section, "certfile"):
+            self.client_options['client_cert'] = self.user_config.get(
+                    node_section, "cerfile")
+
+        if self.user_config.has_option(node_section, "keyfile"):
+            self.client_options['client_key'] = self.user_config.get(
+                    node_section, "keyfile")
+
+        if self.user_config.has_option(node_section, "cacert"):
+            self.client_options['ca_certs'] = self.user_config.get(
+                    node_section, "cacert")
+
+        # override the ssl options from the command line
+
+        if self.args["--certfile"] is not None:
+            self.client_options["client_cer"] = self.args["--certfile"]
+
+        if self.args["--keyfile"] is not None:
+            self.client_options["client_key"] = self.args["--keyfile"]
+
+        if self.args["--cacert"] is not None:
+            self.client_options = {"ca_certs": self.args["--cacert"]}
 
     def get_user_config(self):
         if 'GAFFER_CONFIG' in os.environ:
@@ -188,6 +205,9 @@ class GafferCli(object):
                 sys.exit(1)
             except GafferForbidden:
                 print("Forbidden access. API key permissions aren't enough")
+                sys.exit(1)
+            except tornado.httpclient.HTTPError as e:
+                print("HTTP Error: %s" % str(e))
                 sys.exit(1)
             except Exception as e:
                 import traceback
