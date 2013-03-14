@@ -5,7 +5,7 @@ import sys
 import pyuv
 from tornado import ioloop
 
-from gaffer.websocket import WebSocket
+from gaffer.httpclient import WebSocket
 
 
 class Input(object):
@@ -48,6 +48,6 @@ try:
                 break
         except KeyboardInterrupt:
             break
-    
+
 finally:
     ws.close()
