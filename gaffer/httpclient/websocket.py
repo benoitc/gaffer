@@ -23,15 +23,15 @@ from tornado import iostream
 from tornado.httputil import HTTPHeaders
 from tornado.util import bytes_type
 
-from .tornado_pyuv import IOLoop, install
+from ..tornado_pyuv import IOLoop, install
 install()
 
-from .error import AlreadyRead
-from .events import EventEmitter
-from .loop import patch_loop
-from .message import (Message, decode_frame, FRAME_ERROR_TYPE,
+from ..error import AlreadyRead
+from ..events import EventEmitter
+from ..loop import patch_loop
+from ..message import (Message, decode_frame, FRAME_ERROR_TYPE,
         FRAME_RESPONSE_TYPE, FRAME_MESSAGE_TYPE)
-from .util import urlparse, ord_
+from ..util import urlparse, ord_
 
 # The initial handshake over HTTP.
 WS_INIT = """\

@@ -9,7 +9,7 @@ from tornado.httpserver import HTTPServer
 from tornado import netutil
 from gaffer import sockjs
 from gaffer.tornado_pyuv import IOLoop
-from gaffer.websocket import WebSocket
+from gaffer.httpclient.websocket import WebSocket
 
 TEST_PORT = (os.getpid() % 31000) + 1024
 TEST_HOST = "127.0.0.1"

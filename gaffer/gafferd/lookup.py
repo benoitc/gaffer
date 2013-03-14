@@ -9,8 +9,8 @@ import uuid
 
 import pyuv
 
+from ..httpclient.websocket import WebSocket
 from ..loop import patch_loop
-from ..websocket import WebSocket
 
 LOGGER = logging.getLogger("gaffer")
 

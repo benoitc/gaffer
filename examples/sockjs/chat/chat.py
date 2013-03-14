@@ -6,7 +6,7 @@
 from tornado import ioloop
 import tornado.web
 
-from gaffer.http import sockjs
+from gaffer import sockjs
 from gaffer import tornado_pyuv
 
 class IndexHandler(tornado.web.RequestHandler):

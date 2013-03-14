@@ -14,7 +14,7 @@ install()
 from tornado.web import Application
 from tornado.httpserver import HTTPServer
 
-from ..httpclient import make_uri
+from ..httpclient.util import make_uri
 from ..loop import patch_loop
 from .. import sockjs
 from ..util import (bind_sockets, hostname, is_ssl)

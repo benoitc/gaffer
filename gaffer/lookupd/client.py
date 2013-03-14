@@ -10,11 +10,11 @@ import sys
 import pyuv
 
 from ..events import EventEmitter
-from ..httpclient import BaseClient, make_uri
+from ..httpclient.base import BaseClient
+from ..httpclient.util import make_uri
+from ..httpclient.websocket import WebSocket
 from ..loop import patch_loop
 from ..util import is_ssl, parse_ssl_options
-from ..websocket import WebSocket
-
 
 class LookupChannel(WebSocket):
 

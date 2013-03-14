@@ -10,10 +10,9 @@ import pyuv
 from gaffer import __version__
 from gaffer.gafferd.http import HttpHandler
 from gaffer.httpclient import (Server, Job, Process,
-        GafferNotFound, GafferConflict)
+        GafferNotFound, GafferConflict, WebSocket)
 from gaffer.manager import Manager
 from gaffer.process import ProcessConfig
-from gaffer.websocket import WebSocket
 
 from test_manager import dummy_cmd
 from test_http import MockConfig

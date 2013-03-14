@@ -11,9 +11,9 @@ import pyuv
 
 from gaffer.gafferd.http import HttpHandler
 from gaffer.httpclient import Server, Process
+from gaffer.httpclient.websocket import IOChannel
 from gaffer.manager import Manager
 from gaffer.process import ProcessConfig
-from gaffer.websocket import IOChannel
 
 from test_manager import dummy_cmd
 from test_http import MockConfig
