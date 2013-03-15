@@ -14,7 +14,7 @@ class KeysHandler(CorsHandlerWithAuth):
 
     def get(self, *args):
         if not self.api_key.is_admin():
-            raise HttpError(403)
+            raise HTTPError(403)
 
         if self.get_argument("include_keys", "false").lower() == "true":
             include_key = True
@@ -23,18 +23,22 @@ class KeysHandler(CorsHandlerWithAuth):
         self.write({"keys": self.key_mgr.all_keys(include_key)})
 
     def post(self, *args):
-        if not self.api_key.can_create_key:
-            raise HttpError(403)
+        if not self.api_key.can_create_key():
+            raise HTTPError(403)
 
         try:
             api_key, data, parent = self.fetch_key()
         except ValueError:
-            raise HttpError(400)
+            raise HTTPError(400)
+
+        permissions = data.get('permissions', {})
+        if permissions.get('admin') == True and not self.api_key.is_admin():
+            raise HTTPError(403)
 
         try:
             self.key_mgr.set_key(api_key, data, parent=parent)
         except KeyConflict:
-            raise HttpError(409)
+            raise HTTPError(409)
 
         location = '%s://%s/keys/%s' % (self.request.protocol,
                 self.request.host, api_key)
@@ -55,7 +59,7 @@ class KeysHandler(CorsHandlerWithAuth):
         # parent key ?
         parent = None
         if "parent" in obj:
-            parent = obj.pop('key')
+            parent = obj.pop('parent')
 
         return key, obj, parent
 
@@ -63,30 +67,30 @@ class KeysHandler(CorsHandlerWithAuth):
 class KeyHandler(CorsHandlerWithAuth):
 
     def head(self, *args):
-        if (not self.api_key.can_create_key and
+        if (not self.api_key.can_create_key() and
                 self.api_key.api_key != args[0]):
             # only those who can create keys or the key owner can read the key
             # object
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             key_obj = self.key_mgr.has_key(args[0])
         except KeyNotFound:
-            raise HttpError(404)
+            raise HTTPError(404)
 
         self.set_status(200)
 
     def get(self, *args):
-        if (not self.api_key.can_create_key and
+        if (not self.api_key.can_create_key() and
                 self.api_key.api_key != args[0]):
             # only those who can create keys or the key owner can read the key
             # object
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             key_obj = self.key_mgr.get_key(args[0])
         except KeyNotFound:
-            raise HttpError(404)
+            raise HTTPError(404)
 
         if self.get_argument("include_keys", "false").lower() == "true":
             # include subkeys
@@ -96,15 +100,15 @@ class KeyHandler(CorsHandlerWithAuth):
         self.write(key_obj)
 
     def delete(self, *args):
-        if (not self.api_key.can_create_key and
+        if (not self.api_key.can_create_key() and
                 self.api_key.api_key != args[0]):
             # only those who can create keys or the key owner can read the key
             # object
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             key_obj = self.key_mgr.delete_key(args[0])
         except KeyNotFound:
-            raise HttpError(404)
+            raise HTTPError(404)
 
         self.write({"ok": True})

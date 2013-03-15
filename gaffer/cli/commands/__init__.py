@@ -25,6 +25,9 @@ from gaffer.cli.commands import (
         user_del,
         user_setpwd,
         user_setkey,
+        key,
+        key_add,
+        key_delete,
         dev_start,
         dev_run,
         export)
