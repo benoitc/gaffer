@@ -8,7 +8,7 @@ from tornado import websocket
 
 from ...message import Message, decode_frame, make_response
 from ...error import ProcessError
-from ..keys import Key, DummyKey
+from ..keys import Key, DummyKey, KeyNotFound
 from .util import CorsHandler, CorsHandlerWithAuth
 
 class AllProcessIdsHandler(CorsHandlerWithAuth):
@@ -254,10 +254,11 @@ class PidChannel(websocket.WebSocketHandler):
             self._stream = stream
 
     def authenticate(self, body):
-        if body.startswith("AUTH:"):
-            key = body.split("AUTH:")[1]
+        if body.startswith(b"AUTH:"):
+            key = body.split(b"AUTH:")[1].decode('utf-8')
+            print(key)
             try:
-                self.api_key = Key.loads(self.key_mgr.get_key(key))
+                self.api_key = Key.load(self.key_mgr.get_key(key))
             except KeyNotFound:
                 raise ProcessError(403, "AUTH_REQUIRED")
         else:
@@ -265,12 +266,12 @@ class PidChannel(websocket.WebSocketHandler):
 
     def close(self):
         self._close_subscriptions()
-        super(PidChannel, self).close()
 
     def on_message(self, frame):
         # decode the coming msg frame
         msg = decode_frame(frame)
 
+        is_auth = msg.body.startswith(b"AUTH:") == True
         if not self.api_key and self.require_key:
             try:
                 self.authenticate(msg.body)
@@ -288,17 +289,19 @@ class PidChannel(websocket.WebSocketHandler):
                 self.write_error(e.to_json())
                 self.close()
 
-        # we can write on this stream, return an error
-        if not self._write:
-            error = ProcessError(403, "EPERM")
-            return self.write_error(error.to_json(), msg.id)
 
-        # send the message
-        try:
-            self._write(msg.body)
-        except Exception:
-            error = ProcessError(500, "EIO")
-            return self.write_error(error.to_json(), msg.id)
+        if not is_auth:
+            # we can write on this stream, return an error
+            if not self._write:
+                error = ProcessError(403, "EPERM")
+                return self.write_error(error.to_json(), msg.id)
+
+            # send the message
+            try:
+                self._write(msg.body)
+            except Exception:
+                error = ProcessError(500, "EIO")
+                return self.write_error(error.to_json(), msg.id)
 
         # send OK response
         resp = make_response("OK", id=msg.id)
@@ -312,6 +315,7 @@ class PidChannel(websocket.WebSocketHandler):
     def on_close(self):
         self.manager.events.unsubscribe("proc.%s.exit" % self.process.pid,
                 self.on_exit)
+        self.close()
 
     def on_exit(self):
         self.close()

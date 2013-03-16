@@ -658,7 +658,8 @@ class IOChannel(WebSocket):
 
         # make sure we authenticate first
         if self.api_key is not None:
-            self.write_message("AUTH:%s" % self.api_key)
+            msg = Message("AUTH:%s" % self.api_key)
+            self.write_message(msg.encode())
 
     def start(self):
         if self.active:
