@@ -80,7 +80,7 @@ class Send(Command):
         self.should_close = False
 
         if data.strip() == "-":
-            self.tty = pyuv.TTY(server.loop, sys.stdin.fileno())
+            self.tty = pyuv.TTY(server.loop, sys.stdin.fileno(), True)
             self.tty.start_read(self._on_tty_read)
             self.sig_handler = SigHandler(self)
             self.sig_handler.start(server.loop)

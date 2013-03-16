@@ -32,7 +32,6 @@ import pyuv
 
 from .. import __version__
 from ..docopt import docopt
-from ..loop import patch_loop
 from ..pidfile import Pidfile
 from ..sig_handler import BaseSigHandler
 from ..util import bind_sockets, daemonize, setproctitle_
@@ -57,7 +56,7 @@ class LookupSigHandler(BaseSigHandler):
 class LookupServer(object):
 
     def __init__(self, args, loop=None):
-        self.loop = patch_loop(loop or pyuv.Loop.default_loop())
+        self.loop = loop or pyuv.Loop.default_loop()
         self.io_loop = IOLoop(_loop=self.loop)
         self.args = args
 

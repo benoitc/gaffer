@@ -24,7 +24,6 @@ from colorama import Fore, Back, Style, init
 init()
 
 from .error import ProcessNotFound
-from .loop import patch_loop
 
 GAFFER_COLORS = ['cyan', 'yellow', 'green', 'magenta', 'red', 'blue',
 'intense_cyan', 'intense_yellow', 'intense_green', 'intense_magenta',
@@ -87,7 +86,7 @@ class ConsoleOutput(object):
         self._process_colors = {}
 
     def start(self, loop, manager):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.manager = manager
 
         for action in self.subscribed:

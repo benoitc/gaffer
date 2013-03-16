@@ -28,7 +28,6 @@ install()
 
 from ..error import AlreadyRead
 from ..events import EventEmitter
-from ..loop import patch_loop
 from ..message import (Message, decode_frame, FRAME_ERROR_TYPE,
         FRAME_RESPONSE_TYPE, FRAME_MESSAGE_TYPE)
 from ..util import urlparse, ord_
@@ -82,7 +81,7 @@ class WebSocket(object):
     def __init__(self, loop, url, **kwargs):
         ports = {'ws': 80, 'wss': 443}
 
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self._io_loop = IOLoop(_loop=loop)
 
         self.url = urlparse(url)
@@ -448,7 +447,7 @@ class GafferCommand(object):
 class GafferSocket(WebSocket):
 
     def __init__(self, loop, url, api_key=None, **kwargs):
-        loop = patch_loop(loop)
+        loop = loop
 
         try:
             self.heartbeat_timeout = kwargs.pop('heartbeat')
@@ -623,7 +622,7 @@ class GafferSocket(WebSocket):
 class IOChannel(WebSocket):
 
     def __init__(self, loop, url, mode=3, api_key=None, **kwargs):
-        loop = patch_loop(loop)
+        loop = loop
         self.api_key = api_key
 
         # initialize the capabilities

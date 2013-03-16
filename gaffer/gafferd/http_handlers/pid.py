@@ -196,7 +196,15 @@ class PidChannel(websocket.WebSocketHandler):
         self.manager.events.subscribe("proc.%s.exit" % process.pid,
                 self.on_exit)
 
-        self.opened = False
+        if not self.require_key:
+            self.api_key = DummyKey()
+            try:
+                self.open_stream(self.process, self.args)
+            except ProcessError as e:
+                self.write_error(e.to_json())
+                self.close()
+        else:
+            self.opened = False
 
 
     def open_stream(self, process, args):
@@ -253,10 +261,11 @@ class PidChannel(websocket.WebSocketHandler):
 
             self._stream = stream
 
+        self.opened = True
+
     def authenticate(self, body):
         if body.startswith(b"AUTH:"):
             key = body.split(b"AUTH:")[1].decode('utf-8')
-            print(key)
             try:
                 self.api_key = Key.load(self.key_mgr.get_key(key))
             except KeyNotFound:
@@ -279,9 +288,6 @@ class PidChannel(websocket.WebSocketHandler):
             except ProcessError as e:
                 self.write_error(e.to_json())
                 self.close()
-        else:
-            self.api_key = DummyKey()
-
 
         if not self.opened:
             try:
@@ -303,6 +309,7 @@ class PidChannel(websocket.WebSocketHandler):
             except Exception:
                 error = ProcessError(500, "EIO")
                 return self.write_error(error.to_json(), msg.id)
+
 
         # send OK response
         resp = make_response("OK", id=msg.id)

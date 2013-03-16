@@ -15,7 +15,6 @@ from threading import RLock
 
 import pyuv
 
-from .loop import patch_loop, get_loop
 from .events import EventEmitter
 from .error import ProcessError, ProcessConflict, ProcessNotFound
 from .pubsub import Topic
@@ -69,11 +68,7 @@ class Manager(object):
     """
     def __init__(self, loop=None):
         # by default we run on the default loop
-
-        if loop is not None:
-            self.loop = patch_loop(loop)
-        else:
-            self.loop = get_loop(True)
+        self.loop = loop or pyuv.Loop.default_loop()
 
         # initialize the emitter
         self.events = EventEmitter(self.loop)

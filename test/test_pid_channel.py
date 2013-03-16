@@ -192,10 +192,9 @@ def test_custom_stream():
 
     else:
         config = ProcessConfig("echo", "./proc_custom_stream.py",
-            cwd=os.path.dirname(__file__), custom_streams=["ctrl"], os_env=False)
+            cwd=os.path.dirname(__file__), custom_streams=["ctrl"])
 
     m.load(config)
-    time.sleep(0.2)
 
     # start a channel
     p = s.get_process(1)
@@ -215,7 +214,7 @@ def test_custom_stream():
 
 
     t = pyuv.Timer(m.loop)
-    t.start(stop, 0.43, 0.0)
+    t.start(stop, 0.6, 0.0)
     m.loop.run()
 
     assert len(emitted) == 1

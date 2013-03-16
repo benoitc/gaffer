@@ -13,14 +13,13 @@ from ..events import EventEmitter
 from ..httpclient.base import BaseClient
 from ..httpclient.util import make_uri
 from ..httpclient.websocket import WebSocket
-from ..loop import patch_loop
 from ..util import is_ssl, parse_ssl_options
 
 class LookupChannel(WebSocket):
 
     def __init__(self, server, url, **kwargs):
         self.server = server
-        loop = patch_loop(server.loop)
+        loop = server.loop
 
         try:
             self.heartbeat_timeout = kwargs.pop('heartbeat')

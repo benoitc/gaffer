@@ -4,9 +4,9 @@
 
 import json
 
+import pyuv
 from tornado import httpclient
 
-from ..loop import patch_loop, get_loop
 from ..tornado_pyuv import IOLoop
 from .util import make_uri
 
@@ -38,7 +38,7 @@ class HTTPClient(object):
             print("Error: %s" % e)
     """
     def __init__(self, async_client_class=None, loop=None, **kwargs):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self._io_loop = IOLoop(_loop=loop)
         if async_client_class is None:
             async_client_class = httpclient.AsyncHTTPClient
@@ -80,11 +80,7 @@ class BaseClient(object):
     retrieving """
 
     def __init__(self, uri, loop=None, **options):
-        if loop is not None:
-            self.loop = patch_loop(loop)
-        else:
-            self.loop = get_loop()
-
+        self.loop = loop or pyuv.Loop.default_loop()
         self.uri = uri
         self.options = options
         self.client = HTTPClient(loop=loop)

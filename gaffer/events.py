@@ -122,7 +122,6 @@ import logging
 
 import pyuv
 
-from .loop import patch_loop
 
 class EventEmitter(object):
     """ Many events happend in gaffer. For example a process will emist
@@ -131,7 +130,7 @@ class EventEmitter(object):
     This object offer a common interface to all events emitters """
 
     def __init__(self, loop, max_size=10000):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self._events = {}
         self._wildcards = set()
 

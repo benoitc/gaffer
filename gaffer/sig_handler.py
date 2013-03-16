@@ -6,51 +6,45 @@ import signal
 
 import pyuv
 
-from .loop import patch_loop
-
 class BaseSigHandler(object):
     """ A simple gaffer application to handle signals """
 
     QUIT_SIGNALS = (signal.SIGQUIT, signal.SIGTERM, signal.SIGINT)
 
     def __init__(self):
-        self._sig_handler = None
+        self._sig_handlers = []
 
     def start(self, loop):
-        self.loop = patch_loop(loop)
+        self.loop = loop
 
-        need_unref = False
-        if hasattr(pyuv, "SignalChecker"):
-            self._sig_handler = pyuv.SignalChecker(self.loop)
-        else:
-            self._sig_handler = pyuv.Signal(self.loop)
-            need_unref = True
-
-        # quit signals handling
+         # quit signals handling
         for signum in self.QUIT_SIGNALS:
-            signal.signal(signum, self.handle_quit)
+            self._start_signal(self.handle_quit, signum)
 
         # reload signal
-        signal.signal(signal.SIGHUP, self.handle_reload)
+        self._start_signal(self.handle_reload, signal.SIGHUP)
 
-        self._sig_handler.start()
-        if need_unref:
-            self._sig_handler.unref()
+    def _start_signal(self, callback, signum):
+        h = pyuv.Signal(self.loop)
+        h.start(callback, signum)
+        h.unref()
+        self._sig_handlers.append(h)
 
     def stop(self):
-        try:
-            self._sig_handler.stop()
-        except:
-            pass
+        for h in self._sig_handlers:
+            try:
+                h.stop()
+            except:
+                pass
 
     def restart(self):
         # we never restart, just return
         return
 
-    def handle_quit(self, handle, *args):
+    def handle_quit(self, handle, signum):
         raise NotImplementedError
 
-    def handle_reload(self, handle, *args):
+    def handle_reload(self, handle, signum):
         raise NotImplementedError
 
 

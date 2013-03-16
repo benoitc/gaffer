@@ -5,6 +5,8 @@ import copy
 from datetime import datetime
 import sys
 
+import pyuv
+
 from .base import Command
 from ...console_output import colored, GAFFER_COLORS
 
@@ -43,7 +45,7 @@ class Logs(Command):
 
         while True:
             try:
-                if not server.loop.run_once():
+                if not server.loop.run(pyuv.UV_RUN_ONCE):
                     break
             except KeyboardInterrupt:
                 break

@@ -15,7 +15,6 @@ from tornado.web import Application
 from tornado.httpserver import HTTPServer
 
 from ..httpclient.util import make_uri
-from ..loop import patch_loop
 from .. import sockjs
 from ..util import (bind_sockets, hostname, is_ssl)
 from . import http_handlers
@@ -131,7 +130,7 @@ class HttpHandler(object):
 
 
     def start(self, loop, manager):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.io_loop = IOLoop(_loop=loop)
         self.manager = manager
 

@@ -19,7 +19,6 @@ from psutil.error import AccessDenied
 import six
 
 from .events import EventEmitter
-from .loop import patch_loop
 from .util import (bytestring, getcwd, check_uid, check_gid,
         bytes2human, substitute_env)
 from .sync import atomic_read, increment, decrement
@@ -239,7 +238,11 @@ class ProcessWatcher(object):
             self._emitter.close()
 
     def _async_refresh(self, handle):
-        self._last_info = self.refresh()
+        try:
+            self._last_info = self.refresh()
+        except psutil.error.NoSuchProcess:
+            self.stop()
+            return
 
         # create the message
         msg = self._last_info.copy()
@@ -441,7 +444,7 @@ class Process(object):
             gid=None, cwd=None, detach=False, shell=False,
             redirect_output=[], redirect_input=False, custom_streams=[],
             custom_channels=[], on_exit_cb=None):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.pid = pid
         self.name = name
         self.cmd = cmd
@@ -565,7 +568,8 @@ class Process(object):
 
         # start to cycle the cpu stats so we can have an accurate number on
         # the first call of ``Process.stats``
-        self.loop.queue_work(partial(get_process_stats, self._pprocess, 0.1))
+        self.loop.queue_work(self._init_cpustats)
+
 
         # start redirecting IO
         self._redirect_io.start()
@@ -575,6 +579,7 @@ class Process(object):
 
         for stream in self.streams.values():
             stream.start()
+
 
     @property
     def active(self):
@@ -695,6 +700,15 @@ class Process(object):
 
     def close(self):
         self._process.close()
+
+    def _init_cpustats(self):
+        try:
+            get_process_stats(self._pprocess, 0.1)
+        except psutil.error.NoSuchProcess:
+            # catch this error. It can can happen when the process is closing
+            # very fast
+            pass
+
 
     def _exit_cb(self, handle, exit_status, term_signal):
         if self._redirect_io is not None:

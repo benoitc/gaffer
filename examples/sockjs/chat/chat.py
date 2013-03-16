@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # 4. Start IOLoop
     while True:
         try:
-            if not loop.run_once():
+            if not loop.run(pyuv.UV_RUN_ONCE):
                 break
         except KeyboardInterrupt:
             break

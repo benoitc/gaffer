@@ -21,7 +21,6 @@ from gaffer.lookupd.http import http_server
 from gaffer.lookupd.registry import (RemoteJob, GafferNode, Registry,
         NoIdent, JobNotFound, AlreadyIdentified, IdentExists,
         AlreadyRegistered)
-from gaffer.loop import patch_loop
 from gaffer.manager import Manager
 from gaffer.process import ProcessConfig
 from gaffer.util import bind_sockets, hostname

@@ -9,7 +9,6 @@ import sqlite3
 import uuid
 
 from ..events import EventEmitter
-from ..loop import patch_loop
 from .util import load_backend
 
 
@@ -277,7 +276,7 @@ class KeyManager(object):
 class KeyBackend(object):
 
     def __init__(self, loop, cfg):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.cfg = cfg
 
     def __enter__(self):

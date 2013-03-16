@@ -44,7 +44,7 @@ ws.start()
 try:
     while True:
         try:
-            if not loop.run_once():
+            if not loop.run(pyuv.UV_RUN_ONCE):
                 break
         except KeyboardInterrupt:
             break

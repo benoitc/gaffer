@@ -8,6 +8,7 @@ import pyuv
 from .base import Command
 from ...httpclient import GafferNotFound
 
+from .send import SigHandler
 
 class Recv(Command):
 
@@ -50,17 +51,19 @@ class Recv(Command):
                     stream not in p.custom_streams):
                 raise RuntimeError("can't read on %r" % stream)
 
-        socket = p.socket(mode=pyuv.UV_READABLE, stream=stream)
-        socket.start()
-        socket.start_read(self._on_read)
+        self.socket = p.socket(mode=pyuv.UV_READABLE, stream=stream)
+        self.socket.start()
+        self.socket.start_read(self._on_read)
+
+        self.sig_handler = SigHandler(self)
+        self.sig_handler.start(server.loop)
 
         # then listen
-        while True:
-            try:
-                if not server.loop.run_once():
-                    break
-            except KeyboardInterrupt:
-                break
+        server.loop.run()
+
+    def stop(self):
+        self.socket.close()
+
 
     def _on_read(self, channel, data):
         sys.stdout.write(data.decode('utf-8'))

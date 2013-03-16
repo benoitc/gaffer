@@ -37,7 +37,6 @@ import json
 from tornado.httpclient import HTTPError
 
 from .httpclient import HTTPClient
-from .loop import patch_loop
 from .sync import atomic_read, increment, decrement
 
 class WebHooks(object):
@@ -57,7 +56,7 @@ class WebHooks(object):
 
     def start(self, loop, manager):
         """ start the webhook app """
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.manager = manager
         self.maybe_start_monitor()
 

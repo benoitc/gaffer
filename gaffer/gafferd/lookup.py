@@ -10,7 +10,6 @@ import uuid
 import pyuv
 
 from ..httpclient.websocket import WebSocket
-from ..loop import patch_loop
 
 LOGGER = logging.getLogger("gaffer")
 
@@ -47,7 +46,7 @@ class Message(object):
 class LookupClient(WebSocket):
 
     def __init__(self, loop, url, **kwargs):
-        loop = patch_loop(loop)
+        loop = loop
         self._lock = RLock()
 
         # initialize the heartbeart. It will PING the lookupd server to say

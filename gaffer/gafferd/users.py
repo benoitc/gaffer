@@ -7,7 +7,6 @@ import os
 import sqlite3
 import uuid
 
-from ..loop import patch_loop
 from ..util import bytestring, ord_
 from .pbkdf2 import pbkdf2_hex
 from .util import load_backend
@@ -75,7 +74,7 @@ class DummyUser(User):
 class AuthManager(object):
 
     def __init__(self, loop, cfg):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.cfg = cfg
 
         # initialize the db backend
@@ -184,7 +183,7 @@ class AuthManager(object):
 class BaseAuthHandler(object):
 
     def __init__(self, loop, cfg):
-        self.loop = patch_loop(loop)
+        self.loop = loop
         self.cfg = cfg
 
     def open(self):
