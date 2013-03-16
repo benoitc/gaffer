@@ -266,6 +266,7 @@ class PidChannel(websocket.WebSocketHandler):
 
     def close(self):
         self._close_subscriptions()
+        super(PidChannel, self).close()
 
     def on_message(self, frame):
         # decode the coming msg frame
@@ -315,7 +316,9 @@ class PidChannel(websocket.WebSocketHandler):
     def on_close(self):
         self.manager.events.unsubscribe("proc.%s.exit" % self.process.pid,
                 self.on_exit)
-        self.close()
+
+        # close the subscriptions
+        self._close_subscriptions()
 
     def on_exit(self):
         self.close()
