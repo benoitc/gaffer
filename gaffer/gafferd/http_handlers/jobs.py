@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import json
-
+from tornado.web import HTTPError
 
 from ...error import ProcessError
 from ...process import ProcessConfig
@@ -18,7 +18,7 @@ class SessionsHandler(CorsHandlerWithAuth):
 
         if (not self.api_key.is_admin() and
                 not self.api_key.can_manage_all()):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         m = self.settings.get('manager')
         self.set_header('Content-Type', 'application/json')
@@ -33,7 +33,7 @@ class AllJobsHandler(CorsHandlerWithAuth):
 
         if (not self.api_key.is_admin() and
                 not self.api_key.can_manage_all()):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         m = self.settings.get('manager')
         self.set_header('Content-Type', 'application/json')
@@ -48,7 +48,7 @@ class JobsHandler(CorsHandlerWithAuth):
         sessionid = args[0]
 
         if not self.api_key.can_manage(sessionid):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             jobs = list(m.jobs(sessionid))
@@ -69,7 +69,7 @@ class JobsHandler(CorsHandlerWithAuth):
         sessionid = args[0]
 
         if not self.api_key.can_manage(sessionid):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         self.set_header('Content-Type', 'application/json')
         try:
@@ -117,7 +117,7 @@ class JobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_read(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             m.get(pname)
@@ -133,7 +133,7 @@ class JobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_read(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             info = m.info(pname)
@@ -151,7 +151,7 @@ class JobHandler(CorsHandlerWithAuth):
         name = args[1]
 
         if not self.api_key.can_manage("%s.%s" % (sessionid, name)):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             m.unload(name, sessionid)
@@ -169,7 +169,7 @@ class JobHandler(CorsHandlerWithAuth):
         name = args[1]
 
         if not self.api_key.can_manage("%s.%s" % (sessionid, name)):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             cmd, settings = self.fetch_body(name)
@@ -221,7 +221,7 @@ class JobStatsHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_read(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
         try:
             stats = m.stats(pname)
         except ProcessError as e:
@@ -241,7 +241,7 @@ class ScaleJobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_read(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             t = m._get_locked_state()
@@ -258,7 +258,7 @@ class ScaleJobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_manage(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             n = self.get_scaling_value()
@@ -291,7 +291,7 @@ class PidsJobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_read(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             pids = m.pids(pname)
@@ -313,7 +313,7 @@ class SignalJobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_manage(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             m.kill(pname, self.get_signal_value())
@@ -343,7 +343,7 @@ class StateJobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_read(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             t = m._get_locked_state(pname)
@@ -360,7 +360,7 @@ class StateJobHandler(CorsHandlerWithAuth):
         pname = "%s.%s" % (args[0], args[1])
 
         if not self.api_key.can_manage(pname):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             do = self.get_action(m)
@@ -400,7 +400,7 @@ class CommitJobHandler(CorsHandlerWithAuth):
         m = self.settings.get('manager')
 
         if not self.api_key.can_manage(args[0]):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             graceful_timeout, env = self.get_params()

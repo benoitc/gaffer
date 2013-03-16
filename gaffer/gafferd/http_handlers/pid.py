@@ -3,8 +3,8 @@
 # This file is part of gaffer. See the NOTICE for more information.
 
 import pyuv
-from tornado import escape
-from tornado import websocket
+from tornado import escape, websocket
+from tornado.web import HTTPError
 
 from ...message import Message, decode_frame, make_response
 from ...error import ProcessError
@@ -20,7 +20,7 @@ class AllProcessIdsHandler(CorsHandlerWithAuth):
 
         if (not self.api_key.is_admin() and
                 not self.api_key.can_manage_all()):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         self.write({"pids": list(m.running)})
 
@@ -45,7 +45,7 @@ class ProcessIdHandler(CorsHandlerWithAuth):
             return
 
         if not self.api_key.can_read(p.name):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         self.set_status(200)
 
@@ -68,7 +68,7 @@ class ProcessIdHandler(CorsHandlerWithAuth):
             return self.write(e.to_dict())
 
         if not self.api_key.can_read(p.name):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         self.write(p.info)
 
@@ -91,7 +91,7 @@ class ProcessIdHandler(CorsHandlerWithAuth):
             return self.write(e.to_dict())
 
         if not self.api_key.can_manage(p.name):
-            raise HttpError(403)
+            raise HTTPError(403)
 
         try:
             m.stop_process(pid)
@@ -127,7 +127,7 @@ class ProcessIdSignalHandler(CorsHandlerWithAuth):
             return self.write(e.to_dict())
 
         if not self.api_key.can_manage(p.name):
-            raise HttpError(403)
+            raise HTTPError(403)
 
 
         # decode object
@@ -164,7 +164,7 @@ class ProcessIdStatsHandler(CorsHandlerWithAuth):
             return self.write(e.to_dict())
 
         if not self.api_key.can_read(p.name):
-            raise HttpError(403)
+            raise HTTPError(403)
 
 
         self.set_status(200)
