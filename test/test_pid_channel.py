@@ -189,7 +189,6 @@ def test_custom_stream():
         config =  ProcessConfig("echo",  "cmd.exe",
                 args=["/c", "proc_custom_stream.py"],
                 custom_streams=["ctrl"])
-
     else:
         config = ProcessConfig("echo", "./proc_custom_stream.py",
             cwd=os.path.dirname(__file__), custom_streams=["ctrl"])
@@ -214,11 +213,11 @@ def test_custom_stream():
 
 
     t = pyuv.Timer(m.loop)
-    t.start(stop, 0.6, 0.0)
+    t.start(stop, 0.4, 0.0)
     m.loop.run()
 
     assert len(emitted) == 1
-    assert emitted == [b'ECHO\n\n']
+    assert emitted == [b'ECHO\n']
     assert responses == [(b"OK", None)]
 
 if __name__ == "__main__":

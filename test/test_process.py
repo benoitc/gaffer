@@ -266,7 +266,7 @@ def test_custom_stream():
     loop.run()
 
     assert len(monitored) == 1
-    assert monitored == [b'ECHO\n\n']
+    assert monitored == [b'ECHO\n']
 
 def test_custom_channel():
     if sys.platform == 'win32':
@@ -304,7 +304,7 @@ def test_custom_channel():
     loop.run()
 
     assert len(monitored) == 1
-    assert monitored == [b'ECHO\n\n']
+    assert monitored == [b'ECHO\n']
 
 def test_substitue_env():
     loop = pyuv.Loop.default_loop()

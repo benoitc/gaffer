@@ -316,7 +316,6 @@ class PidChannel(websocket.WebSocketHandler):
         self.write_message(resp.encode())
 
     def on_output(self, evtype, message):
-        # we can write on this stream, return an error
         msg = Message(message['data'])
         self.write_message(msg.encode())
 

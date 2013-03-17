@@ -3,8 +3,15 @@
 from __future__ import print_function
 
 import os
+import sys
 
-stream = os.fdopen(3, 'w+')
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    stream = os.fdopen(3, 'wb+', buffering=0)
+else:
+    stream =  os.fdopen(3, "w+")
+
 c = stream.readline()
-print(c, file=stream)
+stream.write(c)
 stream.flush()
