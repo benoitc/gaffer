@@ -231,16 +231,17 @@ class _Timeout(object):
     __slots__ = ['deadline', 'callback', 'io_loop', '_timer']
 
     def __init__(self, deadline, callback, io_loop=None):
+        now = time.time()
         if (isinstance(deadline, six.integer_types)
                 or isinstance(deadline, float)):
             self.deadline = deadline
         elif isinstance(deadline, datetime.timedelta):
-            self.deadline = time.time() + _Timeout.timedelta_to_seconds(deadline)
+            self.deadline = now + _Timeout.timedelta_to_seconds(deadline)
         else:
             raise TypeError("Unsupported deadline %r" % deadline)
         self.callback = callback
         self.io_loop = io_loop or IOLoop.instance()
-        timeout = max(self.deadline - time.time(), 0)
+        timeout = max(self.deadline - now, 0)
         self._timer = pyuv.Timer(self.io_loop._loop)
         self._timer.start(self._timer_cb, timeout, 0.0)
 
