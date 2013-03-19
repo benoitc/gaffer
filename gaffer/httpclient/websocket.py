@@ -185,7 +185,7 @@ class WebSocket(object):
     def _terminate(self):
         self.client_terminated = True
         self.stream.close()
-        self.stream.io_loop.close(True)
+        self.stream.io_loop.close()
 
     def _write_frame(self, fin, opcode, data):
         self.stream.write(frame(data, opcode))

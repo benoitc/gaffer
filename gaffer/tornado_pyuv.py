@@ -9,6 +9,7 @@ import pyuv
 import datetime
 import errno
 import logging
+import os
 import time
 
 try:
@@ -82,19 +83,18 @@ class IOLoop(object):
                 handle.close()
         self._loop.walk(cb)
 
-    def close(self, all_fds=False, all_handlers=False):
-        if all_fds:
-            for fd in self._handlers:
-                poll, stack = self._handlers[fd]
-                if not poll.closed:
-                    poll.close()
-            self._handlers = {}
-
-        if all_handlers:
-            self._close_loop_handles()
-            # Run the loop so the close callbacks are fired and memory is freed
-            # It will not block because all handles are closed
-            assert not self._loop.run(pyuv.UV_RUN_NOWAIT), "there are pending handles"
+    def close(self):
+        for fd, (poll, callback) in self._handlers.items():
+            try:
+                os.close(fd)
+            except Exception:
+                logging.debug("error closing fd %s", fd, exc_info=True)
+            if not poll.closed:
+                poll.close()
+        self._handlers = {}
+        # Run the loop so the close callbacks are fired and memory is freed
+        self._loop.run(pyuv.UV_RUN_NOWAIT)
+        self._loop = None
 
     def add_handler(self, fd, handler, events):
         if fd in self._handlers:
@@ -131,22 +131,28 @@ class IOLoop(object):
     def log_stack(self, signal, frame):
         raise NotImplementedError
 
-    def start(self, run_loop=True):
+    def start(self):
         if self._stopped:
             self._stopped = False
             return
         self._thread_ident = thread.get_ident()
         self._running = True
-        if run_loop:
-            while self._running:
-                # We should use run() here, but we need to have break() for that
-                self._loop.run(pyuv.UV_RUN_ONCE)
-            # reset the stopped flag so another start/stop pair can be issued
-            self._stopped = False
+
+        # This timer will prevent busy-looping in case there is nothing scheduled in the loop
+        timer = pyuv.Timer(self._loop)
+        timer.start(lambda x: None, 3600, 3600)
+
+        self._loop.run(pyuv.UV_RUN_DEFAULT)
+
+        timer.close()
+
+        # reset the stopped flag so another start/stop pair can be issued
+        self._stopped = False
 
     def stop(self):
         self._running = False
         self._stopped = True
+        self._loop.stop()
         self._waker.wake()
 
     def running(self):

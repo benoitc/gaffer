@@ -165,7 +165,7 @@ class HttpHandler(object):
         self.clients = {}
 
         # finally close the tornado loop
-        self.io_loop.close(True)
+        self.io_loop.close()
 
     def restart(self):
         # stop the server

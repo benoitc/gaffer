@@ -66,7 +66,7 @@ def test_basic():
         handle.close()
         server.stop()
         ws.close()
-        io_loop.close(True)
+        io_loop.close()
 
     def init(handle):
         handle.close()

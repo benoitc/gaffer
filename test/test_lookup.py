@@ -338,11 +338,10 @@ def test_lookup_service():
     t0 = pyuv.Timer(loop)
     t0.start(lambda h: client.close(), 0.4, 0.0)
 
-
     def stop(h):
         h.close()
         server.stop()
-        io_loop.close(True)
+        io_loop.close()
 
     t = pyuv.Timer(loop)
     t.start(stop, 0.6, 0.0)

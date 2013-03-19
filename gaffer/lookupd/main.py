@@ -129,7 +129,7 @@ class LookupServer(object):
 
     def stop(self):
         self.hserver.stop()
-        self.io_loop.close(True)
+        self.io_loop.close()
         self.started = False
 
 def main():
