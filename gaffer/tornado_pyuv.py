@@ -100,7 +100,6 @@ class IOLoop(object):
         if fd in self._handlers:
             raise IOError("fd %d already registered" % fd)
         poll = pyuv.Poll(self._loop, fd)
-        poll.fd = fd
         self._handlers[fd] = (poll, stack_context.wrap(handler))
         poll_events = 0
         if (events & IOLoop.READ):
@@ -201,7 +200,7 @@ class IOLoop(object):
             events |= IOLoop.READ
         if (poll_events & pyuv.UV_WRITABLE):
             events |= IOLoop.WRITE
-        fd = handle.fd
+        fd = handle.fileno()
         try:
             self._handlers[fd][1](fd, events)
         except (OSError, IOError) as e:
