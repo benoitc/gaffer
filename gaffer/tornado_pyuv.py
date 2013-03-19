@@ -95,7 +95,7 @@ class IOLoop(object):
             self._close_loop_handles()
             # Run the loop so the close callbacks are fired and memory is freed
             # It will not block because all handles are closed
-            assert not self._loop.run(pyuv.UV_RUN_ONCE), "there are pending handles"
+            assert not self._loop.run(pyuv.UV_RUN_NOWAIT), "there are pending handles"
 
     def add_handler(self, fd, handler, events):
         if fd in self._handlers:
