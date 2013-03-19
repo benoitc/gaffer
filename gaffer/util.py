@@ -2,16 +2,24 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
-import grp
 import os
-import pwd
-import resource
+import platform
 import signal
 import socket
 import ssl
 import string
 import sys
 import time
+
+IS_WINDOWS = platform.system() == 'Windows'
+if not IS_WINDOWS:
+    import grp
+    import pwd
+    import resource
+else:
+    grp = None
+    pwd = None
+    resource = None
 
 import six
 from tornado import netutil
@@ -79,6 +87,7 @@ def getcwd():
         working_dir = os.getcwd()
     return working_dir
 
+
 def check_uid(val):
     """Return an uid, given a user value.
     If the value is an integer, make sure it's an existing uid.
@@ -106,6 +115,7 @@ def check_gid(val):
 
     If the group value is unknown, raises a ValueError.
     """
+
     if isinstance(val, int):
         try:
             grp.getgrgid(val)
@@ -187,11 +197,6 @@ def bind_sockets(addr, backlog=128, allows_unix_socket=False):
 def hostname():
     return socket.getfqdn(socket.gethostname())
 
-def get_maxfd():
-    maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-    if (maxfd == resource.RLIM_INFINITY):
-        maxfd = MAXFD
-    return maxfd
 
 try:
     from os import closerange
@@ -209,7 +214,10 @@ except ImportError:
 def daemonize():
     """Standard daemonization of a process.
     """
-    #if not 'CIRCUS_PID' in os.environ:
+
+    if IS_WINDOWS:
+        raise RuntimeError('Daemonizing is not supported on Windows.')
+
     if os.fork():
         os._exit(0)
     os.setsid()
@@ -218,7 +226,9 @@ def daemonize():
         os._exit(0)
 
     os.umask(0)
-    maxfd = get_maxfd()
+    maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+    if (maxfd == resource.RLIM_INFINITY):
+        maxfd = MAXFD
     closerange(0, maxfd)
 
     os.open(REDIRECT_TO, os.O_RDWR)

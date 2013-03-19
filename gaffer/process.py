@@ -20,7 +20,7 @@ import six
 
 from .events import EventEmitter
 from .util import (bytestring, getcwd, check_uid, check_gid,
-        bytes2human, substitute_env)
+        bytes2human, substitute_env, IS_WINDOWS)
 from .sync import atomic_read, increment, decrement
 
 pyuv.Process.disable_stdio_inheritance()
@@ -475,12 +475,13 @@ class Process(object):
             self.cmd = "sh"
 
         self.uid = uid
-        if self.uid is not None:
-            self.uid = check_uid(uid)
-
         self.gid = gid
-        if self.gid is not None:
-            self.gid = check_gid(gid)
+        if not IS_WINDOWS:
+            if self.uid is not None:
+                self.uid = check_uid(uid)
+
+            if self.gid is not None:
+                self.gid = check_gid(gid)
 
         self.cwd = cwd or getcwd()
         self.redirect_output = redirect_output
