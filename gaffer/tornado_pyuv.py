@@ -194,12 +194,15 @@ class IOLoop(object):
     def _handle_poll_events(self, handle, poll_events, error):
         events = 0
         if error is not None:
-            # TODO: do I need to do anything else here?
-            events |= IOLoop.ERROR
-        if (poll_events & pyuv.UV_READABLE):
+            # Some error was detected, signal readability and writability so that the
+            # handler gets and handles the error
             events |= IOLoop.READ
-        if (poll_events & pyuv.UV_WRITABLE):
             events |= IOLoop.WRITE
+        else:
+            if (poll_events & pyuv.UV_READABLE):
+                events |= IOLoop.READ
+            if (poll_events & pyuv.UV_WRITABLE):
+                events |= IOLoop.WRITE
         fd = handle.fileno()
         try:
             self._handlers[fd][1](fd, events)
