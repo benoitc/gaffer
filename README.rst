@@ -19,7 +19,7 @@ Features
       a gaffer node from any browser or SOCKJS client.
     - Framework to manage and interact your applications and jobs on
       differerent machines
-    - Server and :doc:`command-line` tools to manage and interract with your
+    - Server and command-line tools to manage and interract with your
       processes
     - manages topology information. Clients query gaffer_lookupd to discover
       gaffer nodes for a specific job or application.
@@ -27,7 +27,7 @@ Features
       applications and processes
     - Subscribe to process statistics per process or process templates
       and get them in quasi RT.
-    - Procfile applications support (see :doc:`gaffer`) but also JSON config
+    - Procfile applications support but also JSON config
       support.
     - Fully evented. Use the libuv event loop using the
       `pyuv library <http://pyuv.readthedocs.org>`_
