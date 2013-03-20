@@ -9,10 +9,14 @@ Welcome to gaffer's documentation!
 Gaffer
 ======
 
-Application deployement, monitoring and supervision made simple.
+Control, Watch and Launch your applications and jobs over HTTP.
 
 Gaffer is a set of Python modules and tools to easily maintain and
-interact with your applications.
+interact with your applications or jobs launched on different machines over
+HTTP and websockets.
+
+It promotes distributed and decentralized topologies without single points of
+failure, enabling fault tolerance and high availability.
 
 .. raw:: html
 
@@ -23,25 +27,26 @@ interact with your applications.
 Features
 --------
 
-    - Framework to manage and interact your processes
-    - Fully evented. Use the libuv event loop using the
-      `pyuv library <http://pyuv.readthedocs.org>`_
-    - Server and :doc:`command-line` tools to manage your
+    - RESTful HTTP Api
+    - Websockets and `SOCKJS <http://sockjs.org>`_ support to interact with
+      gaffer from any browser or SOCKJS client.
+    - Framework to manage and interact your applications and jobs on
+      differerent machines
+    - Server and :doc:`command-line` tools to manage and interract with your
       processes
-    - Procfile applications support (see :doc:`gaffer`)
-    - HTTP Api (multiple binding, unix sockets & HTTPS supported)
-    - Flapping: handle cases where your processes crash too much
-    - Possibility to interact with STDIO:
-        - websocket stream to write to stdin and receive from stdout
-          (muliple clients can read and write at the same time)
-        - subscribe on stdout/stderr feed via longpolling, continuous
-          stream, eventsource or websockets
-        - write your own client/server using the framework
+    - Possibility to interact with STDIO and PIPES to interact with your
+      applications and processes
     - Subscribe to process statistics per process or process templates
       and get them in quasi RT.
+    - Procfile applications support (see :doc:`gaffer`) but also JSON config
+      support.
+    - Fully evented. Use the libuv event loop using the
+      `pyuv library <http://pyuv.readthedocs.org>`_
+            - HTTP Api (multiple binding, unix sockets & HTTPS supported)
+    - Flapping: handle cases where your processes crash too much
     - Easily extensible: add your own endpoint, create your client,
       embed gaffer in your application, ...
-    - Compatible with python 2.6x, 2.7x, 3.x
+    - Compatible with python 2.7x, 3.x
 
 .. note::
     gaffer source code is hosted on `Github <http://github.com/benoitc/gaffer.git>`_
