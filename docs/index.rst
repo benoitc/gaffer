@@ -42,6 +42,7 @@ Features
       and get them in quasi RT.
     - Procfile applications support (see :doc:`gaffer`) but also JSON config
       support.
+    - Supervisor-like features.
     - Fully evented. Use the libuv event loop using the
       `pyuv library <http://pyuv.readthedocs.org>`_
     - Flapping: handle cases where your processes crash too much
