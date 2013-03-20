@@ -29,11 +29,13 @@ Features
 
     - RESTful HTTP Api
     - Websockets and `SOCKJS <http://sockjs.org>`_ support to interact with
-      gaffer from any browser or SOCKJS client.
+      a gaffer node from any browser or SOCKJS client.
     - Framework to manage and interact your applications and jobs on
       differerent machines
     - Server and :doc:`command-line` tools to manage and interract with your
       processes
+    - manages topology information. Clients query gaffer_lookupd to discover
+      gaffer nodes for a specific job or application.
     - Possibility to interact with STDIO and PIPES to interact with your
       applications and processes
     - Subscribe to process statistics per process or process templates
@@ -42,7 +44,6 @@ Features
       support.
     - Fully evented. Use the libuv event loop using the
       `pyuv library <http://pyuv.readthedocs.org>`_
-            - HTTP Api (multiple binding, unix sockets & HTTPS supported)
     - Flapping: handle cases where your processes crash too much
     - Easily extensible: add your own endpoint, create your client,
       embed gaffer in your application, ...
