@@ -84,6 +84,8 @@ class LookupClient(WebSocket):
         super(LookupClient, self).close()
 
     def ping(self):
+        if self.closed:
+            return
         return self.write_message({"type": "PING"})
 
     def identify(self, name, broadcast_address, version,
