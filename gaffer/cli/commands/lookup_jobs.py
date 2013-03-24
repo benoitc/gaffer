@@ -44,9 +44,9 @@ class LookupJobs(Command):
             for source in sources:
                 name = source['node_info']['name']
                 version = source['node_info']['version']
-                origin = source['node_info']
+                origin = source['node_info']['origin']
+                lines.append("%s - name: %s, protocol: %s" % (origin,
+                    name, version))
 
-                lines.append("%s - name: %s, protocol: %s" %
-                        (origin, name, version))
             lines.append("")
             print("\n".join(lines))
