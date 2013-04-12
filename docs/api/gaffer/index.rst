@@ -1,27 +1,25 @@
-REST API v0.5.0 Resources
-=========================
-
-
 .. raw:: html
 
-    <div class="btn-group">
+    <div class="btn-group" id="jumpnav">
         <button class="btn btn-info btn-large">Jump to</button>
         <button class="btn btn-info btn-large dropdown-toggle" data-toggle="dropdown">
             <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
-
         <li><a href="#jobs">Jobs</a></li>
         <li><a href="#processes">Processes</a></li>
-
-        <!-- dropdown menu links -->
+        <li><a href="#auth">Auth</a></li>
+        <li><a href="#keys">Keys</a></li>
+        <li><a href="#users">Users</a></li>
+        <li><a href="#miscellaneous">Miscellaneous</a></li>
       </ul>
     </div>
 
-
+Gaffer REST API Resources
+=========================
 
 Jobs
-++++
+----
 
 Jobs are the configurations that can be used to launch the processes in
 Gaffer.
@@ -38,82 +36,91 @@ Gaffer.
 
 
     <tr>
-    <td><a href="/jobs">GET /jobs</a>
+    <td><a href="get/sessions.html">GET /sessions</a>
+    <td>List all sessions/application available on this node.</td>
+    </tr>
+    <tr>
+    <tr>
+    <td><a href="get/jobs.html">GET /jobs</a>
     <td>List all jobs configuration available on this node.</td>
     </tr>
     <tr>
-    <td><a href="get/jobs/resource.html">GET /jobs/resource</a></td>
+    <td><a href="get/jobs/session.html">GET /jobs/session</a></td>
     <td>Get all resources available on this machine. A resource can have
     multiple jobs defined for it. This can represent a procfile or an an
     application. The default resource is named default.</td>
     </tr>
     <tr>
-    <td><a href="post/jobs/resource.html">POST /jobs/resource</a></td>
-    <td>Load a new job configuration for this resource.</td>
+    <td><a href="post/jobs/session.html">POST /jobs/session</a></td>
+    <td>Load a new job configuration for this resource in a session.</td>
     </tr>
 
     <tr>
     <td>
-    <a href="get/jobs/resource/job.html">GET /jobs/resource/job</a>
+    <a href="get/jobs/session/job.html">GET /jobs/session/job</a>
     </td>
-    <td></td>
+    <td>Get a job configuration</td>
     </tr>
     <tr>
     <td>
-    <a href="put/jobs/resource/job.html">PUT /jobs/resource/job</a>
+    <a href="put/jobs/session/job.html">PUT /jobs/session/job</a>
     </td>
-    <td></td>
+    <td>Load a job configuration</td>
     </tr>
     <tr>
     <td>
-    <a href="delete.html">DELETE /jobs/resource/job</a>
+    <a href="delete/jobs/session/job.html">DELETE /jobs/session/job</a>
     </td>
-    <td></td>
+    <td>Unload a job configuration and stop all processes related to
+    this configuration.</td>
     </tr>
     <tr>
     <td>
-    <a href="get/jobs/resource/job.html">GET /jobs/resource/job/stats</a>
+    <a href="get/jobs/session/job/stats.html">GET /jobs/session/job/stats</a>
     </td>
-    <td></td>
+    <td>aggregate all processes stats for this job configuration</td>
     </tr>
     <tr>
     <td>
-    <a href="get/jobs/resource/job.html">GET /jobs/resource/job/numprocesses</a></td>
-    <td></td>
+    <a href="get/jobs/session/job/numprocesses.html">GET /jobs/session/job/numprocesses</a></td>
+    <td>Get the number of processes set for this job configuration</td>
+    </tr>
+    <td>
+    <a href="post/jobs/session/job/numprocesses.html">POST /jobs/session/job/numprocesses</a></td>
+    <td>Increase or decreqse the number of processes set for this job configuration</td>
     </tr>
     <tr>
     <td>
-    <a href="get/jobs/resource/job.html">POST /jobs/resource/job/signal</a></td>
-    <td></td>
+    <a href="post/jobs/session/job/signal.html">POST /jobs/session/job/signal</a></td>
+    <td>Send a signal to all processes running with this configuration</td>
     </tr>
     <tr>
     <td>
-    <a href="get/jobs/resource/job.html">GET /jobs/resource/job/states</a></td>
-    <td></td>
+    <a href="get/jobs/session/job/states.html">GET /jobs/session/job/states</a></td>
+    <td>Get the current job status</td>
     </tr>
     <tr>
     <td>
-    <a href="post/jobs/resource/job.html">POST /jobs/resource/job/states</a></td>
-    <td></td>
+    <a href="post/jobs/session/job.html">POST /jobs/session/job/states</a></td>
+    <td>Start/Stop/Restart a job</td>
     </tr>
     <tr>
     <td>
 
-    <a href="get/jobs/resource/job/pids.html">GET /jobs/resource/job/pids</a></td>
-    <td></td>
+    <a href="get/jobs/session/job/pids.html">GET /jobs/session/job/pids</a></td>
+    <td>Get all pids for a job</td>
     </tr>
     <tr>
     <td>
-    <a href="post/jobs/resource/job/commit.html">POST /jobs/resource/job/commit</a></td>
-    <td></td>
+    <a href="post/jobs/session/job/commit.html">POST /jobs/session/job/commit</a></td>
+    <td>Send a one-off command to the node using a job config</td>
     </tr>
     </table>
 
 
 
 Processes
-+++++++++
-
+---------
 
 .. raw:: html
 
@@ -145,7 +152,7 @@ Processes
 
 
 Auth
-++++
+----
 
 .. raw:: html
 
@@ -164,7 +171,7 @@ Auth
 
 
 Keys
-++++
+----
 
 .. raw:: html
 
@@ -172,7 +179,7 @@ Keys
 
     <tr>
     <th>Resource</th>
-    <th>Description></th>
+    <th>Description</th>
     </tr>
 
     <tr>
@@ -189,7 +196,7 @@ Keys
 
 
 Users
-+++++
+-----
 
 .. raw:: html
 
@@ -197,11 +204,11 @@ Users
 
     <tr>
     <th>Resource</th>
-    <th>Description></th>
+    <th>Description</th>
     </tr>
 
     <tr>
-    <td><a href="get/users.html">GET /userss</a></td>
+    <td><a href="get/users.html">GET /users</a></td>
     <td></td>
     </tr>
 
@@ -225,7 +232,7 @@ Users
 
 
 Miscellaneous
-+++++++++++++
+-------------
 
 .. raw:: html
 
@@ -233,7 +240,7 @@ Miscellaneous
 
     <tr>
     <th>Resource</th>
-    <th>Description></th>
+    <th>Description</th>
     </tr>
 
     <tr>
@@ -251,5 +258,22 @@ Miscellaneous
     <td>Return the gaffer version</td>
     </tr>
 
-
     </table>
+
+
+.. toctree::
+    :hidden:
+    :glob:
+
+    get/*
+    get/jobs/*
+    get/jobs/session/*
+    post/*
+    post/jobs/*
+    post/jobs/session/*
+    put/get/*
+    put/jobs/*
+    put/jobs/session/*
+    delete/*
+    delete/jobs/*
+    delete/jobs/session/*

@@ -60,6 +60,7 @@ Contents:
    :titlesonly:
 
    getting-started
+   api/gaffer/index.rst
    overview
    news
    command-line
