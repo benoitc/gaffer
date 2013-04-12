@@ -1,5 +1,5 @@
-GET /jobs/<sessionid>/<jobname>/pids
-++++++++++++++++++++++++++++++++++++
+GET /jobs/<sessionid>/<jobname>/state
++++++++++++++++++++++++++++++++++++++
 
 .. raw:: html
 
@@ -11,12 +11,16 @@ GET /jobs/<sessionid>/<jobname>/pids
             <div class="row-fluid">
                 <div class="span8">
 
-Get all processes IDs running for a job configuration.
+Get the status of a job configuration:
+
+* **0**: stopped
+* **1**: started
+
 
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:8000/jobs/sessionid/jobname/pids
+http://localhost:8000/jobs/sessionid/jobname/state
 
 Parameters
 ~~~~~~~~~~
@@ -28,20 +32,14 @@ None
     <h4>Example of request</h4>
 
 
-**GET** ``http://localhost:5000/jobs/procfile/dummy/pids`` 
+**GET** ``http://localhost:5000/jobs/procfile/dummy/state`` 
 
 
 .. raw:: html 
 
     <pre class="prettyprint linenums">
-    {
-        "pids": [
-            1,
-            4
-        ]
-    }
+    1 
     </pre>
-
 
 .. raw:: html
 

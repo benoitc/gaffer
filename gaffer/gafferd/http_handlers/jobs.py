@@ -244,7 +244,7 @@ class ScaleJobHandler(CorsHandlerWithAuth):
             raise HTTPError(403)
 
         try:
-            t = m._get_locked_state()
+            t = m._get_locked_state(pname)
         except ProcessError as e:
             self.set_status(e.errno)
             return self.write(e.to_dict())

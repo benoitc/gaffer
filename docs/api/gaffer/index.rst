@@ -87,7 +87,7 @@ Gaffer.
     </tr>
     <td>
     <a href="post/jobs/session/job/numprocesses.html">POST /jobs/session/job/numprocesses</a></td>
-    <td>Increase or decreqse the number of processes set for this job configuration</td>
+    <td>Increase or decrease the number of processes set for this job configuration</td>
     </tr>
     <tr>
     <td>
@@ -96,12 +96,12 @@ Gaffer.
     </tr>
     <tr>
     <td>
-    <a href="get/jobs/session/job/states.html">GET /jobs/session/job/states</a></td>
+    <a href="get/jobs/session/job/state.html">GET /jobs/session/job/state</a></td>
     <td>Get the current job status</td>
     </tr>
     <tr>
     <td>
-    <a href="post/jobs/session/job.html">POST /jobs/session/job/states</a></td>
+    <a href="post/jobs/session/job/state.html">POST /jobs/session/job/state</a></td>
     <td>Start/Stop/Restart a job</td>
     </tr>
     <tr>
@@ -268,9 +268,11 @@ Miscellaneous
     get/*
     get/jobs/*
     get/jobs/session/*
+    get/jobs/session/job/*
     post/*
     post/jobs/*
     post/jobs/session/*
+    post/jobs/session/job/*
     put/get/*
     put/jobs/*
     put/jobs/session/*

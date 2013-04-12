@@ -52,7 +52,6 @@
             {% include "localtoc.html" %}
           {% endblock %}
           {% block sidebarrel %}
-            {% include "relations.html" %}
           {% endblock %}
           {% if theme_source_link_position == "nav" %}
             <li>{% include "sourcelink.html" %}</li>
@@ -91,12 +90,12 @@
         <span class="divider">/</span></li>
         {%- for parent in parents %}
           <li><a href="{{ parent.link|e }}" {% if loop.last %}{{ accesskey("U") }}{% endif %}>{{ parent.title }}</a> <span class="divider">/</span></li>
-          {%- endfor %} 
+          {%- endfor %}
     </ul>
     {{ navBar() }}
 
 
-      
+
         {% block body %}{% endblock %}
 </div>
 {%- endblock %}
@@ -107,7 +106,7 @@
 // @prettify
 !function ($) {
   $(function(){
-  window.prettyPrint && prettyPrint()   
+  window.prettyPrint && prettyPrint()
   })
 }(window.jQuery);
 // #prettify
