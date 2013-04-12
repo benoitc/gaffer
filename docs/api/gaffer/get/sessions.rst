@@ -35,16 +35,15 @@ None
 
 **GET** ``http://localhost:5000/sessions`` 
 
+.. raw:: html 
 
-.. code-block:: json
-    :linenos:
-
+    <pre class="prettyprint linenums">
     {
         "sessions": [
             "procfile"
         ]
     }
-
+    </pre>
 
 .. raw:: html
 

@@ -33,9 +33,9 @@ None
 **GET** ``http://localhost:5000/jobs/procfile`` 
 
 
-.. code-block:: json
-    :linenos:
+.. raw:: html 
 
+    <pre class="prettyprint linenums">
      {
         "jobs": [
             "procfile.dummy",
@@ -44,7 +44,7 @@ None
         ],
         "sessionid": "procfile"
     }
-
+    </pre>
 
 .. raw:: html
 

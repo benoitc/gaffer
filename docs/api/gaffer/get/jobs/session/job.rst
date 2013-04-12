@@ -1,5 +1,5 @@
- GET /jobs/<sessionid>/<jobname>
-++++++++++++++++++++++++++++++++
+GET /jobs/<sessionid>/<jobname>
++++++++++++++++++++++++++++++++
 
 .. raw:: html
 
@@ -23,7 +23,6 @@ Parameters
 
 None
 
-
 .. raw:: html
     
     <h4>Example of request</h4>
@@ -32,9 +31,9 @@ None
 **GET** ``http://localhost:5000/jobs/procfile/dummy`` 
 
 
-.. code-block:: json
-    :linenos:
+.. raw:: html 
 
+    <pre class="prettyprint linenums">
      {
         "name": "procfile.dummy",
         "processes": [
@@ -61,6 +60,7 @@ None
         },
         "running": 1
     }
+    </pre>
 
 A process configuration has the following parameters:
 

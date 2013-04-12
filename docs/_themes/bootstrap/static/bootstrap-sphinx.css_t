@@ -63,9 +63,3 @@ table {
     padding: 3px;
 
 }
-
-.highlight-json {
-    widh: 100%;
-    margin-top: 8px;
-}
-    

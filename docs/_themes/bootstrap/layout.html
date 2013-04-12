@@ -3,12 +3,15 @@
   {% set script_files = script_files + [
     '_static/js/jquery-1.9.1.min.js',
     '_static/js/jquery-fix.js',
+    '_static/prettify/prettify.js',
     '_static/bootstrap-2.3.1/js/bootstrap.min.js',
     '_static/bootstrap-sphinx.js'
   ]
 %}
 {% set css_files = [
-    '_static/bootstrap-2.3.1/css/bootstrap.min.css'
+    '_static/prettify/prettify.css',
+    '_static/bootstrap-2.3.1/css/bootstrap.min.css',
+
   ] + css_files
 %}
 {% if theme_bootswatch_theme %}
@@ -81,13 +84,34 @@
 
 {%- block content %}
 <div class="container">
-  {{ navBar() }}
-  {% block body %}{% endblock %}
+
+    <ul class="breadcrumb">
+
+        <li><a href="{{ pathto(master_doc) }}">{{ shorttitle|e }}</a>
+        <span class="divider">/</span></li>
+        {%- for parent in parents %}
+          <li><a href="{{ parent.link|e }}" {% if loop.last %}{{ accesskey("U") }}{% endif %}>{{ parent.title }}</a> <span class="divider">/</span></li>
+          {%- endfor %} 
+    </ul>
+    {{ navBar() }}
+
+
+      
+        {% block body %}{% endblock %}
 </div>
 {%- endblock %}
 
 {%- block footer %}
 <footer class="footer">
+  <script>
+// @prettify
+!function ($) {
+  $(function(){
+  window.prettyPrint && prettyPrint()   
+  })
+}(window.jQuery);
+// #prettify
+</script>
   <div class="container">
     <p class="pull-right">
       <a href="#">Back to top</a>

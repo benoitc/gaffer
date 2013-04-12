@@ -34,11 +34,9 @@ None
 
 **GET** ``http://localhost:5000/jobs`` 
 
+.. raw:: html 
 
-.. code-block:: json
-    :linenos:
-
-
+    <pre class="prettyprint linenums">
      {
         "jobs": [
             "procfile.dummy",
@@ -46,6 +44,7 @@ None
             "procfile.echo"
         ]
     }
+    </pre>
 
 .. raw:: html
 
