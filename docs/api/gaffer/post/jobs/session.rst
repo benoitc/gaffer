@@ -1,5 +1,5 @@
-PUT /jobs/<sessionid>/<jobname>
-+++++++++++++++++++++++++++++++
+POST /jobs/<sessionid>
+++++++++++++++++++++++
 
 .. raw:: html
 
@@ -11,12 +11,12 @@ PUT /jobs/<sessionid>/<jobname>
             <div class="row-fluid">
                 <div class="span8">
 
-Update a job configuration and relaunch processes
+Load a job configuration.
 
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:5000/jobs/session/job
+http://localhost:5000/jobs/session
 
 
 Parameters
@@ -28,12 +28,13 @@ None
     
     <h4>Example of request</h4>
 
-**PUT** ``http://localhost:5000/jobs/test/dummy``
+**POST** ``http://localhost:5000/jobs/test``
 
 .. raw:: html 
 
     <pre class="prettyprint linenums">
     {
+    "name": "testapp.dummy",
     "cmd": "python -u ./dummy_basic.py"
     }
     </pre>

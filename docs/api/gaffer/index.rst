@@ -65,7 +65,7 @@ Gaffer.
     <td>
     <a href="put/jobs/session/job.html">PUT /jobs/session/job</a>
     </td>
-    <td>Load a job configuration</td>
+    <td>Update a job configuration.</td>
     </tr>
     <tr>
     <td>
