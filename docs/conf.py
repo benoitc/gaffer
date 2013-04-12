@@ -43,15 +43,15 @@ templates_path = ['_templates']
 # The suffix of source filenames.
 source_suffix = '.rst'
 
-# The encoding of source files.
+# The encoding of souruce files.
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
-project = 'gaffer'
-copyright = '2012 (c) Benoit Chesneau <benoitc@e-engura.org>'
+project = 'Gaffer'
+copyright = '2012-2013 (c) Benoit Chesneau <benoitc@e-engura.org>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
