@@ -34,7 +34,7 @@ None
 
     <pre class="prettyprint linenums">
     {
-    "name": "testapp.dummy",
+    "name": "dummy",
     "cmd": "python -u ./dummy_basic.py"
     }
     </pre>
