@@ -71,6 +71,15 @@ A process configuration has the following parameters:
 * **custom_channels**: list of additional channels that have been passed to
   process.
 
+
+.. raw:: html
+    
+    <div class="alert alert-info"><strong>Note!</strong> The <code>cmd</code> and
+    <code>args</code> properties can contained environment variables in
+    the form of <code>$VARNAME</code>. They will be replaced by the
+    variables set in the environnment when the process is launched.
+    </div>
+
 .. raw:: html
 
                 </div>
