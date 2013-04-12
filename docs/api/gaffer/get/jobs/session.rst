@@ -16,7 +16,7 @@ Get all jobs from a session
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:8000/jobs/sessionid
+http://localhost:5000/jobs/sessionid
 
 
 Parameters

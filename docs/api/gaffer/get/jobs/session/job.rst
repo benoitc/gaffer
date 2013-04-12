@@ -16,7 +16,7 @@ Get a job configuration
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:8000/jobs/sessionid/jobname
+http://localhost:5000/jobs/sessionid/jobname
 
 Parameters
 ~~~~~~~~~~

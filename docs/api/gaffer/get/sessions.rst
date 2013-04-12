@@ -19,7 +19,7 @@ list of jobs needed for an application.
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:8000/sessions
+http://localhost:5000/sessions
 
 
 Parameters

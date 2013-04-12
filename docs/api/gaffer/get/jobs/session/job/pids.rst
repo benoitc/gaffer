@@ -16,7 +16,7 @@ Get all processes IDs running for a job configuration.
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:8000/jobs/sessionid/jobname/pids
+http://localhost:5000/jobs/sessionid/jobname/pids
 
 Parameters
 ~~~~~~~~~~

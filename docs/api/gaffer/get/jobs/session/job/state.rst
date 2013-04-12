@@ -20,7 +20,7 @@ Get the status of a job configuration:
 Resource URL
 ~~~~~~~~~~~~
 
-http://localhost:8000/jobs/sessionid/jobname/state
+http://localhost:5000/jobs/sessionid/jobname/state
 
 Parameters
 ~~~~~~~~~~
