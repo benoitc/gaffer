@@ -30,8 +30,6 @@ None
 
 **DELETE** ``http://localhost:5000/jobs/test/dummy``
 
-.. raw:: html
-
     <h4>Response</h4>
     <pre class="prettyprint linenums">
     {
