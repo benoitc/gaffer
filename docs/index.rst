@@ -57,18 +57,11 @@ Contents:
 ---------
 
 .. toctree::
-   :titlesonly:
+   :maxdepth: 2
+
 
    getting-started
    api/gaffer/index.rst
-   overview
-   news
-   command-line
-   http
-   webhooks
-   processframework
-   httpclient
-   applications
 
 Indices and tables
 ==================
