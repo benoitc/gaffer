@@ -122,6 +122,8 @@ Gaffer.
 Processes
 ---------
 
+API to handle directly launched OS processes.
+
 .. raw:: html
 
     <table class="table table-striped">
@@ -162,6 +164,9 @@ Processes
 Auth
 ----
 
+Authenticate to gaffer to get an authorization key. See the
+:doc:`../../authenticate` documentation.
+
 .. raw:: html
 
     <table class="table table-striped">
@@ -172,8 +177,8 @@ Auth
     </tr>
 
     <tr>
-    <td><a href="post/auth.html">POST /auth</a></td>
-    <td></td>
+    <td><a href="get/auth.html">GET /auth</a></td>
+    <td>Send a BASIC AUTH requesGET to fetch an authorization key.</td>
     </tr>
     </table>
 
