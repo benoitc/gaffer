@@ -131,21 +131,29 @@ Processes
     <th>Description</th>
     </tr>
 
+    <tr>
+    <td><a href="get/pids.html">GET /pids</a></td>
+    <td>Get the list of all active processes IDs.</td>
+    <tr>
 
     <tr>
-    <td><a href="/get/pid.html">GET /pid</a></td>
-    <td></td>
+    <td><a href="get/pid.html">GET /pid</a></td>
+    <td>Get the informations of an active process</td>
     <tr>
 
+    <tr>
+    <td><a href="delete/pid.html">DELETE /pid</a></td>
+    <td>Stop a process</td>
+    <tr>
 
     <tr>
-    <td><a href="post/pid/signa.htmll">POST /pid/signal</a></td>
-    <td></td>
+    <td><a href="post/pid/signal.html">POST /pid/signal</a></td>
+    <td>Send a signal to a process</td>
     </tr>
 
     <tr>
-    <td><a href="post/pid/stats.html">POST /pid/stats</a></td>
-    <td></td>
+    <td><a href="get/pid/stats.html">GET /pid/stats</a></td>
+    <td>Get current statistics of a process</td>
     </tr>
 
     </table>
@@ -269,10 +277,11 @@ Miscellaneous
     get/jobs/*
     get/jobs/session/*
     get/jobs/session/job/*
+    get/pid/*
     post/*
     post/jobs/*
-    post/jobs/session/*
     post/jobs/session/job/*
+    post/pid/*
     put/get/*
     put/jobs/*
     put/jobs/session/*
