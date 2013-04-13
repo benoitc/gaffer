@@ -46,6 +46,10 @@ None
         "api_key": 5fd6a44b51714cd0bb29dd64f0a6cbbb
     } 
     </pre>
+    <div class="alert alert-info">
+    <strong>Note</strong>: An header <code>X-API-Key</code> is also
+    returned containing the key.
+    </div>
 
     <h4>Status Errors</h4>
 

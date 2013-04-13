@@ -186,6 +186,10 @@ Authenticate to gaffer to get an authorization key. See the
 Keys
 ----
 
+API to manage authorizations keys in a gaffer Node. The authorizations
+keys give certains rights to the users in gaffer. You need to be a node
+admin to access to this api.
+
 .. raw:: html
 
     <table class="table table-striped">
@@ -197,12 +201,22 @@ Keys
 
     <tr>
     <td><a href="get/keys.html">GET /keys</a></td>
-    <td></td>
+    <td>List all keys available on this node</td>
     </tr>
 
     <tr>
-    <td><a href="get/keys/id.html">GET /keys/id</a></td>
-    <td></td>
+    <td><a href="post/keys.html">POST /keys</a></td>
+    <td>Create a new key.</td>
+    </tr>
+
+    <tr>
+    <td><a href="get/keys/key.html">GET /keys/<code>key</code></a></td>
+    <td>Fetch the key details.</td>
+    </tr>
+
+    <tr>
+    <td><a href="delete/keys/key.html">DELETE /keys/<code>key</code></a></td>
+    <td>Delete a key</td>
     </tr>
 
     </table>
