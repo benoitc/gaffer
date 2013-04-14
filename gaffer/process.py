@@ -452,19 +452,21 @@ class Process(object):
 
         # set command
         self.cmd = bytestring(cmd)
-        if args is not None:
-            if isinstance(args, six.string_types):
-                self.args = shlex.split(bytestring(args))
-            else:
-                self.args = [bytestring(arg) for arg in args]
 
+        # remove args from the command
+        args_ = shlex.split(self.cmd)
+        if len(args_) == 1:
+            self.args = []
         else:
-            args_ = shlex.split(self.cmd)
-            if len(args_) == 1:
-                self.args = []
+            self.cmd = args_[0]
+            self.args = args_[1:]
+
+        # if args have been passed to the options then add them
+        if args and args is not None:
+            if isinstance(args, six.string_types):
+                self.args.extend(shlex.split(bytestring(args)))
             else:
-                self.cmd = args_[0]
-                self.args = args_[1:]
+                self.args.extend([bytestring(arg) for arg in args])
 
         # replace envirnonnement variable in args
         # $PORT for example will become the given env variable.
