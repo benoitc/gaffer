@@ -110,7 +110,7 @@ class RedirectIO(object):
 
     def stop(self, all_events=False):
         for p in self._channels:
-            if p.active:
+            if not p.closed:
                 p.close()
 
         if all_events:
@@ -150,7 +150,7 @@ class RedirectStdin(object):
         self._emitter.publish("WRITELINES", data)
 
     def stop(self, all_events=False):
-        if self.channel.active:
+        if not self.channel.closed:
             self.channel.close()
 
         if all_events:
