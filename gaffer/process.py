@@ -692,7 +692,7 @@ class Process(object):
 
     def stop(self):
         """ stop the process """
-        self._process.kill(signal.SIGTERM)
+        self.kill(signal.SIGTERM)
 
     def kill(self, signum):
         """ send a signal to the process """
