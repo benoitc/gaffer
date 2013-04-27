@@ -32,3 +32,4 @@ processes, changes their configureation, get changes on the nodes in rt
 
    gaffer
    gafferd
+   gafferctl
