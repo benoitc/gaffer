@@ -320,7 +320,7 @@ class Server(object):
 
             if not username:
                 while True:
-                    username = input("username: ").lower()
+                    username = raw_input("username: ").lower()
                     if username and username is not None:
                         if auth_mgr.has_user(username):
                             print("username %r already exists. " % username
