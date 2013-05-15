@@ -15,7 +15,7 @@ def test_basic():
     def cb(ev):
         emitted.append(True)
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe("test", cb)
     events = emitter._events.copy()
     emitter.publish("test")
@@ -34,7 +34,7 @@ def test_publish_value():
     def cb(ev, val):
         emitted.append(val)
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe("test", cb)
     emitter.publish("test", 1)
     emitter.publish("test", 2)
@@ -48,7 +48,7 @@ def test_publish_once():
     def cb(ev, val):
         emitted.append(val)
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe_once("test", cb)
     emitter.publish("test", 1)
     loop.run()
@@ -67,7 +67,7 @@ def test_multiple_listener():
     def cb2(ev, val):
         emitted.append((2, val))
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe("test", cb1)
     emitter.subscribe("test", cb2)
     emitter.publish("test", 1)
@@ -88,7 +88,7 @@ def test_multipart():
     def cb2(ev, val):
         emitted2.append(val)
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe("a.b", cb1)
     emitter.subscribe("a", cb2)
     emitter.publish("a.b", 1)
@@ -107,7 +107,7 @@ def test_multipart2():
     def cb(ev, val):
         emitted.append(ev)
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe("a.b", cb)
     emitter.publish("a.b.c", 2)
     loop.run()
@@ -130,7 +130,7 @@ def test_wildcard():
         emitted3.append(val)
 
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe(".", cb)
     emitter.subscribe("a.b", cb2)
     emitter.subscribe("a.b.", cb3)
@@ -151,7 +151,7 @@ def test_unsubscribe():
     def cb(ev, v):
         emitted.append(v)
 
-    emitter = EventEmitter(loop)
+    emitter = EventEmitter()
     emitter.subscribe("test", cb)
     emitter.publish("test", "a")
 

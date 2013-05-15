@@ -185,7 +185,7 @@ class KeyManager(object):
             self._backend = load_backend(cfg.keys_backend)
 
         # initialize the events listenr
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
 
     def __enter__(self):
         self.open()

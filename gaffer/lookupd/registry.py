@@ -158,7 +158,7 @@ class Registry(object):
     def __init__(self, loop=None):
         self.loop = loop or pyuv.Loop.default_loop()
         self.nodes = OrderedDict()
-        self._emitter = EventEmitter(self.loop)
+        self._emitter = EventEmitter()
         self._lock = RLock()
 
     def close(self):

@@ -72,7 +72,7 @@ class RedirectIO(object):
     def __init__(self, loop, process, stdio=[]):
         self.loop = loop
         self.process = process
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
 
         self._stdio = []
         self._channels = []
@@ -137,7 +137,7 @@ class RedirectStdin(object):
                 flags=pyuv.UV_CREATE_PIPE | \
                         pyuv.UV_READABLE_PIPE | \
                         pyuv.UV_WRITABLE_PIPE )
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
 
     def start(self):
         self._emitter.subscribe("WRITE", self._on_write)
@@ -208,7 +208,7 @@ class ProcessWatcher(object):
         self.on_refresh_cb = None
         self._active = 0
         self._refcount = 0
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
 
 
     @property

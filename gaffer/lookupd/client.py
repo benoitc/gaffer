@@ -27,7 +27,7 @@ class LookupChannel(WebSocket):
             self.heartbeat_timeout = 15.0
 
         self._heartbeat = pyuv.Timer(loop)
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
 
         super(LookupChannel, self).__init__(loop, url, **kwargs)
 

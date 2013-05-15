@@ -24,7 +24,6 @@ class Dummy(object):
 
     def run(self):
         print("hello, dummy (pid: %s) is alive" % os.getpid())
-        print("env %s" % os.environ)
 
         i = 0
         while self.alive:

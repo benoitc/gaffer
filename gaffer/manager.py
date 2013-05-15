@@ -71,7 +71,7 @@ class Manager(object):
         self.loop = loop or pyuv.Loop.default_loop()
 
         # initialize the emitter
-        self.events = EventEmitter(self.loop)
+        self.events = EventEmitter()
 
         # initialize the process tracker
         self._tracker = ProcessTracker(self.loop)

@@ -14,7 +14,7 @@ class EventChannel(object):
 
     def __init__(self, topic):
         self.topic = topic
-        self._emitter = EventEmitter(topic.manager.loop)
+        self._emitter = EventEmitter()
 
     def bind(self, event, callback):
         self._emitter.subscribe(event, callback)
@@ -43,7 +43,7 @@ class StatChannel(object):
 
     def __init__(self, topic):
         self.topic = topic
-        self._emitter = EventEmitter(topic.manager.loop)
+        self._emitter = EventEmitter()
 
     def bind(self, callback):
         self._emitter.subscribe("DATA", partial(self._on_message, callback))

@@ -119,6 +119,8 @@ Classes
 
 from collections import deque
 import logging
+import threading
+import time
 
 import pyuv
 
@@ -129,56 +131,49 @@ class EventEmitter(object):
 
     This object offer a common interface to all events emitters """
 
-    def __init__(self, loop, max_size=10000):
-        self.loop = loop
+    def __init__(self):
         self._events = {}
         self._wildcards = set()
-
-        self._queue = deque(maxlen=max_size)
-        self._wqueue = deque(maxlen=max_size)
-
-        self._event_dispatcher = pyuv.Prepare(self.loop)
-        self._event_dispatcher.start(self._send)
-        self._event_dispatcher.unref()
-        self._spinner = pyuv.Idle(self.loop)
+        self._lock = threading.Lock()
 
     def close(self):
         """ close the event
 
         This function clear the list of listeners and stop all idle
         callback """
-        self._wqueue.clear()
-        self._queue.clear()
+
         self._events = {}
         self._wildcards = set()
-
-        # close handlers
-        if not self._event_dispatcher.closed:
-            self._event_dispatcher.close()
-
-        if not self._spinner.closed:
-            self._spinner.close()
 
     def publish(self, evtype, *args, **kwargs):
         """ emit an event **evtype**
 
         The event will be emitted asynchronously so we don't block here
         """
-        if "." in evtype:
-            parts = evtype.split(".")
-            self._queue.append((parts[0], evtype, args, kwargs))
-            key = []
-            for part in parts:
-                key.append(part)
-                self._queue.append((".".join(key), evtype, args, kwargs))
-        else:
-            self._queue.append((evtype, evtype, args, kwargs))
+
+        if self._events:
+            patterns = []
+            if "." in evtype:
+                parts = evtype.split(".")
+                patterns.append(parts[0])
+                key = []
+                for part in parts:
+                    key.append(part)
+                    patterns.append(".".join(key))
+            else:
+                patterns.append(evtype)
+
+            for pattern in patterns:
+                if pattern not in self._events:
+                    continue
+
+                self._events[pattern] = self._emit(evtype,
+                        self._events[pattern].copy(), *args, **kwargs)
 
         # emit the event for wildcards events
-        self._wqueue.append((evtype, args, kwargs))
-
-        # send the event for later
-        self._dispatch_event()
+        if self._wildcards:
+            self._wildcards = self._emit(evtype,
+                    self._wildcards.copy(), *args, **kwargs)
 
     def subscribe(self, evtype, listener, once=False):
         """ subcribe to an event """
@@ -225,47 +220,25 @@ class EventEmitter(object):
 
     ### private methods
 
-    def _dispatch_event(self):
-        self._spinner.start(lambda h: None)
-
-    def _send(self, handle):
-        lwqueue = len(self._wqueue)
-        lqueue = len(self._queue)
-
-        for i in range(lwqueue):
-            evtype, args, kwargs = self._wqueue.popleft()
-            if self._wildcards:
-                self._wildcards = self._send_listeners(evtype,
-                        self._wildcards.copy(), *args, **kwargs)
-
-        for i in range(lqueue):
-            pattern, evtype, args, kwargs = self._queue.popleft()
-            # emit the event to all listeners
-            if pattern in self._events:
-                self._events[pattern] = self._send_listeners(evtype,
-                    self._events[pattern].copy(), *args, **kwargs)
-
-        if not self._spinner.closed:
-            self._spinner.stop()
-
-    def _send_listeners(self, evtype, listeners, *args, **kwargs):
-        to_remove = []
-        for once, listener in listeners:
-            try:
-                listener(evtype, *args, **kwargs)
-            except Exception:
-                # we ignore all exception
-                logging.error('Uncaught exception', exc_info=True)
-                to_remove.append(listener)
-
-            if once:
-                # once event
-                to_remove.append(listener)
-
-        if to_remove:
-            for listener in to_remove:
+    def _emit(self, evtype, listeners, *args, **kwargs):
+        with self._lock:
+            to_remove = []
+            for once, listener in listeners:
                 try:
-                    listeners.remove((True, listener))
-                except KeyError:
-                    pass
-        return listeners
+                    listener(evtype, *args, **kwargs)
+                except Exception:
+                    # we ignore all exception
+                    logging.error('Uncaught exception', exc_info=True)
+                    to_remove.append(listener)
+
+                if once:
+                    # once event
+                    to_remove.append(listener)
+
+            if to_remove:
+                for listener in to_remove:
+                    try:
+                        listeners.remove((True, listener))
+                    except KeyError:
+                        pass
+            return listeners

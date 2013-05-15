@@ -354,7 +354,7 @@ class Channel(object):
 
     def __init__(self, loop, topic):
         self.topic = topic
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
 
     def __str__(self):
         return "channel: %s" % self.topic
@@ -467,7 +467,7 @@ class GafferSocket(WebSocket):
         self.commands = dict()
 
         # emitter for global events
-        self._emitter = EventEmitter(loop)
+        self._emitter = EventEmitter()
         self._heartbeat = pyuv.Timer(loop)
         super(GafferSocket, self).__init__(loop, url, **kwargs)
 
