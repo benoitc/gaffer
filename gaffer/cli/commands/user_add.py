@@ -3,6 +3,11 @@
 # This file is part of gaffer. See the NOTICE for more information.
 from getpass import getpass
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 from ...gafferd.util import confirm
 from ...httpclient.base import GafferConflict
 from ...httpclient.users import Users
