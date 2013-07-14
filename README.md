@@ -1,7 +1,7 @@
 **NOTICE**: Since the 2013/05/25, a deep rewrite on the gaffer code is
 in progress. 
 
-<s>The result will be available on 2013/06/03</s>
+<p><del>The result will be available on 2013/06/03</del></p>
 
 
 2013/07/14 - Core re-implentation is done. code will be published the following week on Thursday. TODO: documentation & Python client API,
