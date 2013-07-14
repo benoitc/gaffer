@@ -4,7 +4,7 @@ in progress.
 <p><del>The result will be available on 2013/06/03</del></p>
 
 
-2013/07/14 - Core re-implentation is done. code will be published the following week on Thursday. TODO: documentation & Python client API,
+**2013/07/14** - Core re-implentation is done. code will be *published the following week on Thursday*. **TODO**: documentation & Python client API,
 
 
 # Gaffer
