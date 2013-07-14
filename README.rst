@@ -1,10 +1,13 @@
-
 **NOTICE**: Since the 2013/05/25, a deep rewrite on the gaffer code is
-in progress. The result will be available on 2013/06/03. 
+in progress. 
+
+<del>The result will be available on 2013/06/03.</del>
+
+2013/07/14 - Core re-implentation is done. code will be published the following week on Thursday. TODO: documentation & Python client API,
 
 
 Gaffer
-======
+=====
 
 
 Control, Watch and Launch your applications and jobs over HTTP.
