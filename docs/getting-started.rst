@@ -49,7 +49,7 @@ To launch gafferd run the following command line::
 If you want to launch `custom plugins <gafferd.html#plugins>`_ with
 gafferd you can also set the path to them::
 
-    $ gafferd -c /path/to/gaffer.ini -p /path/to/plugun
+    $ gafferd -c /path/to/gaffer.ini -p /path/to/plugin
 
 .. note::
 
