@@ -4,33 +4,36 @@ Overview
 Gaffer is a set of Python modules and tools to easily maintain and
 interact with your processes.
 
-Depending on your needs you ca simply use the gaffer tools (eventually
+Depending on your needs you can simply use the gaffer tools (eventually
 extend them) or embed the gaffer possibilities in your own apps.
 
 Design
 ------
 
-Gaffer is internally based on an event loop using the `libuv <https://github.com/joyent/libuv/>`_ from Joyent via the `pyuv binding <https://pyuv.readthedocs.org>`_
+Gaffer is internally based on an event loop using the 
+`libuv <https://github.com/joyent/libuv/>`_ from Joyent via 
+the `pyuv binding <https://pyuv.readthedocs.org>`_
 
-All gaffer events are added to the loop and processes asynchronously wich
-make it pretty performant to handle multiple process and their control.
+All gaffer events are added to the loop and processes asynchronously which
+make it pretty performant for handling & controlling multiple processes.
 
 At the lowest level you will find the manager. A manager is responsible
-of maintaining process alive and manage actions on them:
+for maintaining live processes and managing actions on them:
 
-- increase/decrease the number of processes / process template
 - start/stop processes
+- increase/decrease the number of instances of each process, via process templates
 - add/remove process templates to manage
 
-
-A process template describe the way a process will be launched and how
+A process template describes the way a process will be launched and how
 many OS processes you want to handle for this template. This number can
-be changed dynamically. Current properties of this templates are:
+be changed dynamically.
 
-- **name**: name of the process
-- **cmd**: program command, string)
+Current properties for each template:
+
+- **name**: name of the process (eg, 'django-server')
+- **cmd**: program command, (eg. '/var/www/CMS/manage.py')
 - **args**: the arguments for the command to run. Can be a list or
-  a string. If **args** is  a string, it's splitted using
+  a string. If **args** is  a string, it's split using
   :func:`shlex.split`. Defaults to None.
 - **env**: a mapping containing the environment variables the command
   will run with. Optional
@@ -63,10 +66,11 @@ be changed dynamically. Current properties of this templates are:
 
 
 The manager is also responsible of starting and stopping gaffer
-applications that you add to he manager to react on different events. A applicaton can
-fetch informations from the manager and interract with him.
+applications that you add to the manager to react to different events. A applicaton can
+fetch information from the manager and interact with it.
 
-Running an application is done like this::
+Running an application is done like this:
+
 
     # initialize the controller with the default loop
     loop = pyuv.Loop.default_loop()
@@ -95,37 +99,39 @@ transports (tcp & unix sockets) .
 Building your own application is easy, basically an application has the
 following structure::
 
+
     class MyApplication(object):
 
         def __init__(self):
-            # do inti
+            # initialisation
 
         def start(self, loop, manager):
-            # this method is call by the manager to start the controller
+            # this method is called by the manager to start the controller
 
         def stop(self):
-            # method called when the manager stop
+            # method called when the manager stops
 
         def restart(self):
-            # methhod called when the manager restart
+            # method called when the manager restarts
 
-You can use this structure for anything you want, even add an app to the
-loop.
+
+You can use this structure for anything you want, (even add an app to the
+loop).
 
 To help you in your work a :doc:`pyuv implementation <tornado_pyuv>` of
-tornado is integrated and a powerfull :doc:`events <events>` modules
-will allows you to manage PUB/SUB events (or anything evented) inside
+tornado is integrated and the powerful :doc:`events <events>` module
+allows you to manage PUB/SUB events (or anything evented) inside
 your app. An EventEmitter is a threadsafe class to manage subscriber and
-publisher of events. It is internally used to broadcast processes and
+publisher of events. It is internally used to broadcast process and
 manager events.
 
 
 Watch stats
 -----------
 
-Stats of a process ca, be monitored continuously (there is a refresh
+Stats of a process can be monitored continuously (there is a refresh
 interval of 0.1s to fetch CPU informations) using the following
-mettod::
+method::
 
     manager.monitor(<nameorid>, <listener>)
 
@@ -159,7 +165,7 @@ To unmonitor the process in your app run::
     Internally a monitor subscribe you to an EventEmitter. A timer is
     running until there are subscribers to the process stats events.
 
-Of course you can monitor directly to a process using the internal pid::
+Of course you can directly monitor a process using the internal pid::
 
     process = manager.running[pid]
     process.monitor(<listener>)
@@ -171,13 +177,13 @@ Of course you can monitor directly to a process using the internal pid::
 IO Events
 ---------
 
-Subscribe to stdout/stderr process stream
-+++++++++++++++++++++++++++++++++++++++++
+Subscribe to stdout/stderr process streams
+++++++++++++++++++++++++++++++++++++++++++
 
-You can subscribe to stdout/stderr process stream and even write to
+You can subscribe to stdout/stderr process streams and even write to
 stdin if you want.
 
-To be able to receive the stdour/stderr streams in your application,
+To be able to receive the stdout/stderr streams in your application,
 you need to create a process with the *redirect_output* setting::
 
 
@@ -187,12 +193,13 @@ you need to create a process with the *redirect_output* setting::
 
 .. note::
 
-    Name of outputs can be anything, only the order count so if you want
+    Name of outputs can be anything, only the order counts. So if you want
     to name *stdout* as *a* just replace *stdout* by *a* in the
     declaration.
 
-    If you don't want to receive *stderr*, just omit it in the list.
-    Alos if you want to redirect stderr to stdout just use the same
+    If you don't want to receive *stderr*, just omit it from the list.
+
+    If you want to redirect stderr to stdout just use the same
     name.
 
 
@@ -223,7 +230,7 @@ or to send multiple lines::
 
     process.writelines(["line", "line"])
 
-You can write lines from multiple publisher and multiple publishers can
+You can write lines from multiple publishers and multiple publishers can
 write at the same time. This method is threadsafe.
 
 
@@ -236,7 +243,7 @@ Tools
 -----
 
 Gaffer proposes different tools (and more will come soon) to manage your
-process without having to code. It can be used like `supervisor
+processes without having to code. It can be used like `supervisor
 <http://supervisord.org/>`_, `god <http://godrb.com/>`_, `runit
 <http://smarden.org/runit/>`_  or other tools around. Speaking of runit
 a similar controlling will be available in 0.2 .
