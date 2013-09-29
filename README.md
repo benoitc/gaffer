@@ -73,9 +73,7 @@ From pypi:
 
 ## Build status
 
-**Master branch**: <a href="https://travis-ci.org/benoitc/gaffer"><img src="https://secure.travis-ci.org/benoitc/gaffer.png?branch=master" alt="Build Status" /></a>
-
-**Develop branch**: <a href="https://travis-ci.org/benoitc/gaffer"><img src="https://secure.travis-ci.org/benoitc/gaffer.png?branch=develop" alt="Build Status" /></a>
+<a href="https://travis-ci.org/benoitc/gaffer"><img src="https://travis-ci.org/benoitc/gaffer.png?branch=master" alt="Build Status" /></a>
 
 
 ## License
