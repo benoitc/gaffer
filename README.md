@@ -1,10 +1,8 @@
 **NOTICE**: Since the 2013/05/25, a deep rewrite on the gaffer code is
 in progress. 
 
-<p><del>The result will be available on 2013/06/03</del></p>
-
-
-**2013/07/14** - Core re-implentation is done. code will be *published the following week on Thursday*. **TODO**: documentation & Python client API,
+2013-10-29 - slow progress on the new version. Have been distracted by some due work,
+The new design is in place now and the new branch will be created soon,
 
 
 # Gaffer
