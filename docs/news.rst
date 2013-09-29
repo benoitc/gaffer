@@ -1,6 +1,14 @@
 CHANGES
 =======
 
+2013/09/29 - version 0.5.0
+--------------------------
+
+- new intermediary release.
+  See https://github.com/benoitc/gaffer/compare/0.4.4...0.5.0 for a
+  detailled changelog.
+
+
 2012/12/20 - version 0.4.4
 --------------------------
 
