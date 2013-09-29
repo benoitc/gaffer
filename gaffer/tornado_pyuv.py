@@ -85,12 +85,14 @@ class IOLoop(object):
 
     def close(self):
         for fd, (poll, callback) in self._handlers.items():
+            poll.close()
+
             try:
                 os.close(fd)
             except Exception:
                 logging.debug("error closing fd %s", fd, exc_info=True)
-            if not poll.closed:
-                poll.close()
+
+
         self._handlers = {}
         # Run the loop so the close callbacks are fired and memory is freed
         self._loop.run(pyuv.UV_RUN_NOWAIT)
@@ -99,6 +101,7 @@ class IOLoop(object):
     def add_handler(self, fd, handler, events):
         if fd in self._handlers:
             raise IOError("fd %d already registered" % fd)
+
         poll = pyuv.Poll(self._loop, fd)
         self._handlers[fd] = (poll, stack_context.wrap(handler))
         poll_events = 0
