@@ -4,6 +4,11 @@
 
 from getpass import getpass
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 from ...gafferd.util import confirm
 from ...httpclient.base import GafferNotFound
 from ...httpclient.users import Users

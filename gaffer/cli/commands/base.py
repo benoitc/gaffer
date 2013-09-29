@@ -9,6 +9,10 @@ import os
 import re
 import sys
 
+try:
+    input = raw_input
+except NameError:
+    pass
 
 KNOWN_COMMANDS = []
 def get_commands():

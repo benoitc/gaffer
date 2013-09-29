@@ -2,6 +2,11 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 from importlib import import_module
 import os
 import sys

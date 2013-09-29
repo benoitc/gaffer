@@ -6,6 +6,12 @@ try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+
+try:
+    input = raw_input
+except NameError:
+    pass
+
 from getpass import getpass
 import os
 import sys
