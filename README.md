@@ -1,7 +1,7 @@
 **NOTICE**: Since the 2013/05/25, a deep rewrite on the gaffer code is
 in progress.
 
-**2013-10-29 - 0.5.0 released.**
+**2013-10-29 - 0.5.1 released.**
 
 > slow progress on the new version. Have been distracted by some due
 > work. The new design is in place now and the new branch will be

@@ -1,6 +1,6 @@
 include NOTICE
 include LICENSE
-include README.rst
+include README.md
 include THANKS
 include UNLICENSE
 include TODO.rst

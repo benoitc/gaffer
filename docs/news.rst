@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-2013/09/29 - version 0.5.0
+2013/09/29 - version 0.5.1
 --------------------------
 
 - new intermediary release.
