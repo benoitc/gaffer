@@ -34,11 +34,11 @@ CLASSIFIERS = [
 
 
 # read long description
-with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as f:
     long_description = f.read()
 
 DATA_FILES = [
-        ('gaffer', ["LICENSE", "MANIFEST.in", "NOTICE", "README.rst",
+        ('gaffer', ["LICENSE", "MANIFEST.in", "NOTICE", "README.md",
                         "THANKS", "UNLICENSE", "TODO.rst"])
         ]
 
