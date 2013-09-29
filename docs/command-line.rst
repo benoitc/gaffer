@@ -20,9 +20,7 @@ JSON file that you could send to gafferd using the :doc:`HTTP api
 can be controlled via the :doc:`http`. It is controlled by gafferctl and
 can be used to handle many processes.
 
-The tool :doc:`gafferctl`  allows you to control a local or remote gafferd
-node via the HTTP API. You can show processes informations, add new
-processes, changes their configureation, get changes on the nodes in rt
+
 ....
 
 
@@ -32,3 +30,4 @@ processes, changes their configureation, get changes on the nodes in rt
 
    gaffer
    gafferd
+   gaffer_lookupd
