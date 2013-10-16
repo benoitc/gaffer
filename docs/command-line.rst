@@ -7,9 +7,9 @@ machine or a cluster. All the command line tools are obviously using the
 framework.
 
 
-:doc:`gaffer`is an interface to the :doc:`gaffer HTTP api <http>` and
-inclusde support for loading/unloadin apps, scaling them up and down,
-... . It can also be used as a manager for Procfile-based applications
+:doc:`gaffer` is an interface to the :doc:`gaffer HTTP api <http>` and
+include support for loading/unloadin apps, scaling them up and down,
+etc. It can also be used as a manager for Procfile-based applications
 similar to foreman but using the :doc:`gaffer framework
 <processframework>`. It is running your application directly using a
 Procfile or export it to a gafferd configuration file or simply to a
