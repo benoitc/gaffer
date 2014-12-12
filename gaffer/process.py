@@ -15,7 +15,7 @@ import shlex
 
 import pyuv
 import psutil
-from psutil.error import AccessDenied
+from psutil import AccessDenied
 import six
 
 from .events import EventEmitter
