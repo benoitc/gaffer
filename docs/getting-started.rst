@@ -15,7 +15,7 @@ Gaffer allows you to launch OS processes and supervise them. 3
   before to use other tools.
 - :doc:`gaffer` is a Procfile application manager and allows you to
   load your Procfile applications in gafferd and watch their status.
-- :doc:`gafferctl` is a more generic tooll than gaffer and is more admin
+- :doc:`gafferctl` is a more generic tool than gaffer and is more admin
   oriented. It allows you to setup any process templates and manage your
   processes. You can also use it to watch the activity in gafferd
   (process activity or general activity)
@@ -32,7 +32,7 @@ Workflow
 To use gaffer tools you need to:
 
 1. First launch gafferd
-2. use either gaffer or gafferctl to manage your processes
+2. Use either gaffer or gafferctl to manage your processes
 
 
 Launch gafferd
