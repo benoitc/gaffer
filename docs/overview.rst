@@ -38,7 +38,7 @@ Current properties for each template:
 - **env**: a mapping containing the environment variables the command
   will run with. Optional
 - **uid**: int or str, user id
-- **gid**: int or st, user group id,
+- **gid**: int or str, user group id,
 - **cwd**: working dir
 - **detach**: the process is launched but won't be monitored and
   won't exit when the manager is stopped.
