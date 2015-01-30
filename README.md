@@ -1,5 +1,5 @@
 
-** NOTE **
+**NOTE**
 > slow progress on the new version. Have been distracted by other projects. The new design is in place now, code should land really soon.
 
 
