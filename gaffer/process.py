@@ -617,7 +617,7 @@ class Process(object):
                 self._pprocess is not None):
 
             self._info.update({'os_pid': self.os_pid,
-                'create_time':self._pprocess.create_time})
+                'create_time':self._pprocess.create_time()})
 
         self._info['active'] = self._process.active
         return self._info
