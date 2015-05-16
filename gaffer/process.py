@@ -240,7 +240,7 @@ class ProcessWatcher(object):
     def _async_refresh(self, handle):
         try:
             self._last_info = self.refresh()
-        except psutil.error.NoSuchProcess:
+        except psutil.NoSuchProcess:
             self.stop()
             return
 
@@ -707,7 +707,7 @@ class Process(object):
     def _init_cpustats(self):
         try:
             get_process_stats(self._pprocess, 0.1)
-        except psutil.error.NoSuchProcess:
+        except psutil.NoSuchProcess:
             # catch this error. It can can happen when the process is closing
             # very fast
             pass
