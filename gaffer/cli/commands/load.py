@@ -12,6 +12,7 @@ from ...process import ProcessConfig
 class Load(Command):
     """
     usage: gaffer load [-c concurrency|--concurrency concurrency]...
+                       [--no-start]
                        [--app APP] [<file>]
 
     Args
@@ -20,8 +21,9 @@ class Load(Command):
     Options
 
     -h, --help
-    -c concurrency,--concurrency concurrency  Specify the number processesses
+    -c concurrency,--concurrency concurrency  Specify the number processes
                                               to run.
+    --no-start                                Don't start jobs execution
     --app APP                                 application name
     """
 
