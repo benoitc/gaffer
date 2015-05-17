@@ -298,6 +298,7 @@ def test_custom_channel():
     def stop(handle):
         channel.stop_read()
         p.stop()
+        for p in pipes: p.close()
 
     t = pyuv.Timer(loop)
     t.start(stop, 0.3, 0.0)
