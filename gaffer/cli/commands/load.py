@@ -74,6 +74,10 @@ class Load(Command):
         procfile, server = config.get("procfile", "server")
         appname = self.default_appname(config, args)
 
+        start = True
+        if args["--no-start"]:
+            start = False
+
         # parse the concurrency settings
         concurrency = self.parse_concurrency(args)
 
@@ -93,7 +97,7 @@ class Load(Command):
 
             config = ProcessConfig(name, cmd, **params)
             try:
-                server.load(config, sessionid=appname)
+                server.load(config, sessionid=appname, start=start)
             except GafferConflict:
                 print("%r already loaded" % name)
 
