@@ -23,7 +23,7 @@ class Load(Command):
     -h, --help
     -c concurrency,--concurrency concurrency  Specify the number processes
                                               to run.
-    --nostart [app]                           Don't start jobs execution
+    --nostart                                 Don't start jobs execution
     --app APP                                 application name
     """
 
@@ -41,6 +41,9 @@ class Load(Command):
     def load_file(self, config, args):
         fname = args['<file>']
         server = config.get("server")
+
+        # default parameter for start
+        start_default = not args["--nostart"]
 
         # load configs
         configs = self.load_jsonconfig(fname)
@@ -60,9 +63,7 @@ class Load(Command):
             if args['--app']:
                 appname = args['--app']
 
-            start = conf.get('start', True)
-            if args["--nostart"]:
-                start = False
+            start = conf.get('start', start_default)
 
             # finally load the config
             pname = "%s.%s" % (appname, name)
