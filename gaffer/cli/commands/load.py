@@ -12,7 +12,7 @@ from ...process import ProcessConfig
 class Load(Command):
     """
     usage: gaffer load [-c concurrency|--concurrency concurrency]...
-                       [--no-start]
+                       [--nostart]
                        [--app APP] [<file>]
 
     Args
@@ -23,7 +23,7 @@ class Load(Command):
     -h, --help
     -c concurrency,--concurrency concurrency  Specify the number processes
                                               to run.
-    --no-start                                Don't start jobs execution
+    --nostart [app]                           Don't start jobs execution
     --app APP                                 application name
     """
 
@@ -60,9 +60,12 @@ class Load(Command):
             if args['--app']:
                 appname = args['--app']
 
+            start = conf.get('start', True)
+            if args["--nostart"]:
+                start = False
+
             # finally load the config
             pname = "%s.%s" % (appname, name)
-            start = conf.get('start', True)
             pconfig = ProcessConfig(name, cmd, **conf)
             try:
                 server.load(pconfig, sessionid=appname, start=start)
@@ -77,7 +80,7 @@ class Load(Command):
         appname = self.default_appname(config, args)
 
         start = True
-        if args["--no-start"]:
+        if args["--nostart"]:
             start = False
 
         # parse the concurrency settings

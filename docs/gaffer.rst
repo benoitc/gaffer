@@ -74,7 +74,7 @@ SUBCOMMANDS
                 <format>        ini or json
                 --out=filename  path of filename where the export will be saved
 
-    **load** [-c concurrency|--concurrency concurrency] [<name>]
+    **load** [-c concurrency|--concurrency concurrency] [--nostart] [<name>]
                 Load a Procfile application to gafferd
 
                 <name> is the name of the application recorded in
