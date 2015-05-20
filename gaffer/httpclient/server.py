@@ -102,6 +102,7 @@ class Server(BaseClient):
           this flag instructs gaffer to maintain this process in the sessionid
           context. A context can be for example an application. If no session
           is specified the config will be attached to the ``default`` session.
+        - **start**: This flag instructs gaffer to start the loaded process.
         """
 
         sessionid = self._sessionid(sessionid)

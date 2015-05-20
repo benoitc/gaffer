@@ -12,6 +12,7 @@ from ...process import ProcessConfig
 class Load(Command):
     """
     usage: gaffer load [-c concurrency|--concurrency concurrency]...
+                       [--nostart]
                        [--app APP] [<file>]
 
     Args
@@ -20,8 +21,9 @@ class Load(Command):
     Options
 
     -h, --help
-    -c concurrency,--concurrency concurrency  Specify the number processesses
+    -c concurrency,--concurrency concurrency  Specify the number processes
                                               to run.
+    --nostart                                 Don't start jobs execution
     --app APP                                 application name
     """
 
@@ -39,6 +41,9 @@ class Load(Command):
     def load_file(self, config, args):
         fname = args['<file>']
         server = config.get("server")
+
+        # default parameter for start
+        start_default = not args["--nostart"]
 
         # load configs
         configs = self.load_jsonconfig(fname)
@@ -58,9 +63,10 @@ class Load(Command):
             if args['--app']:
                 appname = args['--app']
 
+            start = conf.get('start', start_default)
+
             # finally load the config
             pname = "%s.%s" % (appname, name)
-            start = conf.get('start', True)
             pconfig = ProcessConfig(name, cmd, **conf)
             try:
                 server.load(pconfig, sessionid=appname, start=start)
@@ -73,6 +79,10 @@ class Load(Command):
     def load_procfile(self, config, args):
         procfile, server = config.get("procfile", "server")
         appname = self.default_appname(config, args)
+
+        start = True
+        if args["--nostart"]:
+            start = False
 
         # parse the concurrency settings
         concurrency = self.parse_concurrency(args)
@@ -93,7 +103,7 @@ class Load(Command):
 
             config = ProcessConfig(name, cmd, **params)
             try:
-                server.load(config, sessionid=appname)
+                server.load(config, sessionid=appname, start=start)
             except GafferConflict:
                 print("%r already loaded" % name)
 
