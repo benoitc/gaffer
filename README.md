@@ -29,19 +29,19 @@ failure, enabling fault tolerance and high availability.
 - Subscribe to process statistics per process or process templates and get them in quasi RT.
 - Procfile applications support but also JSON config support.
 - Supervisor-like features.
-- Fully evented. Use the libuv event loop using the [pyuv library](http://pyuv.readthedocs.org)
+- Fully evented. Use the libuv event loop using the [pyuv library](https://pyuv.readthedocs.io)
 - Flapping: handle cases where your processes crash too much
 - Easily extensible: add your own endpoint, create your client, embed gaffer in your application, ...
 - Compatible with python 2.7x, 3.x
 
 ## Documentation
 
-http://gaffer.readthedocs.org
+https://gaffer.readthedocs.io
 
 ## Getting Started
 
 
-http://gaffer.readthedocs.org/en/latest/getting-started.html
+https://gaffer.readthedocs.io/en/latest/getting-started.html
 
 ## Installation
 

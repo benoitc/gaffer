@@ -44,7 +44,7 @@ Features
       support.
     - Supervisor-like features.
     - Fully evented. Use the libuv event loop using the
-      `pyuv library <http://pyuv.readthedocs.org>`_
+      `pyuv library <https://pyuv.readthedocs.io>`_
     - Flapping: handle cases where your processes crash too much
     - Easily extensible: add your own endpoint, create your client,
       embed gaffer in your application, ...

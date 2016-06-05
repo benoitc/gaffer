@@ -12,7 +12,7 @@ Design
 
 Gaffer is internally based on an event loop using the 
 `libuv <https://github.com/joyent/libuv/>`_ from Joyent via 
-the `pyuv binding <https://pyuv.readthedocs.org>`_
+the `pyuv binding <https://pyuv.readthedocs.io>`_
 
 All gaffer events are added to the loop and processes asynchronously which
 make it pretty performant for handling & controlling multiple processes.
