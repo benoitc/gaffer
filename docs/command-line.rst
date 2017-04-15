@@ -2,7 +2,7 @@ Command Line
 ============
 
 Gaffer is a :doc:`process management framework <processframework>` but
-also a set of command lines tools allowing yout to manage on your
+also a set of command lines tools allowing you to manage on your
 machine or a cluster. All the command line tools are obviously using the
 framework.
 
@@ -22,7 +22,7 @@ can be used to handle many processes.
 
 The tool :doc:`gafferctl`  allows you to control a local or remote gafferd
 node via the HTTP API. You can show processes informations, add new
-processes, changes their configureation, get changes on the nodes in rt
+processes, changes their configuration, get changes on the nodes in rt
 ....
 
 

@@ -7,7 +7,7 @@ app just initialize your manager with it::
 
     manager = Manager(apps=[HttpHandler()])
 
-The HttpHandler can be configured to accept multiple endpoinds and can
+The HttpHandler can be configured to accept multiple endpoints and can
 be extended with new HTTP handlers. Internally we are using Tornado so
 you can either extend it with rules using pure totrnado handlers or wsgi
 apps.
@@ -92,7 +92,7 @@ ex::
     data: STDERR 22
 
     $ curl localhost:5000/streams/1/stdout?feed=longpoll
-    STDOUTi 14
+    STDOUT 14
 
 
 Write to STDIN
@@ -125,13 +125,13 @@ See the echo client/server example in the example folder::
 
     $ python echo_client.py
     Sent
-    Reeiving...
+    Receiving...
     Received 'ECHO
 
     '
     (test)enlil:examples benoitc$ python echo_client.py
     Sent
-    Reeiving...
+    Receiving...
     Received 'ECHO
 
 .. note::

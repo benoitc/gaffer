@@ -146,7 +146,7 @@ The default plugin dir is set to ``~/.gafferd/plugins`` .
 Site plugins
 ++++++++++++
 
-Plugins can have “sites” in them, any plugin that exists under the
+Plugins can have "sites" in them, any plugin that exists under the
 plugins directory with a _site directory, its content will be statically
 served when hitting ``/_plugin/[plugin_name]/`` url. Those can be added even
 after the process has started.
