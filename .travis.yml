@@ -4,7 +4,7 @@ python:
   - "3.3"
 install:
   - sudo apt-get install build-essential python-dev 
-  - pip install -r requirements_dev.txt --use-mirrors
+  - pip install -r requirements_dev.txt
   - python setup.py install
 script: py.test 
 branches:
