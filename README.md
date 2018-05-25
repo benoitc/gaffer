@@ -20,12 +20,10 @@ failure, enabling fault tolerance and high availability.
 
 - RESTful HTTP Api
 - Websockets and [SOCKJS](http://sockjs.org) support to interact with a gaffer node from any browser or SOCKJS client.
-- Framework to manage and interact your applications and jobs on
-- differerent machines
-- Server and command-line tools to manage and interract with your processes
-- manages topology information. Clients query gaffer_lookupd to discover  gaffer nodes for a specific job or application.
-- Possibility to interact with STDIO and PIPES to interact with your
- applications and processes
+- Framework to manage and interact your applications and jobs on differerent machines
+- Server and command-line tools to manage and interact with your processes
+- Manages topology information. Clients query gaffer_lookupd to discover gaffer nodes for a specific job or application.
+- Possibility to interact with STDIO and PIPES to interact with your applications and processes
 - Subscribe to process statistics per process or process templates and get them in quasi RT.
 - Procfile applications support but also JSON config support.
 - Supervisor-like features.
