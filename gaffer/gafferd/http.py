@@ -73,7 +73,7 @@ class HttpHandler(object):
 
         self.clients = dict()
 
-        # intialize the config
+        # initialize the config
         self.init_config()
 
 

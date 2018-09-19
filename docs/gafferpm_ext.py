@@ -89,7 +89,7 @@ Command line usage
         load  	Load a Procfile application to gafferd
         unload	Unload a Procfile application to gafferd
         scale 	Scaling your process
-        ps    	List your process informations
+        ps    	List your process information
         help  	Get help on a command
 """
 

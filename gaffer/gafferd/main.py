@@ -202,7 +202,7 @@ class Server(object):
         # initialize the plugin manager
         self.plugin_manager = PluginManager(self.cfg.plugin_dir)
 
-        # check if any plugin dependancy is missing
+        # check if any plugin dependency is missing
         self.plugin_manager.check_mandatory()
 
         # initialize the manager

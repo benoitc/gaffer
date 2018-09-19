@@ -26,7 +26,7 @@ class IdentExists(Exception):
     """
 
 class AlreadyRegistered(Exception):
-    """ exception raised when a job is alreay registered """
+    """ exception raised when a job is already registered """
 
 
 class RemoteJob(object):

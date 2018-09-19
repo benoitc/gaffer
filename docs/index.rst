@@ -32,7 +32,7 @@ Features
       a gaffer node from any browser or SOCKJS client.
     - Framework to manage and interact your applications and jobs on
       differerent machines
-    - Server and :doc:`command-line` tools to manage and interract with your
+    - Server and :doc:`command-line` tools to manage and interact with your
       processes
     - manages topology information. Clients query gaffer_lookupd to discover
       gaffer nodes for a specific job or application.

@@ -3,7 +3,7 @@
 # This file is part of gaffer. See the NOTICE for more information.
 """
 The manager module is a core component of gaffer. A Manager is
-responsible of maintaining processes and allows you to interract with
+responsible of maintaining processes and allows you to interact with
 them.
 
 Classes
@@ -109,7 +109,7 @@ class Manager(object):
         # manage processes
         self.events.subscribe('exit', self._on_exit)
 
-        # start contollers
+        # start controllers
         for mapp in self.mapps:
             mapp.start(self.loop, self)
 
@@ -279,7 +279,7 @@ class Manager(object):
             self._stopall(state)
 
     def reload(self, name, sessionid=None):
-        """ reload a process config. The number of processes is resetted to
+        """ reload a process config. The number of processes is reset to
         the one in settings and all current processes are killed """
 
         if not sessionid:
@@ -396,7 +396,7 @@ class Manager(object):
             m.scale("sometemplate", -1) # decrease of 1
             m.scale("sometemplate", "+1") # increase of 1
             m.scale("sometemplate", "-1") # decrease of 1
-            m.scale("sometemplate", "=1") # set the number of processess to 1
+            m.scale("sometemplate", "=1") # set the number of processes to 1
         """
         sessionid, name = self._parse_name(name)
         pname = "%s.%s" % (sessionid, name)
@@ -738,7 +738,7 @@ class Manager(object):
             #        h.close()
             #self.loop.walk(walk_cb)
 
-            # if there any stop callback, excute it
+            # if there any stop callback, execute it
             if self.stop_cb is not None:
                 self.stop_cb(self)
                 self.stop_cb = None
@@ -900,7 +900,7 @@ class Manager(object):
                 # graceful time
                 self._tracker.check(p, state.graceful_timeout)
 
-                # notify others that the process is beeing reaped
+                # notify others that the process is being reaped
                 self._publish("reap", name=p.name, pid=p.pid, os_pid=p.os_pid)
                 self._publish("job.%s.reap" % p.name, name=p.name, pid=p.pid,
                         os_pid=p.os_pid)

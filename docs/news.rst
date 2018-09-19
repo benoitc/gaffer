@@ -6,7 +6,7 @@ CHANGES
 
 - new intermediary release.
   See https://github.com/benoitc/gaffer/compare/0.4.4...0.5.0 for a
-  detailled changelog.
+  detailed changelog.
 
 
 2012/12/20 - version 0.4.4
@@ -33,7 +33,7 @@ CHANGES
 2012/10/29 - version 0.4.0
 --------------------------
 
-- add environent variables support in the gafferd setting file.
+- add environment variables support in the gafferd setting file.
 - add a plugin system to easily extend :doc:`gafferd` using HTML sites
   or gaffer applications in Python
 

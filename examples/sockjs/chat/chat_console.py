@@ -26,7 +26,7 @@ class Input(object):
 class ChatReader(WebSocket):
 
     def on_open(self):
-        print("connection openned")
+        print("connection opened")
         self.console = Input(self)
 
     def on_message(self, data):
