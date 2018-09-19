@@ -2,7 +2,7 @@
 #
 # This file is part of gaffer. See the NOTICE for more information.
 """
-Webhooks allow to register an url to a specific event (or alls) and the
+Webhooks allow to register an url to a specific event (or all) and the
 event will be posted on this URL. Each events can triger a post on a
 given url.
 
@@ -12,7 +12,7 @@ can add this line in the webhooks sections of the gaffer setting file::
     [webhooks]
     create = http://echohttp.com/echo you
 
-Or programatically::
+Or programmatically::
 
     from gaffer.manager import Manager
     from gaffer.webhooks import WebHooks

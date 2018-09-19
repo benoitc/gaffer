@@ -326,7 +326,7 @@ class SqliteKeyBackend(KeyBackend):
         if self.dbname != ":memory:":
             self.dbname = os.path.join(cfg.config_dir, self.dbname)
 
-        # intitialize conn
+        # initialize conn
         self.conn = None
 
     def open(self):

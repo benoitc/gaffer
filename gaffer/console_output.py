@@ -33,7 +33,7 @@ GAFFER_COLORS = ['cyan', 'yellow', 'green', 'magenta', 'red', 'blue',
 class Color(object):
     """ wrapper around colorama to ease the output creation. Don't use
     it directly, instead, use the ``colored(name_of_color, lines)`` to
-    return the colored ouput.
+    return the colored output.
 
     Colors are: cyan, yellow, green, magenta, red, blue,
     intense_cyan, intense_yellow, intense_green, intense_magenta,
@@ -43,7 +43,7 @@ class Color(object):
     """
 
     def __init__(self):
-        # intialize colors code
+        # initialize colors code
         colors = {}
         for color in GAFFER_COLORS:
             c = color.upper()

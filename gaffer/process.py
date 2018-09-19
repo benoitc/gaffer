@@ -257,7 +257,7 @@ class ProcessWatcher(object):
     def _start(self):
         if not self.active:
             self._timer = pyuv.Timer(self.loop)
-            # start the timer to refresh the informations
+            # start the timer to refresh the information
             # 0.1 is the minimum interval to fetch cpu stats for this
             # process.
             self._timer.start(self._async_refresh, 0.1, 0.1)
@@ -291,7 +291,7 @@ class ProcessConfig(object):
         Settings:
 
         - **args**: the arguments for the command to run. Can be a list or
-          a string. If **args** is  a string, it's splitted using
+          a string. If **args** is  a string, it's split using
           :func:`shlex.split`. Defaults to None.
         - **env**: a mapping containing the environment variables the command
           will run with. Optional
@@ -314,7 +314,7 @@ class ProcessConfig(object):
             and try to spawn them
           - **max_retry**: maximum number of retry before we give up
             and stop the process.
-        - **redirect_output**: list of io to redict (max 2) this is a list of custom
+        - **redirect_output**: list of io to redirect (max 2) this is a list of custom
           labels to use for the redirection. Ex: ["a", "b"] will
           redirect stdout & stderr and stdout events will be labeled "a"
         - **redirect_input**: Boolean (False is the default). Set it if
@@ -415,7 +415,7 @@ class Process(object):
     - **name**: name of the process
     - **cmd**: program command, string)
     - **args**: the arguments for the command to run. Can be a list or
-      a string. If **args** is  a string, it's splitted using
+      a string. If **args** is  a string, it's split using
       :func:`shlex.split`. Defaults to None.
     - **env**: a mapping containing the environment variables the command
       will run with. Optional
@@ -426,7 +426,7 @@ class Process(object):
       won't exit when the manager is stopped.
     - **shell**: boolean, run the script in a shell. (UNIX
       only)
-    - **redirect_output**: list of io to redict (max 2) this is a list of custom
+    - **redirect_output**: list of io to redirect (max 2) this is a list of custom
       labels to use for the redirection. Ex: ["a", "b"] will
       redirect stdoutt & stderr and stdout events will be labeled "a"
     - **redirect_input**: Boolean (False is the default). Set it if
@@ -602,7 +602,7 @@ class Process(object):
     @property
     def info(self):
         """ return the process info. If the process is monitored it
-        return the last informations stored asynchronously by the watcher"""
+        return the last information stored asynchronously by the watcher"""
 
         # info we have on this process
         if self._info is None:

@@ -17,7 +17,7 @@ class UserNotFound(Exception):
 
 
 class UserConflict(Exception):
-    """ exception raised when you try to create an already exisiting user """
+    """ exception raised when you try to create an already existing user """
 
 class User(object):
     """ instance representing an authenticated user """
@@ -165,7 +165,7 @@ class AuthManager(object):
         if len(a) != len(b):
             return False
 
-        # do a binary comparaison of password hashes
+        # do a binary comparison of password hashes
         rv = 0
         for x, y in zip(a, b):
             rv |= ord(x) ^ ord(y)
@@ -246,7 +246,7 @@ class SqliteAuthHandler(BaseAuthHandler):
         if self.dbname != ":memory:":
             self.dbname = os.path.join(cfg.config_dir, self.dbname)
 
-        # intitialize conn
+        # initialize conn
         self.conn = None
 
     def open(self):

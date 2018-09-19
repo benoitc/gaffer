@@ -29,7 +29,7 @@ class Key(Command):
         permissions = key.get('permissions', {})
         print("Key %r found." % args['<apikey>'])
         print("Label: %s" % key.get("label", ""))
-        print("Permisssions:")
+        print("Permissions:")
         display_permissions(permissions)
 
 def display_permissions(permissions):

@@ -103,7 +103,7 @@ parameters are:
 
 - **cmd**: the full command line to launch. eg. ``./dummy.p¨``
 - **args**: arguments to pass as a string. eg. ``-some value --option=a``
-- **cwd**: path to working directorty
+- **cwd**: path to working directory
 - **uid**: user name or id used to execute the process
 - **gid**: group name or id used to execute the process
 - **detach**: if you wnt to completely detach the process from gafferd
@@ -111,9 +111,9 @@ parameters are:
 - **shell**: The process is executed in a shell (unix only)
 - **flapping**: flapping rule. eg. `2, 1., 7., 5` which means
   attempts=2, window=1., retry_in=7., max_retry=5
-- **redirect_input**: to allows you to interract with stdin
+- **redirect_input**: to allows you to interact with stdin
 - **redirect_output**: to watch both stdout & stderr. output names can
-  be whatever you cant. For example you. eg. ``redirect_output =
+  be whatever you want. For example you. eg. ``redirect_output =
   mystdout, mystderr`` stdout will be labelled *mysdtout* in this
   case.
 - **graceful_timeout**: time to wait before definitely kill a process.
@@ -128,7 +128,7 @@ parameters are:
   processes have the same order.
 
 
-Sometimes you also want to pass a custom environnement to your process.
+Sometimes you also want to pass a custom environment to your process.
 This is done by creating a special configuration section named
 ``env:processname``. Each environmenets sections are prefixed by
 ``env:``. For example to pass a special PORT environment variable to
@@ -195,7 +195,7 @@ and then scale them up and down::
 
 .. image:: _static/gaffer_ps.png
 
-have a look on the :doc:`gaffer` page for more informations about the
+have a look on the :doc:`gaffer` page for more information about the
 commands.
 
 

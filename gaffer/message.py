@@ -28,7 +28,7 @@ class Message(object):
         V1 type messageid\0body
 
     This simple messaging protocol allows us to pass any kind of blob as a
-    body and eventually a json while still beeing able to know the type of the
+    body and eventually a json while still being able to know the type of the
     message.
     """
 
@@ -60,7 +60,7 @@ class Message(object):
             # the magic bit.
             _, type, id = header.split()
 
-            # return the message classe
+            # return the message class
             return cls(body, id=id, type=type)
         except ValueError:
             raise MessageError("invalid message %r" % frame)

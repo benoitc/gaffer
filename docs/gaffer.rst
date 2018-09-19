@@ -83,7 +83,7 @@ SUBCOMMANDS
                         folder.
 
     **ps** [<appname>]
-                List your processes informations
+                List your processes information
 
                 <appname> he name of the application (session) of process
                 recoreded in gafferd.  By default it will be the name of your

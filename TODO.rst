@@ -1,5 +1,5 @@
 TODO
 ====
 
-- deployement solution
+- deployment solution
 - add ui to admin gaffer

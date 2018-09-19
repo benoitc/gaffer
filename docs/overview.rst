@@ -58,7 +58,7 @@ Current properties for each template:
     and try to spawn them
   - **max_retry**: maximum number of retry before we give up
     and stop the process.
-- **redirect_output**: list of io to redict (max 2) this is a list of custom
+- **redirect_output**: list of io to redirect (max 2) this is a list of custom
   labels to use for the redirection. Ex: ["a", "b"] will
   redirect stdoutt & stderr and stdout events will be labeled "a"
 - **redirect_input**: Boolean (False is the default). Set it if
@@ -130,7 +130,7 @@ Watch stats
 -----------
 
 Stats of a process can be monitored continuously (there is a refresh
-interval of 0.1s to fetch CPU informations) using the following
+interval of 0.1s to fetch CPU information) using the following
 method::
 
     manager.monitor(<nameorid>, <listener>)
@@ -237,7 +237,7 @@ write at the same time. This method is threadsafe.
 HTTP API
 --------
 
-See the :doc:`HTTP api description <http>` for more informations.
+See the :doc:`HTTP api description <http>` for more information.
 
 Tools
 -----
@@ -248,4 +248,4 @@ processes without having to code. It can be used like `supervisor
 <http://smarden.org/runit/>`_  or other tools around. Speaking of runit
 a similar controlling will be available in 0.2 .
 
-See the :doc:`command-line` documentation for more informations.
+See the :doc:`command-line` documentation for more information.

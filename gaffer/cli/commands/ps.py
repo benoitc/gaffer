@@ -17,7 +17,7 @@ class Ps(Command):
     """
 
     name = "ps"
-    short_descr = "list your processes informations"
+    short_descr = "list your processes information"
 
     def run(self, config, args):
         balance = copy.copy(GAFFER_COLORS)

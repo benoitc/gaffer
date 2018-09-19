@@ -181,7 +181,7 @@ class EventEmitter(object):
         self._dispatch_event()
 
     def subscribe(self, evtype, listener, once=False):
-        """ subcribe to an event """
+        """ subscribe to an event """
 
         if evtype == ".": # wildcard
             self._wildcards.add((once, listener))
